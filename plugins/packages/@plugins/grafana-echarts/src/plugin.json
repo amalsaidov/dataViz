@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
-  "type": "panel",
-  "name": "Echarts",
-  "id": "grafana-echarts-panel",
+  "type": "app",
+  "name": "ECharts",
+  "id": "grafana-echarts-app",
   "info": {
     "keywords": ["panel"],
     "description": "",
