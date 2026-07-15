@@ -9,7 +9,7 @@ A template for building Grafana **frontend** plugins (panel and app plugins) in 
 - **Monorepo Architecture** - Multiple plugins and shared packages in one repository
 - **Full Build Control** - Ejected webpack and build configurations, no hidden abstractions
 - **Modern Toolchain** - Turborepo, pnpm workspaces, SWC, TypeScript, Biome.js
-- **Panel & App Examples** - Ready-to-copy `PanelPlugin` and `AppPlugin` templates
+- **Panel Example** - Ready-to-copy `PanelPlugin` template (app plugins are supported too)
 - **Type Safety** - Strict TypeScript with composite builds and project references
 - **Fast Development** - Docker Compose setup with hot reload
 - **Testing Ready** - Vitest configured for all packages
@@ -45,8 +45,8 @@ A template for building Grafana **frontend** plugins (panel and app plugins) in 
    different ports/versions at once.
 
 4. Access Grafana at http://localhost:3001
-   - The app plugin is auto-provisioned (find it at **Administration > Plugins > Workspace**)
-   - The panel plugin is available in any dashboard's panel picker as **Workspace Panel**
+   - A demo dashboard (**Workspace Panel Demo**) renders the panel with TestData
+   - The panel plugin is also available in any dashboard's panel picker as **Workspace Panel**
 
 ## Prerequisites
 
@@ -67,7 +67,6 @@ dataViz/
     │   ├── @shared/                 # Shared libraries
     │   │   └── core/                # Core utilities package
     │   └── @plugins/                # Grafana plugins
-    │       ├── grafana-workspace-app/    # Example app plugin
     │       └── grafana-workspace-panel/  # Example panel plugin
     ├── provisioning/                # Grafana provisioning
     ├── docker-compose.yaml          # Plugin build/watch stack

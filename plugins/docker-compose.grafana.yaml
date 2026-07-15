@@ -13,26 +13,24 @@ services:
     ports:
       - '${GRAFANA_PORT:-3001}:3000'
     # Grafana scans plugins only once at startup. If it starts before the plugin
-    # build finishes, the app is marked "not installed" and its pages 404 until a
-    # restart. Since this stack runs in a separate Compose project it can't use
-    # `depends_on` on the plugin build, so gate startup on the frontend build
-    # artifacts appearing in the volume.
+    # build finishes, the plugin is marked "not installed" until a restart. Since
+    # this stack runs in a separate Compose project it can't use `depends_on` on
+    # the plugin build, so gate startup on the frontend build artifacts appearing
+    # in the volume.
     # ($$ escapes $ so Compose passes it through to the shell.)
     entrypoint:
       - sh
       - -c
       - |
-        app=/var/lib/grafana/plugins/grafana-workspace-app
         panel=/var/lib/grafana/plugins/grafana-workspace-panel
-        echo "Waiting for plugin builds in $$app and $$panel ..."
-        until [ -f "$$app/plugin.json" ] && [ -f "$$app/module.js" ] && [ -f "$$panel/plugin.json" ] && [ -f "$$panel/module.js" ]; do
+        echo "Waiting for plugin build in $$panel ..."
+        until [ -f "$$panel/plugin.json" ] && [ -f "$$panel/module.js" ]; do
           sleep 2
         done
-        echo "Plugin builds detected. Starting Grafana."
+        echo "Plugin build detected. Starting Grafana."
         exec /run.sh
     volumes:
-      # Shared, read-only: every Grafana instance reads the same plugin builds.
-      - workspace-plugin-dist:/var/lib/grafana/plugins/grafana-workspace-app:ro
+      # Shared, read-only: every Grafana instance reads the same plugin build.
       - workspace-panel-dist:/var/lib/grafana/plugins/grafana-workspace-panel:ro
       - ./provisioning:/etc/grafana/provisioning
       # Per-instance Grafana data (project-scoped, not shared across instances).
@@ -41,7 +39,7 @@ services:
       # Grafana settings
       GF_AUTH_ANONYMOUS_ENABLED: 'true'
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
-      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: grafana-workspace-app,grafana-workspace-panel
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: grafana-workspace-panel
 
       # Enable debug logging
       GF_LOG_LEVEL: debug
@@ -52,9 +50,6 @@ services:
 volumes:
   # Provided by the plugin stack (docker-compose.yaml). Must exist before
   # starting Grafana, i.e. run `pnpm run plugin` first.
-  workspace-plugin-dist:
-    external: true
-    name: workspace-plugin-dist
   workspace-panel-dist:
     external: true
     name: workspace-panel-dist

@@ -17,15 +17,6 @@ plugins/
 │   │       ├── package.json
 │   │       └── tsconfig.json
 │   └── @plugins/              # Grafana plugins
-│       ├── grafana-workspace-app/     # Example app plugin
-│       │   ├── src/
-│       │   │   ├── components/
-│       │   │   ├── img/
-│       │   │   ├── module.tsx         # AppPlugin entry
-│       │   │   └── plugin.json
-│       │   ├── package.json
-│       │   ├── tsconfig.json
-│       │   └── webpack.config.mjs
 │       └── grafana-workspace-panel/   # Example panel plugin
 │           ├── src/
 │           │   ├── components/
@@ -36,7 +27,7 @@ plugins/
 │           ├── package.json
 │           ├── tsconfig.json
 │           └── webpack.config.mjs
-├── provisioning/              # Grafana provisioning (auto-enables the app)
+├── provisioning/              # Grafana provisioning (TestData datasource + demo dashboard)
 ├── docker-compose.yaml        # Plugin build/watch stack
 ├── docker-compose.grafana.yaml # Grafana instance stack
 ├── Dockerfile                 # Node + pnpm build image
@@ -132,7 +123,7 @@ The Docker Compose setup:
 - Watch mode auto-rebuilds on source changes
 - Mounts each plugin's dist folder into Grafana
 - Enables anonymous access (no login required)
-- Auto-provisions the app plugin; the panel is available in the panel picker
+- Provisions a TestData DB datasource and a demo dashboard; the panel is available in the panel picker
 
 ### Local Development
 
@@ -184,12 +175,6 @@ All commands use Turborepo to orchestrate tasks across packages:
 
 ## Plugin Structure (Frontend / React + TypeScript)
 
-### App plugin (`grafana-workspace-app`)
-
-- **Entry Point**: `src/module.tsx` - Exports the `AppPlugin`
-- **Main Component**: `src/components/App.tsx` - Root app component
-- **Plugin Metadata**: `src/plugin.json` (`type: app`)
-
 ### Panel plugin (`grafana-workspace-panel`)
 
 - **Entry Point**: `src/module.ts` - Exports the `PanelPlugin` and its options builder
@@ -197,7 +182,8 @@ All commands use Turborepo to orchestrate tasks across packages:
 - **Options**: `src/types.ts` - Panel options interface
 - **Plugin Metadata**: `src/plugin.json` (`type: panel`)
 
-Both plugins use `@shared/core` for shared utilities.
+The plugin uses `@shared/core` for shared utilities. App plugins (`type: app`)
+are also supported — copy this package and change `plugin.json` accordingly.
 
 ### Build System
 
