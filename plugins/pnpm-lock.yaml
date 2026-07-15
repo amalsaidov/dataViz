@@ -51,7 +51,7 @@ importers:
         specifier: 5.10.0
         version: 5.10.0
 
-  packages/@plugins/grafana-workspace-app:
+  packages/@plugins/grafana-workspace-panel:
     dependencies:
       '@grafana/data':
         specifier: ^11.6.0
@@ -98,7 +98,7 @@ importers:
         version: 3.3.4(webpack@5.104.1)
       swc-loader:
         specifier: ^0.2.6
-        version: 0.2.6(@swc/core@1.15.0(@swc/helpers@0.5.17))(webpack@5.104.1)
+        version: 0.2.7(@swc/core@1.15.0(@swc/helpers@0.5.17))(webpack@5.104.1)
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -3052,12 +3052,6 @@ packages:
   supports-preserve-symlinks-flag@1.0.0:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
-
-  swc-loader@0.2.6:
-    resolution: {integrity: sha512-9Zi9UP2YmDpgmQVbyOPJClY0dwf58JDyDMQ7uRc4krmc72twNI2fvlBWHLqVekBpPc7h5NJkGVT1zNDxFrqhvg==}
-    peerDependencies:
-      '@swc/core': ^1.2.147
-      webpack: '>=2'
 
   swc-loader@0.2.7:
     resolution: {integrity: sha512-nwYWw3Fh9ame3Rtm7StS9SBLpHRRnYcK7bnpF3UKZmesAK0gw2/ADvlURFAINmPvKtDLzp+GBiP9yLoEjg6S9w==}
@@ -6344,12 +6338,6 @@ snapshots:
       has-flag: 4.0.0
 
   supports-preserve-symlinks-flag@1.0.0: {}
-
-  swc-loader@0.2.6(@swc/core@1.15.0(@swc/helpers@0.5.17))(webpack@5.104.1):
-    dependencies:
-      '@swc/core': 1.15.0(@swc/helpers@0.5.17)
-      '@swc/counter': 0.1.3
-      webpack: 5.104.1(@swc/core@1.15.0(@swc/helpers@0.5.17))(webpack-cli@5.1.4)
 
   swc-loader@0.2.7(@swc/core@1.15.0(@swc/helpers@0.5.17))(webpack@5.104.1):
     dependencies:

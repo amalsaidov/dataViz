@@ -1,26 +1,26 @@
-# Grafana Plugin Monorepo Template
+# Grafana dataViz Plugin Monorepo
 
-A production-ready template for building Grafana plugins in a monorepo structure. This template provides a fully ejected build system with complete control over configuration, ideal for organizations building multiple related plugins or plugins with shared code.
+A template for building Grafana **frontend** plugins (panel and app plugins) in a monorepo structure. It provides a fully ejected build system with complete control over configuration, ideal for teams building multiple related visualization plugins or plugins with shared code.
+
+> Scope: this monorepo targets **panel and app plugins only**. It intentionally does not include Go backend plugin tooling.
 
 ## Features
 
 - **Monorepo Architecture** - Multiple plugins and shared packages in one repository
 - **Full Build Control** - Ejected webpack and build configurations, no hidden abstractions
 - **Modern Toolchain** - Turborepo, pnpm workspaces, SWC, TypeScript, Biome.js
-- **Backend Support** - Go plugin backend with grafana-plugin-sdk-go
+- **Panel Example** - Ready-to-copy `PanelPlugin` template (app plugins are supported too)
 - **Type Safety** - Strict TypeScript with composite builds and project references
-- **Fast Development** - Docker Compose setup with hot reload for frontend and backend
+- **Fast Development** - Docker Compose setup with hot reload
 - **Testing Ready** - Vitest configured for all packages
 - **Production Ready** - Optimized builds with caching via Turborepo
 
 ## Quick Start
 
-### Use This Template
-
-1. Click "Use this template" on GitHub or clone this repository:
+1. Clone this repository:
    ```bash
    git clone <your-repo-url>
-   cd monorepo-plugin-template
+   cd dataViz
    ```
 
 2. Install dependencies:
@@ -29,9 +29,9 @@ A production-ready template for building Grafana plugins in a monorepo structure
    pnpm install
    ```
 
-3. Start development environment:
+3. Start the development environment:
    ```bash
-   # In one terminal: build the plugin once (shared across Grafana instances)
+   # In one terminal: build the plugins once (shared across Grafana instances)
    pnpm run plugin
 
    # In another terminal: start a Grafana instance attached to that build
@@ -45,21 +45,19 @@ A production-ready template for building Grafana plugins in a monorepo structure
    different ports/versions at once.
 
 4. Access Grafana at http://localhost:3001
-   - The plugin builds automatically (takes 30-60 seconds)
-   - Find it at **Administration > Plugins > Workspace**
+   - A demo dashboard (**Workspace Panel Demo**) renders the panel with TestData
+   - The panel plugin is also available in any dashboard's panel picker as **Workspace Panel**
 
 ## Prerequisites
 
-- **Node.js** 18 or later
+- **Node.js** 22 (see `plugins/.nvmrc`)
 - **pnpm** 10 or later
-- **Go** 1.23 or later (for backend plugins)
-- **Docker** (for local development environment)
-- **Mage** (for Go builds): `go install github.com/magefile/mage@latest`
+- **Docker** (for the local development environment)
 
 ## Repository Structure
 
 ```
-monorepo-plugin-template/
+dataViz/
 └── plugins/                          # Main workspace directory
     ├── .shared/                      # Shared build configurations
     │   ├── tsconfig.base.json       # Base TypeScript config
@@ -69,9 +67,10 @@ monorepo-plugin-template/
     │   ├── @shared/                 # Shared libraries
     │   │   └── core/                # Core utilities package
     │   └── @plugins/                # Grafana plugins
-    │       └── grafana-workspace-app/  # Example plugin
+    │       └── grafana-workspace-panel/  # Example panel plugin
     ├── provisioning/                # Grafana provisioning
-    ├── docker-compose.yaml          # Local development setup
+    ├── docker-compose.yaml          # Plugin build/watch stack
+    ├── docker-compose.grafana.yaml  # Grafana instance stack
     ├── package.json                 # Root workspace
     ├── pnpm-workspace.yaml          # pnpm workspace config
     ├── turbo.json                   # Turborepo orchestration
@@ -80,104 +79,54 @@ monorepo-plugin-template/
 
 ## Customizing for Your Plugins
 
-### 1. Rename the Example Plugin
+### Add a new plugin
+
+Copy one of the example plugins (the panel template is the usual starting point for a visualization):
 
 ```bash
-cd plugins/packages/@plugins
-mv grafana-workspace-app your-plugin-name
+cd plugins
+cp -r packages/@plugins/grafana-workspace-panel packages/@plugins/your-new-plugin
 ```
 
-Update these files in your renamed plugin:
-- `package.json` - Change the name field
-- `src/plugin.json` - Update id, name, and other metadata
-- `go.mod` - Update the module path
+Then update:
+- `package.json` - the `name` field
+- `src/plugin.json` - `id`, `name`, and other metadata
+- `webpack.config.mjs` - the `PLUGIN_ID` and the `uniqueName` argument
+- `tsconfig.json` - the `paths` alias
+- root `tsconfig.json` - add a project reference
+- `vitest.config.base.mts` - add an alias if tests import the package
+- Docker files - add a `dist` volume / mount and allow the id as unsigned if you want it loaded by the Docker Grafana stack
 
-### 2. Update Root Configuration
-
-In `plugins/package.json`:
-- Update the name field
-- Update repository, author, and license fields
-
-### 3. Add Additional Plugins
-
-Create a new plugin by copying the structure:
-```bash
-cp -r packages/@plugins/grafana-workspace-app packages/@plugins/your-new-plugin
-```
-
-Then update the configuration files as described above.
-
-### 4. Add Shared Packages
+### Add a shared package
 
 Create shared code that multiple plugins can use:
+
 ```bash
 mkdir -p packages/@shared/your-package-name
 ```
 
-Add a `package.json` and `tsconfig.json`, then import in your plugins:
+Add a `package.json` and `tsconfig.json`, then import it in your plugins:
+
 ```typescript
 import { something } from '@shared/your-package-name';
 ```
 
 ## Development Workflow
 
-### Docker Compose (Recommended)
-
-The Docker Compose setup provides the fastest way to develop:
-
-```bash
-cd plugins
-docker compose up
-```
-
-This automatically:
-- Builds frontend (webpack) and backend (Go)
-- Watches for changes and rebuilds
-- Runs Grafana with the plugin mounted
-- Provisions the plugin for immediate use
-
-### Local Development
-
-For development without Docker:
+See [plugins/README.md](./plugins/README.md) for the full workflow, including the
+two-stack Docker model and all available commands. Common commands:
 
 ```bash
 cd plugins
 
-# Build everything
-pnpm build
-
-# Development mode with watch
-pnpm dev
-
-# Run tests
-pnpm test
-
-# Type checking
-pnpm type-check
-
-# Linting
-pnpm lint
-
-# Format code
-pnpm format:fix
+pnpm build          # Production build of all packages
+pnpm dev            # Watch mode
+pnpm test           # Run tests
+pnpm type-check     # TypeScript checking
+pnpm lint           # Lint
+pnpm format:fix     # Fix formatting
+pnpm check          # format + test:ci + lint + type-check
 ```
-
-### Available Commands
-
-All commands are orchestrated by Turborepo for optimal caching and parallelization:
-
-- `pnpm build` - Production build
-- `pnpm build:dev` - Development build
-- `pnpm dev` - Watch mode
-- `pnpm test` - Run tests
-- `pnpm test:ci` - CI test mode
-- `pnpm lint` - Lint code
-- `pnpm format` - Check formatting
-- `pnpm format:fix` - Fix formatting
-- `pnpm type-check` - TypeScript checking
-- `pnpm build:proxy` - Build Go backend
-- `pnpm clean` - Clean build artifacts
-- `pnpm check` - Run all checks (format, test, lint, type-check)
 
 ## Technology Stack
 
@@ -187,9 +136,8 @@ All commands are orchestrated by Turborepo for optimal caching and parallelizati
 - **Webpack 5** - Module bundler configured for Grafana plugins
 
 ### Languages & Frameworks
-- **TypeScript 5.7** - Strict mode with composite builds
-- **React 18** - UI framework (from Grafana)
-- **Go 1.23** - Backend plugin support
+- **TypeScript** - Strict mode with composite builds
+- **React 18** - UI framework (provided by Grafana)
 
 ### Development Tools
 - **SWC** - Fast TypeScript/JSX compiler
@@ -198,10 +146,9 @@ All commands are orchestrated by Turborepo for optimal caching and parallelizati
 - **Docker Compose** - Local development environment
 
 ### Grafana Integration
-- **@grafana/data** - Data manipulation utilities
+- **@grafana/data** - Data manipulation utilities and plugin base classes
 - **@grafana/runtime** - Runtime services
 - **@grafana/ui** - UI components
-- **grafana-plugin-sdk-go** - Go backend SDK
 
 ## Key Differences from @grafana/create-plugin
 
@@ -218,15 +165,6 @@ This template uses an "ejected" approach that differs from the standard `@grafan
 - More manual configuration required
 - No automatic updates from @grafana/create-plugin
 - Need to maintain build configuration yourself
-- More complex initial setup
-
-## Documentation
-
-For detailed documentation on the workspace structure, plugin development, and build system, see:
-
-- [plugins/README.md](./plugins/README.md) - Comprehensive workspace documentation
-- Plugin-specific README files in `packages/@plugins/*`
-- Shared package documentation in `packages/@shared/*`
 
 ## Continuous Integration
 
@@ -237,7 +175,6 @@ The build system is designed to work well with CI/CD:
 - run: cd plugins && pnpm install
 - run: cd plugins && pnpm check  # Runs format, test, lint, type-check
 - run: cd plugins && pnpm build
-- run: cd plugins && pnpm build:proxy
 ```
 
 Turborepo's caching works in CI with remote cache configuration.
@@ -252,7 +189,3 @@ For Grafana plugin development:
 - [Grafana Plugin Tools](https://grafana.com/developers/plugin-tools/)
 - [Grafana Plugin Examples](https://github.com/grafana/grafana-plugin-examples)
 - [Grafana Community](https://community.grafana.com/)
-
-## Contributing
-
-This is a template repository. Customize it for your needs and remove this section, or add your own contribution guidelines.

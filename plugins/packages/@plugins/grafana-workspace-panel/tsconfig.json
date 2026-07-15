@@ -4,7 +4,7 @@
   "include": ["src", "**/package.json"],
   "compilerOptions": {
     "paths": {
-      "@grafana-workspace-app/*": ["./*"]
+      "@grafana-workspace-panel/*": ["./*"]
     },
     "baseUrl": "./src",
     "rootDir": "./src",

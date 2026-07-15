@@ -35,17 +35,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Go
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*_amd64
-*_arm64
-*_arm
-go.sum
-
 # Temporary files
 *.tmp
 .temp/

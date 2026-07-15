@@ -1,13 +1,12 @@
 {
-  "name": "@plugins/grafana-workspace-app",
+  "name": "@plugins/grafana-workspace-panel",
   "version": "1.0.0",
   "private": true,
-  "description": "Minimal Grafana workspace plugin",
+  "description": "Example Grafana panel plugin",
   "scripts": {
     "build": "webpack -c ./webpack.config.mjs --env production",
     "build:dev": "webpack -c ./webpack.config.mjs --env development",
     "dev": "webpack -w -c ./webpack.config.mjs --env development",
-    "build:proxy": "go mod download && mage -v",
     "lint": "biome lint src",
     "lint:fix": "biome lint --write src",
     "format": "biome format src",

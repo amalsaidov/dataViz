@@ -24,7 +24,6 @@
       "dependsOn": ["build-types"],
       "inputs": ["src/**/*.tsx", "src/**/*.ts"]
     },
-    "build:proxy": {},
     "lint": {},
     "lint:fix": {},
     "dev": {

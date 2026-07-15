@@ -3,6 +3,6 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "references": [
     { "path": "./packages/@shared/core" },
-    { "path": "./packages/@plugins/grafana-workspace-app" }
+    { "path": "./packages/@plugins/grafana-workspace-panel" }
   ]
 }
