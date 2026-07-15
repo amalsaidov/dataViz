@@ -3,10 +3,10 @@
  */
 
 export interface PluginConfig {
-  apiUrl?: string;
-  debug?: boolean;
+	apiUrl?: string;
+	debug?: boolean;
 }
 
 export interface AppSettings {
-  jsonData: PluginConfig;
+	jsonData: PluginConfig;
 }

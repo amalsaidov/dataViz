@@ -1,26 +1,8 @@
+# This stack builds the plugin once and watches for changes, writing the
+# compiled output into the shared `workspace-plugin-dist` volume. Grafana
+# instances (see docker-compose.grafana.yaml / `pnpm run server`) attach to
+# that same volume, so a single build is shared across many Grafana containers.
 services:
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - '3000:3000'
-    volumes:
-      - workspace-plugin-dist:/var/lib/grafana/plugins/grafana-workspace-app
-      - ./provisioning:/etc/grafana/provisioning
-      - workspace-data-grafana:/var/lib/grafana
-    environment:
-      # Grafana settings
-      GF_AUTH_ANONYMOUS_ENABLED: 'true'
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
-      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: grafana-workspace-app
-
-      # Enable debug logging
-      GF_LOG_LEVEL: debug
-
-      # Development mode
-      GF_DEFAULT_APP_MODE: development
-    depends_on:
-      - plugin
-
   plugin-precache:
     build:
       context: .
@@ -61,7 +43,13 @@ services:
       GOPATH: /go
     command: pnpm dev
     healthcheck:
-      test: test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/plugin.json && test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/module.js
+      # Report healthy only once BOTH the frontend (module.js) and the Go backend
+      # binaries (built by mage in plugin-precache) exist, so consumers know the
+      # plugin is fully loadable by Grafana, not just frontend-ready.
+      test: >-
+        test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/plugin.json &&
+        test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/module.js &&
+        ls /app/workspace/packages/@plugins/grafana-workspace-app/dist/grafana-workspace_linux_* >/dev/null 2>&1
       interval: 10s
       timeout: 5s
       retries: 30
@@ -69,8 +57,10 @@ services:
 volumes:
   workspace-node-modules:
   workspace-pnpm-store:
-  workspace-data-grafana:
+  # Fixed name so Grafana stacks in other Compose projects can attach to the
+  # same volume as an external volume (see docker-compose.grafana.yaml).
   workspace-plugin-dist:
+    name: workspace-plugin-dist
   workspace-go-cache:
   workspace-go-bin:
 

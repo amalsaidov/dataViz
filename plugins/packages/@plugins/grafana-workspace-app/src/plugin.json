@@ -1,38 +1,38 @@
 {
-  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
-  "type": "app",
-  "name": "Workspace",
-  "id": "grafana-workspace-app",
-  "backend": true,
-  "executable": "grafana-workspace",
-  "info": {
-    "description": "Minimal Grafana workspace plugin",
-    "author": {
-      "name": "Grafana Labs",
-      "url": "https://grafana.com"
-    },
-    "keywords": ["workspace"],
-    "logos": {
-      "small": "img/logo.svg",
-      "large": "img/logo.svg"
-    },
-    "screenshots": [],
-    "version": "%VERSION%",
-    "updated": "%TODAY%"
-  },
-  "includes": [
-    {
-      "type": "page",
-      "name": "Workspace",
-      "path": "/a/grafana-workspace-app",
-      "role": "Viewer",
-      "addToNav": true,
-      "defaultNav": true
-    }
-  ],
-  "dependencies": {
-    "grafanaDependency": ">=10.3.0",
-    "grafanaVersion": "10.3.0",
-    "plugins": []
-  }
+	"$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+	"type": "app",
+	"name": "Workspace",
+	"id": "grafana-workspace-app",
+	"backend": true,
+	"executable": "grafana-workspace",
+	"info": {
+		"description": "Minimal Grafana workspace plugin",
+		"author": {
+			"name": "Grafana Labs",
+			"url": "https://grafana.com"
+		},
+		"keywords": ["workspace"],
+		"logos": {
+			"small": "img/logo.svg",
+			"large": "img/logo.svg"
+		},
+		"screenshots": [],
+		"version": "%VERSION%",
+		"updated": "%TODAY%"
+	},
+	"includes": [
+		{
+			"type": "page",
+			"name": "Workspace",
+			"path": "/a/grafana-workspace-app",
+			"role": "Viewer",
+			"addToNav": true,
+			"defaultNav": true
+		}
+	],
+	"dependencies": {
+		"grafanaDependency": ">=12.3.0",
+		"grafanaVersion": "12.3.0",
+		"plugins": []
+	}
 }

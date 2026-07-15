@@ -70,14 +70,60 @@ go install github.com/magefile/mage@latest
 
 ### Development with Docker Compose (Recommended)
 
-The easiest way to develop is using Docker Compose, which sets up Grafana with the plugin automatically:
+Development uses two Docker Compose stacks: one that builds the plugin once
+(shared), and one for each Grafana instance that attaches to that shared build.
+
+**1. Start the plugin build (run once, keep it running):**
 
 ```bash
-# Start Grafana with the plugin
-docker compose up
+# Builds the plugin and watches for changes, writing to the shared dist volume
+pnpm run plugin
+```
 
-# Access Grafana at http://localhost:3000
+Wait for the initial build to finish (30-60 seconds) before starting Grafana.
+
+**2. Start a Grafana instance attached to that build:**
+
+```bash
+# Start Grafana (defaults to port 3001)
+pnpm run server
+
+# Access Grafana at http://localhost:3001
 # Go to Administration > Plugins > Workspace to enable the plugin
+```
+
+To run on a different port, set the `GRAFANA_PORT` environment variable:
+
+```bash
+# Start Grafana on port 4000
+GRAFANA_PORT=4000 pnpm run server
+```
+
+#### Running multiple instances / different Grafana versions
+
+Because the plugin build is shared, you can attach several Grafana containers to
+it — each on its own port/version — without rebuilding the plugin. The `server`
+script supports these environment variables:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `GRAFANA_PORT` | `3001` | Host port to expose Grafana on. |
+| `GRAFANA_VERSION` | `latest` | `grafana/grafana` image tag to run. |
+| `GRAFANA_CONTAINER_NAME` | `grafana-dataviz-<port>` | Container name for the Grafana instance. |
+
+Each invocation runs in its own Docker Compose project (namespaced by
+`GRAFANA_CONTAINER_NAME`) with its own Grafana data volume, so instances don't
+clobber each other, while all of them share the single plugin build:
+
+```bash
+# Plugin build must already be running (pnpm run plugin):
+pnpm run plugin
+
+# Grafana 13.1.0 on http://localhost:3002
+GRAFANA_VERSION=13.1.0 GRAFANA_PORT=3002 pnpm run server
+
+# Grafana 12.4.5 on http://localhost:3003
+GRAFANA_VERSION=12.4.5 GRAFANA_PORT=3003 pnpm run server
 ```
 
 The Docker Compose setup:

@@ -5,6 +5,8 @@ Last Updated: %TODAY%
 
 A minimal Grafana app plugin built with the ejected plugin structure.
 
+@todo delete when we replace with our first viz plugin
+
 ## Features
 
 - Simple workspace management interface
