@@ -3,8 +3,6 @@
 	"type": "app",
 	"name": "Workspace",
 	"id": "grafana-workspace-app",
-	"backend": true,
-	"executable": "grafana-workspace",
 	"info": {
 		"description": "Minimal Grafana workspace plugin",
 		"author": {
