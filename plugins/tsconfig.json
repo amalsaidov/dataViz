@@ -1,0 +1,8 @@
+// This file is just to make VSCode's intellisense work better with the monorepo
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "references": [
+    { "path": "./packages/@shared/core" },
+    { "path": "./packages/@plugins/grafana-workspace-app" }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "name": "@shared/core",
+  "version": "1.0.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome lint src",
+    "lint:fix": "biome lint --write src",
+    "format": "biome format src",
+    "format:fix": "biome format --write src",
+    "clean": "rm -rf dist .cache",
+    "build-types": "tsc --build --emitDeclarationOnly",
+    "type-check": "tsc --noEmit",
+    "test": "vitest watch",
+    "test:ci": "vitest run"
+  },
+  "dependencies": {
+    "@grafana/ui": "^11.6.0",
+    "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@grafana/data": "^11.6.0",
+    "@grafana/runtime": "^11.6.0",
+    "@types/react": "^18.3",
+    "react": "^18.3",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.7",
+    "vitest": "^2.0.0"
+  },
+  "peerDependencies": {
+    "@grafana/data": "^11.6.0",
+    "@grafana/runtime": "^11.6.0",
+    "react": "^18.3"
+  }
+}

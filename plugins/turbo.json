@@ -1,0 +1,35 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "build:dev": {},
+    "test": {
+      "inputs": ["src/**/*.tsx", "src/**/*.ts"]
+    },
+    "test:ci": {
+      "inputs": ["src/**/*.tsx", "src/**/*.ts"]
+    },
+    "clean": {},
+    "format": {},
+    "format:fix": {},
+    "build-types": {
+      "dependsOn": ["^build-types"],
+      "inputs": ["src/**/*.tsx", "src/**/*.ts"],
+      "outputs": []
+    },
+    "type-check": {
+      "dependsOn": ["build-types"],
+      "inputs": ["src/**/*.tsx", "src/**/*.ts"]
+    },
+    "build:proxy": {},
+    "lint": {},
+    "lint:fix": {},
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

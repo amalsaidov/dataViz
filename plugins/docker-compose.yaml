@@ -1,0 +1,79 @@
+services:
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - '3000:3000'
+    volumes:
+      - workspace-plugin-dist:/var/lib/grafana/plugins/grafana-workspace-app
+      - ./provisioning:/etc/grafana/provisioning
+      - workspace-data-grafana:/var/lib/grafana
+    environment:
+      # Grafana settings
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: grafana-workspace-app
+
+      # Enable debug logging
+      GF_LOG_LEVEL: debug
+
+      # Development mode
+      GF_DEFAULT_APP_MODE: development
+    depends_on:
+      - plugin
+
+  plugin-precache:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app/workspace
+      - workspace-plugin-dist:/app/workspace/packages/@plugins/grafana-workspace-app/dist/
+      - workspace-node-modules:/app/workspace/node_modules/
+      - workspace-pnpm-store:/root/.local/share/pnpm/store
+      - workspace-go-cache:/go/pkg/mod
+      - workspace-go-bin:/go/bin
+    working_dir: /app/workspace
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/go/bin
+      GOPATH: /go
+    command: sh -c "go install github.com/magefile/mage@latest && pnpm build && cd packages/@plugins/grafana-workspace-app && go mod tidy && mage -v"
+
+  plugin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      plugin-precache:
+        condition: service_completed_successfully
+    ports:
+      - '35729:35729' # live reload port
+    volumes:
+      - ./:/app/workspace
+      - workspace-plugin-dist:/app/workspace/packages/@plugins/grafana-workspace-app/dist/
+      - workspace-node-modules:/app/workspace/node_modules/
+      - workspace-pnpm-store:/root/.local/share/pnpm/store
+      - workspace-go-cache:/go/pkg/mod
+      - workspace-go-bin:/go/bin
+    working_dir: /app/workspace
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/go/bin
+      GOPATH: /go
+    command: pnpm dev
+    healthcheck:
+      test: test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/plugin.json && test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/module.js
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  workspace-node-modules:
+  workspace-pnpm-store:
+  workspace-data-grafana:
+  workspace-plugin-dist:
+  workspace-go-cache:
+  workspace-go-bin:
+
+networks:
+  default:
+    name: workspace

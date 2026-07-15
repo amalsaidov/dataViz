@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "exclude": [
+    "node_modules",
+    "webpack.config.ts",
+    "webpack-shared.*",
+    ".config",
+    "tests",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ],
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "module": "ESNext",
+    "target": "ES2017",
+    "lib": ["ESNext", "DOM", "dom.iterable"],
+    "moduleResolution": "Bundler",
+    "preserveWatchOutput": true,
+    "skipLibCheck": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": false,
+    "jsx": "preserve",
+    "composite": true,
+    "incremental": true,
+    "resolveJsonModule": true,
+    "experimentalDecorators": true,
+    "useDefineForClassFields": true,
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+
+    /* Linting */
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "alwaysStrict": true,
+    "noImplicitReturns": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUncheckedIndexedAccess": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
+    "sourceMap": true,
+    "strictPropertyInitialization": true,
+    "stripInternal": true,
+    "allowArbitraryExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noErrorTruncation": true
+  }
+}

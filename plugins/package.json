@@ -1,0 +1,39 @@
+{
+  "name": "grafana-workspace",
+  "license": "UNLICENSED",
+  "private": true,
+  "version": "1.0.0",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@vitejs/plugin-react": "^5.0.2",
+    "copy-webpack-plugin": "^11.0.0",
+    "pnpm": "^10.0.0",
+    "replace-in-file-webpack-plugin": "^1.0.6",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.3",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^2.0.0",
+    "webpack": "^5.94.0",
+    "webpack-cli": "5.1.4",
+    "webpack-merge": "^5.10.0",
+    "swc-loader": "^0.2.6",
+    "@swc/core": "^1.7.0"
+  },
+  "scripts": {
+    "build": "turbo build",
+    "build:dev": "turbo build:dev",
+    "build-types": "turbo build-types",
+    "type-check": "turbo type-check",
+    "dev": "turbo dev",
+    "test": "turbo test",
+    "test:ci": "turbo test:ci",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "format": "turbo format",
+    "format:fix": "turbo format:fix",
+    "clean": "turbo clean",
+    "build:proxy": "turbo build:proxy",
+    "check": "turbo format test:ci lint type-check"
+  },
+  "packageManager": "pnpm@10.28.2"
+}

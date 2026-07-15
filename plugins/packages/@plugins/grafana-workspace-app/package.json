@@ -1,0 +1,48 @@
+{
+  "name": "@plugins/grafana-workspace-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal Grafana workspace plugin",
+  "scripts": {
+    "build": "webpack -c ./webpack.config.mjs --env production",
+    "build:dev": "webpack -c ./webpack.config.mjs --env development",
+    "dev": "webpack -w -c ./webpack.config.mjs --env development",
+    "build:proxy": "go mod download && mage -v",
+    "lint": "biome lint src",
+    "lint:fix": "biome lint --write src",
+    "format": "biome format src",
+    "format:fix": "biome format --write src",
+    "clean": "rm -rf dist",
+    "test": "vitest",
+    "test:ci": "vitest run",
+    "build-types": "tsc --build --emitDeclarationOnly",
+    "type-check": "tsc --noEmit"
+  },
+  "author": "Grafana Labs",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@swc/core": "^1.7.0",
+    "@types/react": "^18.3",
+    "@types/react-dom": "^18.2.11",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.11.0",
+    "sass": "^1.56.1",
+    "sass-loader": "^13.2.0",
+    "style-loader": "^3.3.1",
+    "swc-loader": "^0.2.6",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.7",
+    "vitest": "^2.0.0",
+    "webpack": "^5.94.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-merge": "^5.10.0"
+  },
+  "dependencies": {
+    "@grafana/data": "^11.6.0",
+    "@grafana/runtime": "^11.6.0",
+    "@grafana/ui": "^11.6.0",
+    "@shared/core": "workspace:*",
+    "react": "^18.3",
+    "react-dom": "^18.3"
+  }
+}

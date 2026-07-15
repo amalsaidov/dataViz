@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../../.shared/tsconfig.base.json",
+  "include": ["src", "**/package.json"],
+  "compilerOptions": {
+    "paths": {
+      "@grafana-workspace-app/*": ["./*"]
+    },
+    "baseUrl": "./src",
+    "rootDir": "./src",
+    "outDir": "./.cache/tsbuild"
+  },
+  "references": [
+    { "path": "../../@shared/core" }
+  ]
+}
