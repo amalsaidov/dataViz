@@ -1,0 +1,40 @@
+# A single Grafana instance that attaches to the shared plugin build produced
+# by the plugin stack (docker-compose.yaml / `pnpm run plugin`).
+#
+# Run one instance per Compose project so multiple versions/ports can coexist,
+# each sharing the same read-only plugin dist but with its own Grafana data:
+#
+#   GRAFANA_VERSION=13.1.0 GRAFANA_PORT=3002 pnpm run server
+#   GRAFANA_VERSION=12.4.5 GRAFANA_PORT=3003 pnpm run server
+services:
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION:-latest}
+    container_name: ${GRAFANA_CONTAINER_NAME:-grafana-dataviz-${GRAFANA_PORT:-3001}}
+    ports:
+      - '${GRAFANA_PORT:-3001}:3000'
+    volumes:
+      # Shared, read-only: every Grafana instance reads the same plugin build.
+      - workspace-plugin-dist:/var/lib/grafana/plugins/grafana-workspace-app:ro
+      - ./provisioning:/etc/grafana/provisioning
+      # Per-instance Grafana data (project-scoped, not shared across instances).
+      - workspace-data-grafana:/var/lib/grafana
+    environment:
+      # Grafana settings
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: grafana-workspace-app
+
+      # Enable debug logging
+      GF_LOG_LEVEL: debug
+
+      # Development mode
+      GF_DEFAULT_APP_MODE: development
+
+volumes:
+  # Provided by the plugin stack (docker-compose.yaml). Must exist before
+  # starting Grafana, i.e. run `pnpm run plugin` first.
+  workspace-plugin-dist:
+    external: true
+    name: workspace-plugin-dist
+  # Project-scoped so each Grafana instance gets its own isolated data.
+  workspace-data-grafana:

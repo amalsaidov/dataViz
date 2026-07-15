@@ -31,10 +31,20 @@ A production-ready template for building Grafana plugins in a monorepo structure
 
 3. Start development environment:
    ```bash
-   docker compose up
+   # In one terminal: build the plugin once (shared across Grafana instances)
+   pnpm run plugin
+
+   # In another terminal: start a Grafana instance attached to that build
+   pnpm run server
    ```
 
-4. Access Grafana at http://localhost:3000
+   `pnpm run server` starts Grafana on port `3001` by default. To use a
+   different port/version, set `GRAFANA_PORT` / `GRAFANA_VERSION` — e.g.
+   `GRAFANA_VERSION=13.1.0 GRAFANA_PORT=3002 pnpm run server`. Because the
+   plugin build is shared, you can run multiple `pnpm run server` instances on
+   different ports/versions at once.
+
+4. Access Grafana at http://localhost:3001
    - The plugin builds automatically (takes 30-60 seconds)
    - Find it at **Administration > Plugins > Workspace**
 
