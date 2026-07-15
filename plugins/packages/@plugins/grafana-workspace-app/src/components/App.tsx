@@ -9,7 +9,7 @@ export function App(): React.ReactElement {
 	return (
 		<PluginPage>
 			<Alert title="Welcome to Workspace" severity="info">
-				<p>{formatMessage('This is a minimal Grafana plugin built with the ejected plugin structure. test 123')}</p>
+				<p>{formatMessage('This is a minimal Grafana plugin built with the ejected plugin structure.')}</p>
 			</Alert>
 
 			<div style={{ marginTop: '20px' }}>

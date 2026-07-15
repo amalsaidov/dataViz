@@ -15,16 +15,16 @@ services:
     # Grafana scans plugins only once at startup. If it starts before the plugin
     # build finishes, the app is marked "not installed" and its pages 404 until a
     # restart. Since this stack runs in a separate Compose project it can't use
-    # `depends_on` on the plugin build, so gate startup on the build artifacts
-    # (frontend module.js AND a linux backend binary) appearing in the volume.
+    # `depends_on` on the plugin build, so gate startup on the frontend build
+    # artifacts appearing in the volume.
     # ($$ escapes $ so Compose passes it through to the shell.)
     entrypoint:
       - sh
       - -c
       - |
         dir=/var/lib/grafana/plugins/grafana-workspace-app
-        echo "Waiting for plugin build (frontend + backend) in $$dir ..."
-        until [ -f "$$dir/plugin.json" ] && [ -f "$$dir/module.js" ] && ls "$$dir"/grafana-workspace_linux_* >/dev/null 2>&1; do
+        echo "Waiting for plugin build in $$dir ..."
+        until [ -f "$$dir/plugin.json" ] && [ -f "$$dir/module.js" ]; do
           sleep 2
         done
         echo "Plugin build detected. Starting Grafana."

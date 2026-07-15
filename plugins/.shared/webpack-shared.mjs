@@ -10,7 +10,6 @@ const CSS_PATTERN = /\.css$/;
 const SASS_SCSS_PATTERN = /\.s[ac]ss$/;
 const IMAGE_PATTERN = /\.(png|jpe?g|gif|svg)$/;
 const FONT_PATTERN = /\.(woff|woff2|eot|ttf|otf)(\?v=\d+\.\d+\.\d+)?$/;
-const BINARY_KEEP_PATTERN = /.*?_(amd64|arm(64)?)(.exe)?/;
 const NODE_MODULES_PATTERN = /[\\/]node_modules[\\/]/;
 
 export function hasReadme() {
@@ -138,9 +137,7 @@ export const sharedConfig = (env, uniqueName, packageJson, pluginJson) => ({
     ],
   },
   output: {
-    clean: {
-      keep: BINARY_KEEP_PATTERN,
-    },
+    clean: true,
     library: {
       type: 'amd',
     },

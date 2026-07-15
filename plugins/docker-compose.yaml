@@ -12,13 +12,8 @@ services:
       - workspace-plugin-dist:/app/workspace/packages/@plugins/grafana-workspace-app/dist/
       - workspace-node-modules:/app/workspace/node_modules/
       - workspace-pnpm-store:/root/.local/share/pnpm/store
-      - workspace-go-cache:/go/pkg/mod
-      - workspace-go-bin:/go/bin
     working_dir: /app/workspace
-    environment:
-      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/go/bin
-      GOPATH: /go
-    command: sh -c "go install github.com/magefile/mage@latest && pnpm build && cd packages/@plugins/grafana-workspace-app && go mod tidy && mage -v"
+    command: sh -c "pnpm build"
 
   plugin:
     build:
@@ -35,21 +30,14 @@ services:
       - workspace-plugin-dist:/app/workspace/packages/@plugins/grafana-workspace-app/dist/
       - workspace-node-modules:/app/workspace/node_modules/
       - workspace-pnpm-store:/root/.local/share/pnpm/store
-      - workspace-go-cache:/go/pkg/mod
-      - workspace-go-bin:/go/bin
     working_dir: /app/workspace
-    environment:
-      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/go/bin
-      GOPATH: /go
     command: pnpm dev
     healthcheck:
-      # Report healthy only once BOTH the frontend (module.js) and the Go backend
-      # binaries (built by mage in plugin-precache) exist, so consumers know the
-      # plugin is fully loadable by Grafana, not just frontend-ready.
+      # Report healthy only once the frontend build artifacts exist, so consumers
+      # know the plugin is loadable by Grafana.
       test: >-
         test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/plugin.json &&
-        test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/module.js &&
-        ls /app/workspace/packages/@plugins/grafana-workspace-app/dist/grafana-workspace_linux_* >/dev/null 2>&1
+        test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/module.js
       interval: 10s
       timeout: 5s
       retries: 30
@@ -61,8 +49,6 @@ volumes:
   # same volume as an external volume (see docker-compose.grafana.yaml).
   workspace-plugin-dist:
     name: workspace-plugin-dist
-  workspace-go-cache:
-  workspace-go-bin:
 
 networks:
   default:
