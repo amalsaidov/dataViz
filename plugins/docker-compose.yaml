@@ -43,7 +43,13 @@ services:
       GOPATH: /go
     command: pnpm dev
     healthcheck:
-      test: test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/plugin.json && test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/module.js
+      # Report healthy only once BOTH the frontend (module.js) and the Go backend
+      # binaries (built by mage in plugin-precache) exist, so consumers know the
+      # plugin is fully loadable by Grafana, not just frontend-ready.
+      test: >-
+        test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/plugin.json &&
+        test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/module.js &&
+        ls /app/workspace/packages/@plugins/grafana-workspace-app/dist/grafana-workspace_linux_* >/dev/null 2>&1
       interval: 10s
       timeout: 5s
       retries: 30

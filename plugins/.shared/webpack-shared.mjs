@@ -45,6 +45,13 @@ export const sharedConfig = (env, uniqueName, packageJson, pluginJson) => ({
     '@grafana/slate-react',
     'react',
     'react-dom',
+    // Externalize the JSX runtime so Grafana provides it at runtime (Grafana
+    // >=12.3.0 exposes these via SystemJS). Bundling them pulls in React 18's
+    // runtime, which reads React internals removed/renamed in Grafana's React
+    // 19 and crashes with "Cannot read properties of undefined (reading
+    // 'ReactCurrentDispatcher')".
+    'react/jsx-runtime',
+    'react/jsx-dev-runtime',
     'react-redux',
     'redux',
     'rxjs',
@@ -82,6 +89,13 @@ export const sharedConfig = (env, uniqueName, packageJson, pluginJson) => ({
               transform: {
                 react: {
                   runtime: 'automatic',
+                  // Always emit the production automatic runtime
+                  // (react/jsx-runtime -> jsx/jsxs). Grafana shares a single
+                  // React and only reliably provides react/jsx-runtime; the dev
+                  // runtime (react/jsx-dev-runtime -> jsxDEV) is not exported by
+                  // Grafana's production React build, so emitting it crashes
+                  // with "jsxDEV is not a function".
+                  development: false,
                 },
               },
               parser: {
@@ -208,7 +222,6 @@ export const sharedConfig = (env, uniqueName, packageJson, pluginJson) => ({
     unsafeCache: true,
     alias: {
       '@shared/core': path.resolve(process.cwd(), '../../@shared/core/src'),
-      'react/jsx-runtime': path.resolve('node_modules/react/jsx-runtime.js'),
     },
   },
 
