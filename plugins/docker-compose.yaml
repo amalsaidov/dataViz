@@ -10,6 +10,7 @@ services:
     volumes:
       - ./:/app/workspace
       - workspace-plugin-dist:/app/workspace/packages/@plugins/grafana-workspace-app/dist/
+      - workspace-panel-dist:/app/workspace/packages/@plugins/grafana-workspace-panel/dist/
       - workspace-node-modules:/app/workspace/node_modules/
       - workspace-pnpm-store:/root/.local/share/pnpm/store
     working_dir: /app/workspace
@@ -28,16 +29,19 @@ services:
     volumes:
       - ./:/app/workspace
       - workspace-plugin-dist:/app/workspace/packages/@plugins/grafana-workspace-app/dist/
+      - workspace-panel-dist:/app/workspace/packages/@plugins/grafana-workspace-panel/dist/
       - workspace-node-modules:/app/workspace/node_modules/
       - workspace-pnpm-store:/root/.local/share/pnpm/store
     working_dir: /app/workspace
     command: pnpm dev
     healthcheck:
-      # Report healthy only once the frontend build artifacts exist, so consumers
-      # know the plugin is loadable by Grafana.
+      # Report healthy only once each plugin's frontend build artifacts exist, so
+      # consumers know the plugins are loadable by Grafana.
       test: >-
         test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/plugin.json &&
-        test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/module.js
+        test -f /app/workspace/packages/@plugins/grafana-workspace-app/dist/module.js &&
+        test -f /app/workspace/packages/@plugins/grafana-workspace-panel/dist/plugin.json &&
+        test -f /app/workspace/packages/@plugins/grafana-workspace-panel/dist/module.js
       interval: 10s
       timeout: 5s
       retries: 30
@@ -45,10 +49,12 @@ services:
 volumes:
   workspace-node-modules:
   workspace-pnpm-store:
-  # Fixed name so Grafana stacks in other Compose projects can attach to the
-  # same volume as an external volume (see docker-compose.grafana.yaml).
+  # Fixed names so Grafana stacks in other Compose projects can attach to the
+  # same volumes as external volumes (see docker-compose.grafana.yaml).
   workspace-plugin-dist:
     name: workspace-plugin-dist
+  workspace-panel-dist:
+    name: workspace-panel-dist
 
 networks:
   default:

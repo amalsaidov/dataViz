@@ -1,41 +1,50 @@
-# Grafana Workspace Plugin - Minimal Ejected Structure
+# Grafana dataViz Plugins - Ejected Monorepo
 
-A minimal Grafana plugin monorepo template using the "ejected" approach from grafana-irm. This provides full control over the build system, dependencies, and tooling.
+A Grafana **frontend** plugin monorepo using the "ejected" approach. It provides full control over the build system, dependencies, and tooling, and is scoped to **panel and app plugins only** (no Go backend plugins).
 
 ## Structure
 
 ```
-workspace-investigation/
+plugins/
 ├── .shared/                    # Shared build configurations
 │   ├── tsconfig.base.json     # Base TypeScript config (strict)
 │   ├── tsconfig.json          # Shared packages TS config
 │   └── webpack-shared.mjs     # Shared webpack config
 ├── packages/
 │   ├── @shared/               # Shared libraries
-│   │   └── core/              # Core utilities
+│   │   └── core/              # Core utilities (@shared/core)
 │   │       ├── src/
 │   │       ├── package.json
 │   │       └── tsconfig.json
 │   └── @plugins/              # Grafana plugins
-│       └── grafana-workspace-app/
-│           ├── src/           # Plugin source
+│       ├── grafana-workspace-app/     # Example app plugin
+│       │   ├── src/
+│       │   │   ├── components/
+│       │   │   ├── img/
+│       │   │   ├── module.tsx         # AppPlugin entry
+│       │   │   └── plugin.json
+│       │   ├── package.json
+│       │   ├── tsconfig.json
+│       │   └── webpack.config.mjs
+│       └── grafana-workspace-panel/   # Example panel plugin
+│           ├── src/
 │           │   ├── components/
 │           │   ├── img/
-│           │   ├── module.tsx
-│           │   └── plugin.json
-│           ├── pkg/           # Go backend
-│           │   ├── main.go
-│           │   └── plugin/
+│           │   ├── module.ts          # PanelPlugin entry
+│           │   ├── plugin.json
+│           │   └── types.ts
 │           ├── package.json
 │           ├── tsconfig.json
-│           ├── webpack.config.mjs
-│           ├── go.mod
-│           └── Magefile.go
+│           └── webpack.config.mjs
+├── provisioning/              # Grafana provisioning (auto-enables the app)
+├── docker-compose.yaml        # Plugin build/watch stack
+├── docker-compose.grafana.yaml # Grafana instance stack
+├── Dockerfile                 # Node + pnpm build image
 ├── package.json               # Root workspace
 ├── pnpm-workspace.yaml        # pnpm workspace config
 ├── turbo.json                 # Turborepo config
 ├── tsconfig.json              # Root TS project references
-├── biome.json                 # Biome.js linting/formatting
+├── biome.json                 # Biome linting/formatting
 ├── vitest.config.base.mts     # Shared Vitest config
 └── vitest.setup.ts            # Vitest setup
 ```
@@ -47,40 +56,34 @@ workspace-investigation/
 - **TypeScript**: Strict mode with composite builds
 - **Testing**: Vitest
 - **Linting/Formatting**: Biome.js
-- **Backend**: Go with grafana-plugin-sdk-go
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 22 (see `.nvmrc`)
 - pnpm 10+
-- Go 1.23+
-- Mage (for Go builds)
+- Docker (for the local development environment)
 
 ### Installation
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Install Mage (if not already installed)
-go install github.com/magefile/mage@latest
 ```
 
 ### Development with Docker Compose (Recommended)
 
-Development uses two Docker Compose stacks: one that builds the plugin once
+Development uses two Docker Compose stacks: one that builds the plugins once
 (shared), and one for each Grafana instance that attaches to that shared build.
 
 **1. Start the plugin build (run once, keep it running):**
 
 ```bash
-# Builds the plugin and watches for changes, writing to the shared dist volume
+# Builds the plugins and watches for changes, writing to the shared dist volumes
 pnpm run plugin
 ```
 
-Wait for the initial build to finish (30-60 seconds) before starting Grafana.
+Wait for the initial build to finish before starting Grafana.
 
 **2. Start a Grafana instance attached to that build:**
 
@@ -89,20 +92,18 @@ Wait for the initial build to finish (30-60 seconds) before starting Grafana.
 pnpm run server
 
 # Access Grafana at http://localhost:3001
-# Go to Administration > Plugins > Workspace to enable the plugin
 ```
 
 To run on a different port, set the `GRAFANA_PORT` environment variable:
 
 ```bash
-# Start Grafana on port 4000
 GRAFANA_PORT=4000 pnpm run server
 ```
 
 #### Running multiple instances / different Grafana versions
 
 Because the plugin build is shared, you can attach several Grafana containers to
-it — each on its own port/version — without rebuilding the plugin. The `server`
+it — each on its own port/version — without rebuilding the plugins. The `server`
 script supports these environment variables:
 
 | Variable | Default | Description |
@@ -127,13 +128,11 @@ GRAFANA_VERSION=12.4.5 GRAFANA_PORT=3003 pnpm run server
 ```
 
 The Docker Compose setup:
-- Builds both frontend (webpack) and backend (Go)
+- Builds the frontend (webpack) for every plugin
 - Watch mode auto-rebuilds on source changes
-- Mounts the dist folder into Grafana
+- Mounts each plugin's dist folder into Grafana
 - Enables anonymous access (no login required)
-- Auto-provisions the plugin (may take 30-60 seconds after Grafana starts)
-
-**Note**: Grafana starts immediately, but the plugin takes ~30-60 seconds to build. Once ready, it will appear in the sidebar automatically or you can enable it manually from **Administration > Plugins**.
+- Auto-provisions the app plugin; the panel is available in the panel picker
 
 ### Local Development
 
@@ -163,12 +162,9 @@ pnpm format:fix
 
 # Type check
 pnpm type-check
-
-# Build Go backend
-pnpm build:proxy
 ```
 
-Then manually link the `packages/@plugins/grafana-workspace-app/dist` folder to your Grafana plugins directory.
+Then link a plugin's `dist` folder (e.g. `packages/@plugins/grafana-workspace-panel/dist`) into your Grafana plugins directory.
 
 ### Project Commands
 
@@ -184,27 +180,28 @@ All commands use Turborepo to orchestrate tasks across packages:
 - `pnpm format:fix` - Fix formatting
 - `pnpm type-check` - TypeScript type checking
 - `pnpm clean` - Clean build artifacts
-- `pnpm build:proxy` - Build Go backend
+- `pnpm check` - Run all checks (format, test, lint, type-check)
 
-## Plugin Structure
+## Plugin Structure (Frontend / React + TypeScript)
 
-### Frontend (React/TypeScript)
+### App plugin (`grafana-workspace-app`)
 
-- **Entry Point**: `src/module.tsx` - Exports the AppPlugin
+- **Entry Point**: `src/module.tsx` - Exports the `AppPlugin`
 - **Main Component**: `src/components/App.tsx` - Root app component
-- **Plugin Metadata**: `src/plugin.json` - Grafana plugin configuration
-- **Shared Code**: Uses `@shared/core` for utilities
+- **Plugin Metadata**: `src/plugin.json` (`type: app`)
 
-### Backend (Go)
+### Panel plugin (`grafana-workspace-panel`)
 
-- **Entry Point**: `pkg/main.go` - Plugin main function
-- **Plugin Logic**: `pkg/plugin/plugin.go` - Resource handlers
-- **Build**: Uses Mage for cross-platform builds
-- **Health Check**: Built-in health endpoint
+- **Entry Point**: `src/module.ts` - Exports the `PanelPlugin` and its options builder
+- **Main Component**: `src/components/WorkspacePanel.tsx` - Renders using `PanelProps` and `useTheme2`
+- **Options**: `src/types.ts` - Panel options interface
+- **Plugin Metadata**: `src/plugin.json` (`type: panel`)
+
+Both plugins use `@shared/core` for shared utilities.
 
 ### Build System
 
-- **Webpack**: Bundles plugin as AMD module for Grafana
+- **Webpack**: Bundles each plugin as an AMD module for Grafana
 - **SWC**: Fast TypeScript/JSX compilation
 - **TypeScript**: Project references for cross-package types
 - **Turbo**: Parallel builds with caching
@@ -221,19 +218,23 @@ All commands use Turborepo to orchestrate tasks across packages:
 
 ### Plugin Package
 
-1. Create `packages/@plugins/<name>/`
-2. Copy structure from `grafana-workspace-app`
-3. Update `plugin.json` with unique ID
-4. Update `package.json` name and scripts
-5. Update `go.mod` module path
+1. Copy an existing plugin, e.g. the panel template:
+   ```bash
+   cp -r packages/@plugins/grafana-workspace-panel packages/@plugins/your-new-plugin
+   ```
+2. Update `package.json` `name`
+3. Update `src/plugin.json` `id`, `name`, and metadata
+4. Update `webpack.config.mjs` (`PLUGIN_ID` and the `uniqueName` argument)
+5. Update `tsconfig.json` `paths` alias
+6. Add the package to root `tsconfig.json` references and, if you write tests that import it, to the aliases in `vitest.config.base.mts`
+7. If you want it loaded by the Docker Grafana stack, add a `dist` volume in `docker-compose.yaml`, mount it in `docker-compose.grafana.yaml`, and add its id to `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS`
 
 ## Key Features
 
-- **Monorepo**: Multiple packages with shared code
+- **Monorepo**: Multiple plugins with shared code
 - **Full Control**: No abstraction over build tools
 - **Type Safety**: Strict TypeScript with project references
 - **Fast Builds**: Turborepo caching + SWC compilation
-- **Go Backend**: Plugin proxy for API calls
 - **Modern Tools**: Biome.js for linting/formatting
 
 ## Differences from @grafana/create-plugin

@@ -1,0 +1,12 @@
+apiVersion: 1
+
+# TestData DB is bundled with Grafana. It generates synthetic data so the
+# example panel renders with real series without needing an external backend.
+datasources:
+  - name: TestData DB
+    uid: workspace-testdata
+    type: grafana-testdata-datasource
+    access: proxy
+    isDefault: true
+    editable: true
+    jsonData: {}
