@@ -24,8 +24,11 @@ jobs:
           persist-credentials: false
 
       # pnpm action uses the packageManager field in plugins/package.json to
-      # understand which version to install.
+      # understand which version to install. package_json_file is relative
+      # to the workspace root, not affected by defaults.run.working-directory.
       - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: plugins/package.json
       - name: Setup Node.js environment
         uses: actions/setup-node@v6
         with:
