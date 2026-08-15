@@ -8,3 +8,8 @@ allowBuilds:
   esbuild: true
   protobufjs: true
   unrs-resolver: true
+overrides:
+  # grafana-clock-panel pins moment to avoid duplicate versions in its
+  # bundle; scoped to that package so it doesn't affect other workspace
+  # members that may depend on moment independently.
+  clock-panel>moment: 2.30.1

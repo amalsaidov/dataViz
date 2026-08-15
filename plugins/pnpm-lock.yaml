@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  clock-panel>moment: 2.30.1
+
 importers:
 
   .:
