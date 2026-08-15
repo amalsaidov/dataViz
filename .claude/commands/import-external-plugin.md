@@ -64,6 +64,11 @@ against an existing sibling package's real path, not by any error.
    carries far more of its own identity than just source code, and almost
    none of it fails loudly when it stops working.
 
+   Then work through `plugin-metadata.md` for `src/plugin.json` itself. Its
+   `info.links` encode the *old* repo's location and are user-facing in the
+   published plugin, and the link names are matched server-side by grafana.com
+   rather than declared — so a wrong name silently produces no link at all.
+
 6. Once satisfied, commit the merge and remove the temporary remote:
 
    ```bash

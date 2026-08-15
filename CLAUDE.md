@@ -125,8 +125,19 @@ gh api repos/<owner>/<repo>/git/refs/tags/<tag> --jq '.object.sha'
 
 and pin as `uses: <owner>/<repo>@<sha> # <tag>`.
 
-## Importing another external plugin repo with history preserved
+## Bringing a plugin into this monorepo
 
-Follow `.claude/commands/import-external-plugin.md` exactly — it documents the `git filter-repo` procedure (not `git subtree`) used for `grafana-clock-panel`, including the gotcha that the git repo root is one level above `plugins/`, so `--to-subdirectory-filter` paths must be `plugins/packages/@plugins/<name>`, not `packages/@plugins/<name>`.
+Four command docs cover this, in the order you'll need them:
 
-Its "What comes along with an import" section is the important part — a standalone repo bakes its identity into many files (lockfile, `packageManager`, `.npmrc`, renovate config, nested `.github/workflows`, `overrides`/`resolutions`, Vault paths, external project ids), and **almost none of them fail loudly** when they stop working. If the target repo requires signed commits, also see `.claude/commands/resign-imported-history.md`.
+| doc | covers |
+|---|---|
+| `.claude/commands/import-external-plugin.md` | the `git filter-repo` procedure, and **what comes along with an import** |
+| `.claude/commands/resign-imported-history.md` | re-signing unsigned history when branch protection requires verified signatures |
+| `.claude/commands/plugin-metadata.md` | `plugin.json` links, docs locations, screenshots, validation |
+| `.claude/commands/clock-panel-cutover.md` | the clock-panel takeover runbook + current open TODOs |
+
+**Importing an external repo:** follow `import-external-plugin.md` exactly — it uses `git filter-repo`, not `git subtree`, and notes that the git repo root is one level above `plugins/`, so `--to-subdirectory-filter` paths must be `plugins/packages/@plugins/<name>`, not `packages/@plugins/<name>`.
+
+Its "What comes along with an import" section is the important part — a standalone repo bakes its identity into many files (lockfile, `packageManager`, `.npmrc`, renovate config, nested `.github/workflows`, `overrides`/`resolutions`, Vault paths, external project ids), and **almost none of them fail loudly** when they stop working.
+
+**Either way — external import or extraction from `grafana/grafana` core — read `plugin-metadata.md` before touching `src/plugin.json`.** That file ships in the published artifact and is user-facing in both the grafana.com catalog and Grafana's in-app plugin details page. Its failure mode is silent: `info.links` names are matched *server-side at grafana.com*, case-insensitively by substring, so a plausible-looking name like `Project site` or `Apache-2.0` maps to nothing and the link simply never appears. Where `documentation` should point differs by origin — a panel extracted from core keeps its docs in the core docs site, and the plugin directory name is often **not** the docs slug (`barchart` → `bar-chart`).
