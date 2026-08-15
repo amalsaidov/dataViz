@@ -12,7 +12,7 @@ A template for building Grafana **frontend** plugins (panel and app plugins) in 
 - **Panel Example** - Ready-to-copy `PanelPlugin` template (app plugins are supported too)
 - **Type Safety** - Strict TypeScript with composite builds and project references
 - **Fast Development** - Docker Compose setup with hot reload
-- **Testing Ready** - Vitest configured for all packages
+- **Testing Ready** - Jest configured for all packages
 - **Production Ready** - Optimized builds with caching via Turborepo
 
 ## Quick Start
@@ -94,7 +94,7 @@ Then update:
 - `webpack.config.mjs` - the `PLUGIN_ID` and the `uniqueName` argument
 - `tsconfig.json` - the `paths` alias
 - root `tsconfig.json` - add a project reference
-- `vitest.config.base.mts` - add an alias if tests import the package
+- `jest.config.js` - copy from the template; add a `moduleNameMapper` entry if it imports a workspace package
 - Docker files - add a `dist` volume / mount and allow the id as unsigned if you want it loaded by the Docker Grafana stack
 
 ### Add a shared package
@@ -142,7 +142,7 @@ pnpm check          # format + test:ci + lint + type-check
 ### Development Tools
 - **SWC** - Fast TypeScript/JSX compiler
 - **Biome.js** - Fast linting and formatting
-- **Vitest** - Fast unit testing
+- **Jest** - Unit testing (via `@swc/jest`)
 - **Docker Compose** - Local development environment
 
 ### Grafana Integration

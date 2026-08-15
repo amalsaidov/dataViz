@@ -42,7 +42,9 @@ pnpm type-check     # turbo type-check (tsc --build, project references)
 pnpm check          # format + test:ci + lint + type-check — run before considering work done
 ```
 
-Single package: `cd packages/@plugins/<name> && pnpm test` / `pnpm vitest run <file>` (workspace-panel and @shared/core use Vitest). `grafana-clock-panel` is the exception — see below.
+Single package: `cd packages/@plugins/<name> && pnpm test` (watch) / `pnpm test:ci`, or from `plugins/` use `pnpm --filter <pkg> run test:ci`.
+
+**Every package uses Jest.** There is no Vitest in this repo — each package has its own `jest.config.js` (`@swc/jest` transform, jsdom for the panel plugins, node for `@shared/core`). Panel plugin configs must set `jsc.transform.react.runtime: 'automatic'` to match webpack; source files import React as a type only, so the classic runtime fails at test time with `React is not defined`.
 
 ### Local dev stack (Docker, two terminals)
 
@@ -74,18 +76,14 @@ Imported wholesale from `grafana/clock-panel` via `git filter-repo` (procedure i
 `.claude/commands/import-external-plugin.md`) with upstream git history preserved. It still runs its
 **original, separate toolchain** rather than this monorepo's conventions:
 
-- Jest (not Vitest) — `pnpm test`, `pnpm test:ci`
 - ESLint + Prettier (not Biome) — `pnpm lint`, `pnpm format`
 - Its own webpack config under `.config/webpack/`, own `tsconfig.json` extending `@grafana/tsconfig`
 - Playwright e2e tests (`pnpm e2e` / `pnpm playwright:test`)
 - MIT license (vs. `UNLICENSED` elsewhere in this repo)
 
-Do not assume `biome.json` / `vitest.config.base.mts` / `.shared/` conventions apply inside this package unless it has been explicitly migrated onto them.
+Do not assume `biome.json` / `.shared/` conventions apply inside this package unless it has been explicitly migrated onto them. (Jest is *not* a difference — the whole repo uses Jest.)
 
-**Deliberately NOT wired into two things**, despite "Adding a new plugin package" saying to:
-
-- **Root `plugins/tsconfig.json` references** — TS project references require `composite: true` on the referenced project. clock-panel's config resolves to `composite` unset and `declaration: false`, and the file that would have to change (`.config/tsconfig.json`) is scaffolded by `@grafana/create-plugin` and marked do-not-edit. Root `tsconfig.json` only exists to help VSCode intellisense, so it isn't worth forcing declaration emit for.
-- **`vitest.config.base.mts` aliases** — clock-panel runs Jest, so a Vitest alias would be dead config.
+**Deliberately NOT wired into the root `plugins/tsconfig.json` references**, despite "Adding a new plugin package" saying to: TS project references require `composite: true` on the referenced project. clock-panel's config resolves to `composite` unset and `declaration: false`, and the file that would have to change (`.config/tsconfig.json`) is scaffolded by `@grafana/create-plugin` and marked do-not-edit. Root `tsconfig.json` only exists to help VSCode intellisense, so it isn't worth forcing declaration emit for.
 
 **Its scripts are wired to this repo's turbo task names** (`type-check`, not `typecheck`; `format` checks, `format:fix` writes). Turbo matches tasks to scripts **by exact name and silently skips misses** — a renamed script means the package stops being checked, with a green build and no warning.
 
@@ -96,7 +94,7 @@ Do not assume `biome.json` / `vitest.config.base.mts` / `.shared/` conventions a
 1. Copy the template: `cp -r packages/@plugins/grafana-workspace-panel packages/@plugins/<new-name>`
 2. Update: `package.json` `name`; `src/plugin.json` `id`/`name`/metadata; `webpack.config.mjs` `PLUGIN_ID` and `uniqueName`; `tsconfig.json` `paths` alias
 3. Add a reference in root `plugins/tsconfig.json`
-4. If tests import the package, add an alias in `plugins/vitest.config.base.mts`
+4. Copy `jest.config.js`, `jest-setup.js`, `jest/mocks/`, and `types/jest-dom.d.ts` from the template. If the plugin imports a workspace package, add it to `moduleNameMapper` (see how `@shared/core` is mapped) — Jest does not read the webpack/TS path aliases.
 5. To load it in the Docker Grafana dev stack: add a `dist` volume in `docker-compose.yaml`, mount it in `docker-compose.grafana.yaml`, and add its id to `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS`
 
 ## Adding a new shared package

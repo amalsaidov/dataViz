@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "../../../.shared/tsconfig.base.json",
-  "include": ["src", "**/package.json"],
+  "include": ["src", "types", "**/package.json"],
   "compilerOptions": {
     "paths": {
       "@grafana-workspace-panel/*": ["./*"]
