@@ -2,3 +2,9 @@ packages:
   - "packages/*"
   - "packages/@shared/*"
   - "packages/@plugins/*"
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  esbuild: true
+  protobufjs: true
+  unrs-resolver: true
