@@ -5,7 +5,6 @@ import { clockMigrationHandler } from './migrations';
 import { ClockRefresh, ClockSource, DescriptionSource } from './types';
 
 describe('Clock migrations', () => {
-
   describe('refreshSettings migration', () => {
     it('sets refresh to dashboard when options.refreshSettings.syncWithDashboard is true (new format)', () => {
       // options.refreshSettings lives inside panel.options — the newer storage location.
@@ -475,6 +474,7 @@ describe('Clock migrations', () => {
   describe('detectInputOnlyPluginConfig — mode-aware source checks', () => {
     // clearsTargets=true: panel is input-only → migration should empty targets
     // clearsTargets=false: panel actively uses query source → targets preserved
+    // prettier-ignore
     it.each<[string, string, ClockSource, ClockSource, boolean]>([
       // description                              mode          countdownSource              countupSource              clearsTargets
       ['mode=time,     stale countdown.query', 'time',     ClockSource.query, ClockSource.input, true ],
@@ -534,7 +534,6 @@ describe('Clock migrations', () => {
       expect(panel.datasource).toBeUndefined();
     });
   });
-
 });
 
 describe('Real-world: barn-thermals-imperial v13 clock panel', () => {

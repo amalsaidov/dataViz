@@ -56,11 +56,9 @@ export function ClockPanel(props: Props) {
   // Show a notice when an input-only panel has a stale query running — either because
   // migration couldn't clear it (e.g., Grafana 12 readonly targets) or because Grafana's
   // query editor re-added a default target row after the user opened and saved the panel.
-  const hasDataErrors =
-    data.state === LoadingState.Error || (Array.isArray(data.errors) && data.errors.length > 0);
+  const hasDataErrors = data.state === LoadingState.Error || (Array.isArray(data.errors) && data.errors.length > 0);
   const hasActiveQuery = (data.request?.targets?.length ?? 0) > 0;
-  const showStaleQueryNotice =
-    !isQueryDrivenOptions(options) && (hasDataErrors || hasActiveQuery);
+  const showStaleQueryNotice = !isQueryDrivenOptions(options) && (hasDataErrors || hasActiveQuery);
 
   return (
     <div

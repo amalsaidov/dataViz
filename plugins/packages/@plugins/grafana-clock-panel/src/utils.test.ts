@@ -66,6 +66,8 @@ describe('isQueryDrivenOptions', () => {
     ).toBe(true);
   });
 
+  // Columns are aligned to the header comment below; keep them readable as a table.
+  // prettier-ignore
   it.each<[string, ClockMode, ClockSource, ClockSource, boolean]>([
     // description                              mode              countdownSource              countupSource              expected
     // mode=time: countdown/countup sources never consumed — always false
@@ -92,6 +94,8 @@ describe('isQueryDrivenOptions', () => {
   });
 
   describe('mode absent (old config)', () => {
+    // Columns are intentionally aligned; keep them readable as a table.
+    // prettier-ignore
     it.each<[string, ClockSource | undefined, ClockSource | undefined, boolean]>([
       ['no sources set',       undefined,         undefined,         false],
       ['countdown.query',      ClockSource.query,  ClockSource.input, true ],

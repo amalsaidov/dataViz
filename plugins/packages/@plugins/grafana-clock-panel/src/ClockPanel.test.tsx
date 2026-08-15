@@ -1,6 +1,14 @@
 import { ClockPanel } from 'ClockPanel';
 import { act, render, screen } from '@testing-library/react';
-import { DataQueryRequest, FieldConfigSource, ScopedVars, LoadingState, getDefaultTimeRange, DataFrame, FieldType } from '@grafana/data';
+import {
+  DataQueryRequest,
+  FieldConfigSource,
+  ScopedVars,
+  LoadingState,
+  getDefaultTimeRange,
+  DataFrame,
+  FieldType,
+} from '@grafana/data';
 import { DataQuery } from '@grafana/schema';
 import {
   ClockMode,
@@ -470,13 +478,20 @@ describe('stale query notice', () => {
 
     it('renders when data state is Error', () => {
       const props = getDefaultProps();
-      render(<ClockPanel {...props} data={{ ...props.data, state: LoadingState.Error, errors: [{ message: 'failed' }] }} />);
+      render(
+        <ClockPanel {...props} data={{ ...props.data, state: LoadingState.Error, errors: [{ message: 'failed' }] }} />
+      );
       expect(screen.getByTestId(TEST_IDS.staleQueryNotice)).toBeInTheDocument();
     });
 
     it('renders when errors array is non-empty without error state', () => {
       const props = getDefaultProps();
-      render(<ClockPanel {...props} data={{ ...props.data, state: LoadingState.Done, errors: [{ message: 'partial failure' }] }} />);
+      render(
+        <ClockPanel
+          {...props}
+          data={{ ...props.data, state: LoadingState.Done, errors: [{ message: 'partial failure' }] }}
+        />
+      );
       expect(screen.getByTestId(TEST_IDS.staleQueryNotice)).toBeInTheDocument();
     });
 
@@ -493,12 +508,12 @@ describe('stale query notice', () => {
     // or input-only (shows notice). The trigger is always present so it can't interfere.
     it.each<[string, ClockMode, ClockSource, ClockSource, boolean]>([
       // description                              mode              countdownSource              countupSource              visible
-      ['mode=time,     no stale sources',         ClockMode.time,     ClockSource.input, ClockSource.input, true ],
-      ['mode=time,     stale countdown.query',    ClockMode.time,     ClockSource.query, ClockSource.input, true ],
-      ['mode=countdown active countdown.query',   ClockMode.countdown,ClockSource.query, ClockSource.input, false],
-      ['mode=countdown stale countup.query',      ClockMode.countdown,ClockSource.input, ClockSource.query, true ],
-      ['mode=countup   active countup.query',     ClockMode.countup,  ClockSource.input, ClockSource.query, false],
-      ['mode=countup   stale countdown.query',    ClockMode.countup,  ClockSource.query, ClockSource.input, true ],
+      ['mode=time,     no stale sources', ClockMode.time, ClockSource.input, ClockSource.input, true],
+      ['mode=time,     stale countdown.query', ClockMode.time, ClockSource.query, ClockSource.input, true],
+      ['mode=countdown active countdown.query', ClockMode.countdown, ClockSource.query, ClockSource.input, false],
+      ['mode=countdown stale countup.query', ClockMode.countdown, ClockSource.input, ClockSource.query, true],
+      ['mode=countup   active countup.query', ClockMode.countup, ClockSource.input, ClockSource.query, false],
+      ['mode=countup   stale countdown.query', ClockMode.countup, ClockSource.query, ClockSource.input, true],
     ])('%s', (_, mode, countdownSource, countupSource, visible) => {
       const props = getDefaultProps();
       render(
@@ -527,7 +542,10 @@ describe('stale query notice', () => {
       render(
         <ClockPanel
           {...props}
-          options={{ ...optionsWithoutMode, countdownSettings: { ...props.options.countdownSettings, source: ClockSource.query } }}
+          options={{
+            ...optionsWithoutMode,
+            countdownSettings: { ...props.options.countdownSettings, source: ClockSource.query },
+          }}
           data={{ ...props.data, request: mockRequest([{ refId: 'A' }]) }}
         />
       );
