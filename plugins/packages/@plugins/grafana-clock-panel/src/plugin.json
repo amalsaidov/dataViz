@@ -15,8 +15,11 @@
       "large": "img/clock.svg"
     },
     "links": [
-      { "name": "Project site", "url": "https://github.com/grafana/clock-panel" },
-      { "name": "MIT License", "url": "https://github.com/grafana/clock-panel/blob/master/LICENSE" }
+      { "name": "Project site", "url": "https://grafana.com/grafana/plugins/grafana-clock-panel/" },
+      {
+        "name": "MIT License",
+        "url": "https://github.com/grafana/dataViz/blob/main/plugins/packages/@plugins/grafana-clock-panel/LICENSE"
+      }
     ],
     "screenshots": [
       { "name": "Showcase", "path": "img/screenshot-showcase.png" },
