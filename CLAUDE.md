@@ -7,8 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Git root is this directory (`dataViz/`), **one level above** `plugins/`. All pnpm/turbo/docker commands run from `plugins/`, not the repo root — don't confuse `cd`-relative paths between the two.
 
 ```
-dataViz-save/               # git root
-├── SKILL-import-external.md  # procedure for importing external plugin repos w/ history preserved
+dataViz/                    # git root
+├── .claude/commands/        # import-external-plugin.md, resign-imported-history.md
+├── .github/workflows/       # CI — the ONLY place GitHub Actions discovers workflows
 └── plugins/                 # pnpm workspace root — run all commands from here
     ├── .shared/              # shared tsconfig/webpack config
     ├── packages/
@@ -69,7 +70,9 @@ Each invocation is its own Docker Compose project (namespaced by `GRAFANA_CONTAI
 
 ### `grafana-clock-panel` is a special case
 
-Imported wholesale from `grafana/clock-panel` via `git filter-repo` (procedure in `SKILL-import-external.md`) with upstream git history preserved. It still runs its **original, separate toolchain** rather than this monorepo's conventions:
+Imported wholesale from `grafana/clock-panel` via `git filter-repo` (procedure in
+`.claude/commands/import-external-plugin.md`) with upstream git history preserved. It still runs its
+**original, separate toolchain** rather than this monorepo's conventions:
 
 - Jest (not Vitest) — `pnpm test`, `pnpm test:ci`
 - ESLint + Prettier (not Biome) — `pnpm lint`, `pnpm format`
@@ -78,6 +81,15 @@ Imported wholesale from `grafana/clock-panel` via `git filter-repo` (procedure i
 - MIT license (vs. `UNLICENSED` elsewhere in this repo)
 
 Do not assume `biome.json` / `vitest.config.base.mts` / `.shared/` conventions apply inside this package unless it has been explicitly migrated onto them.
+
+**Deliberately NOT wired into two things**, despite "Adding a new plugin package" saying to:
+
+- **Root `plugins/tsconfig.json` references** — TS project references require `composite: true` on the referenced project. clock-panel's config resolves to `composite` unset and `declaration: false`, and the file that would have to change (`.config/tsconfig.json`) is scaffolded by `@grafana/create-plugin` and marked do-not-edit. Root `tsconfig.json` only exists to help VSCode intellisense, so it isn't worth forcing declaration emit for.
+- **`vitest.config.base.mts` aliases** — clock-panel runs Jest, so a Vitest alias would be dead config.
+
+**Its scripts are wired to this repo's turbo task names** (`type-check`, not `typecheck`; `format` checks, `format:fix` writes). Turbo matches tasks to scripts **by exact name and silently skips misses** — a renamed script means the package stops being checked, with a green build and no warning.
+
+`src/external/**` (vendored) and `src/locales/**` (Crowdin-generated) are excluded from Prettier via `.prettierignore`, matching eslint's existing `src/external/**` ignore.
 
 ## Adding a new plugin package
 
@@ -93,6 +105,28 @@ Do not assume `biome.json` / `vitest.config.base.mts` / `.shared/` conventions a
 2. Add a reference in root `plugins/tsconfig.json`
 3. Add an alias in `.shared/webpack-shared.mjs` if plugins will import it via webpack
 
+## GitHub Actions workflows
+
+Grafana's org-wide `zizmor` CI check requires every `uses:` action reference in
+`.github/workflows/*.yml` to be pinned to a commit hash, not a mutable tag
+(`@v6` etc.) — tags can be silently repointed by a compromised upstream. Check
+before pushing workflow changes:
+
+```bash
+zizmor .github/workflows/
+```
+
+(`brew install zizmor` if not already installed.) Get a tag's current commit
+hash with:
+
+```bash
+gh api repos/<owner>/<repo>/git/refs/tags/<tag> --jq '.object.sha'
+```
+
+and pin as `uses: <owner>/<repo>@<sha> # <tag>`.
+
 ## Importing another external plugin repo with history preserved
 
-Follow `SKILL-import-external.md` exactly — it documents the `git filter-repo` procedure (not `git subtree`) used for `grafana-clock-panel`, including the gotcha that the git repo root is one level above `plugins/`, so `--to-subdirectory-filter` paths must be `plugins/packages/@plugins/<name>`, not `packages/@plugins/<name>`.
+Follow `.claude/commands/import-external-plugin.md` exactly — it documents the `git filter-repo` procedure (not `git subtree`) used for `grafana-clock-panel`, including the gotcha that the git repo root is one level above `plugins/`, so `--to-subdirectory-filter` paths must be `plugins/packages/@plugins/<name>`, not `packages/@plugins/<name>`.
+
+Its "What comes along with an import" section is the important part — a standalone repo bakes its identity into many files (lockfile, `packageManager`, `.npmrc`, renovate config, nested `.github/workflows`, `overrides`/`resolutions`, Vault paths, external project ids), and **almost none of them fail loudly** when they stop working. If the target repo requires signed commits, also see `.claude/commands/resign-imported-history.md`.
