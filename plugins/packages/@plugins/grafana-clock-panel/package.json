@@ -10,7 +10,7 @@
     "i18n-extract": "i18next-cli extract --sync-primary",
     "i18n-extract:ci": "i18next-cli extract --sync-primary --dry-run --ci",
     "lint": "eslint --cache .",
-    "lint:fix": "npm run lint -- --fix && prettier --write --list-different .",
+    "lint:fix": "pnpm run lint -- --fix && prettier --write --list-different .",
     "playwright:test": "npx playwright test",
     "playwright:test:ui": "npx playwright test --ui",
     "playwright:showreport": "npx playwright show-report",
@@ -95,9 +95,5 @@
   },
   "engines": {
     "node": ">=24"
-  },
-  "packageManager": "npm@11.6.2",
-  "overrides": {
-    "moment": "2.30.1"
   }
 }
