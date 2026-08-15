@@ -85,6 +85,8 @@ Do not assume `biome.json` / `.shared/` conventions apply inside this package un
 
 **Deliberately NOT wired into the root `plugins/tsconfig.json` references**, despite "Adding a new plugin package" saying to: TS project references require `composite: true` on the referenced project. clock-panel's config resolves to `composite` unset and `declaration: false`, and the file that would have to change (`.config/tsconfig.json`) is scaffolded by `@grafana/create-plugin` and marked do-not-edit. Root `tsconfig.json` only exists to help VSCode intellisense, so it isn't worth forcing declaration emit for.
 
+**It keeps a `packageManager` field even though the workspace root has one.** A nested `packageManager` is normally inert — only the root's governs corepack — so it reads as dead weight. It isn't: Grafana's shared plugin CD workflow (`grafana/plugin-ci-workflows/.github/workflows/cd.yml`) supports monorepos via a `plugin-directory` input, and its setup action passes `package_json_file: <plugin-directory>/package.json` to `pnpm/action-setup`, which hard-errors with `No pnpm version is specified` if the field is missing. Keep it in sync with `plugins/package.json`.
+
 **Its scripts are wired to this repo's turbo task names** (`type-check`, not `typecheck`; `format` checks, `format:fix` writes). Turbo matches tasks to scripts **by exact name and silently skips misses** — a renamed script means the package stops being checked, with a green build and no warning.
 
 `src/external/**` (vendored) and `src/locales/**` (Crowdin-generated) are excluded from Prettier via `.prettierignore`, matching eslint's existing `src/external/**` ignore.
