@@ -15,6 +15,10 @@
       "large": "img/clock.svg"
     },
     "links": [
+      {
+        "name": "documentation",
+        "url": "https://github.com/grafana/dataViz/blob/main/plugins/packages/@plugins/grafana-clock-panel/README.md"
+      },
       { "name": "repository", "url": "https://github.com/grafana/dataViz" },
       {
         "name": "license",
