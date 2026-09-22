@@ -10,6 +10,7 @@ services:
     volumes:
       - ./:/app/workspace
       - workspace-panel-dist:/app/workspace/packages/@plugins/grafana-workspace-panel/dist/
+      - clock-panel-dist:/app/workspace/packages/@plugins/grafana-clock-panel/dist/
       - workspace-node-modules:/app/workspace/node_modules/
       - workspace-pnpm-store:/root/.local/share/pnpm/store
     working_dir: /app/workspace
@@ -28,6 +29,7 @@ services:
     volumes:
       - ./:/app/workspace
       - workspace-panel-dist:/app/workspace/packages/@plugins/grafana-workspace-panel/dist/
+      - clock-panel-dist:/app/workspace/packages/@plugins/grafana-clock-panel/dist/
       - workspace-node-modules:/app/workspace/node_modules/
       - workspace-pnpm-store:/root/.local/share/pnpm/store
     working_dir: /app/workspace
@@ -37,7 +39,9 @@ services:
       # consumers know the plugin is loadable by Grafana.
       test: >-
         test -f /app/workspace/packages/@plugins/grafana-workspace-panel/dist/plugin.json &&
-        test -f /app/workspace/packages/@plugins/grafana-workspace-panel/dist/module.js
+        test -f /app/workspace/packages/@plugins/grafana-workspace-panel/dist/module.js &&
+        test -f /app/workspace/packages/@plugins/grafana-clock-panel/dist/plugin.json &&
+        test -f /app/workspace/packages/@plugins/grafana-clock-panel/dist/module.js
       interval: 10s
       timeout: 5s
       retries: 30
@@ -49,6 +53,8 @@ volumes:
   # same volume as an external volume (see docker-compose.grafana.yaml).
   workspace-panel-dist:
     name: workspace-panel-dist
+  clock-panel-dist:
+    name: clock-panel-dist
 
 networks:
   default:

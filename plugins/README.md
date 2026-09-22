@@ -35,9 +35,7 @@ plugins/
 ├── pnpm-workspace.yaml        # pnpm workspace config
 ├── turbo.json                 # Turborepo config
 ├── tsconfig.json              # Root TS project references
-├── biome.json                 # Biome linting/formatting
-├── vitest.config.base.mts     # Shared Vitest config
-└── vitest.setup.ts            # Vitest setup
+└── biome.json                 # Biome linting/formatting
 ```
 
 ## Tech Stack
@@ -45,7 +43,7 @@ plugins/
 - **Package Manager**: pnpm with workspaces
 - **Build System**: Turborepo for orchestration, Webpack for bundling
 - **TypeScript**: Strict mode with composite builds
-- **Testing**: Vitest
+- **Testing**: Jest (via `@swc/jest`)
 - **Linting/Formatting**: Biome.js
 
 ## Getting Started
@@ -212,7 +210,7 @@ are also supported — copy this package and change `plugin.json` accordingly.
 3. Update `src/plugin.json` `id`, `name`, and metadata
 4. Update `webpack.config.mjs` (`PLUGIN_ID` and the `uniqueName` argument)
 5. Update `tsconfig.json` `paths` alias
-6. Add the package to root `tsconfig.json` references and, if you write tests that import it, to the aliases in `vitest.config.base.mts`
+6. Add the package to root `tsconfig.json` references, and copy `jest.config.js` / `jest-setup.js` / `types/jest-dom.d.ts` from the template (add a `moduleNameMapper` entry for any workspace package it imports)
 7. If you want it loaded by the Docker Grafana stack, add a `dist` volume in `docker-compose.yaml`, mount it in `docker-compose.grafana.yaml`, and add its id to `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS`
 
 ## Key Features

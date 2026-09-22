@@ -12,8 +12,8 @@
     "clean": "rm -rf dist .cache",
     "build-types": "tsc --build --emitDeclarationOnly",
     "type-check": "tsc --noEmit",
-    "test": "vitest watch",
-    "test:ci": "vitest run"
+    "test": "jest --watch --onlyChanged",
+    "test:ci": "jest --passWithNoTests --maxWorkers 4"
   },
   "dependencies": {
     "@grafana/ui": "^11.6.0",
@@ -22,11 +22,12 @@
   "devDependencies": {
     "@grafana/data": "^11.6.0",
     "@grafana/runtime": "^11.6.0",
+    "@swc/jest": "^0.2.39",
+    "@types/jest": "^30.0.0",
     "@types/react": "^18.3",
+    "jest": "^30.4.2",
     "react": "^18.3",
-    "typescript": "^5.7.3",
-    "vite": "^6.2.7",
-    "vitest": "^2.0.0"
+    "typescript": "^5.7.3"
   },
   "peerDependencies": {
     "@grafana/data": "^11.6.0",

@@ -1,0 +1,53 @@
+# Revived from grafana-clock-panel's own .github/workflows/i18n-verify.yml,
+# which is inert where it lives (GitHub Actions only discovers workflows at the
+# repo root). Only thin plumbing lives here — the actual check stays in the
+# package's own `i18n-extract:ci` script, so it travels with the package if it
+# is ever ejected back out to a standalone repo.
+name: clock-panel i18n verify
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/packages/@plugins/grafana-clock-panel/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'plugins/packages/@plugins/grafana-clock-panel/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-i18n:
+    name: Verify i18n markup has been committed
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      # package_json_file is relative to the workspace root — action inputs are
+      # not affected by defaults.run.working-directory.
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+        with:
+          package_json_file: plugins/package.json
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: plugins/.nvmrc
+          cache: 'pnpm'
+          cache-dependency-path: plugins/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Verify i18n extraction is up to date
+        run: pnpm --filter @plugins/grafana-clock-panel run i18n-extract:ci

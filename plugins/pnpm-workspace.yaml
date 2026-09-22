@@ -2,3 +2,14 @@ packages:
   - "packages/*"
   - "packages/@shared/*"
   - "packages/@plugins/*"
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  esbuild: true
+  protobufjs: true
+  unrs-resolver: true
+overrides:
+  # grafana-clock-panel pins moment to avoid duplicate versions in its
+  # bundle; scoped to that package so it doesn't affect other workspace
+  # members that may depend on moment independently.
+  '@plugins/grafana-clock-panel>moment': 2.30.1

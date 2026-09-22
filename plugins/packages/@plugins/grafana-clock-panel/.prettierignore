@@ -1,0 +1,7 @@
+# Vendored third-party code — kept byte-identical to upstream so it can be
+# re-vendored cleanly. Already excluded from eslint (see eslint.config.mjs).
+src/external/**
+
+# Machine-generated translation files, synced from Crowdin. Formatting these
+# would be undone by the next Crowdin download and fail CI on drift.
+src/locales/**
