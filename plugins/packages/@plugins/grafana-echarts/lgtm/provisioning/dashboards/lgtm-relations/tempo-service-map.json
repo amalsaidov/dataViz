@@ -1,0 +1,415 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Tempo's own service-map response drawn by the relations family. Tempo emits Grafana's row-based node-graph frames (id / source / target / mainstat), which the panel does not read; two ordinary transformations — Filter fields by name, then Rows to fields — turn them into the field-based contract the panel does read. Every panel queries the live lgtm-tempo datasource; the stack's traces are its own, so the topology is Grafana talking to Loki, Tempo and Prometheus.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "# Relations charts from a Tempo service map\n\nEach panel runs a Tempo service map query. The response contains row-based `Nodes` and `Edges` frames for the Grafana Node graph panel.\n\nThe relations panel uses one field for each node or edge. These dashboards use two transformations to convert the rows:\n\n1. Use Filter fields by name to keep `id`, `source`, `target`, and one numeric statistic.\n2. Use Rows to fields with its default configuration.\n\nRows to fields uses `id` as the new field name. For edges, it stores `source` and `target` as labels on that field.\n\nFor nodes, each field name matches a service in the edge endpoints. The numeric field supplies the node or edge value.\n\nKeep `mainstat` for average response time. Keep `secondarystat` for requests per second.\n\nThe conversion creates new fields, so set the unit in the relations panel field configuration."
+      }
+    },
+    {
+      "id": 2,
+      "type": "nodeGraph",
+      "title": "Grafana's Node graph — the reference",
+      "description": "This Node graph panel shows the Tempo response without transformations. Tempo supplies row-based `Nodes` and `Edges` frames in the format that Node graph reads directly.\n\nUse this panel to compare the topology with the relations graph. Node graph can show two node statistics and status arcs at the same time.",
+      "datasource": {
+        "type": "tempo"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "lgtm-tempo"
+          },
+          "queryType": "serviceMap"
+        }
+      ],
+      "transformations": []
+    },
+    {
+      "id": 3,
+      "type": "grafana-relations-panel",
+      "title": "Same query, two transformations — graph",
+      "description": "The transformations keep `mainstat`, which is the average response time. Each edge and node uses that value after Rows to fields converts the response.\n\nEdge width therefore represents latency, not request volume. The panel sets milliseconds as the unit because the transformation creates new fields.",
+      "datasource": {
+        "type": "tempo",
+        "uid": "lgtm-tempo"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "ms",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "editorMode": "advanced",
+        "seriesType": "graph",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsLayout": "circular",
+        "relationsNodeSize": 18,
+        "relationsShowNodeLabels": true,
+        "relationsEdgeArrows": true,
+        "relationsCurveness": 0.12,
+        "relationsFocusAdjacency": true,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "lgtm-tempo"
+          },
+          "queryType": "serviceMap"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": ["id", "source", "target", "mainstat"]
+            }
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "grafana-relations-panel",
+      "title": "Requests per second instead — one word changed",
+      "description": "The transformations keep `secondarystat`, which is the request rate. The topology stays the same, but edge width now represents traffic volume.\n\nShow node values is on. Tempo supplies a `Nodes` frame, so each displayed node value is the request rate for that service.\n\nThe panel sets requests per second as the unit because the transformation creates new fields.",
+      "datasource": {
+        "type": "tempo",
+        "uid": "lgtm-tempo"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 23
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "editorMode": "advanced",
+        "seriesType": "graph",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsLayout": "circular",
+        "relationsNodeSize": 20,
+        "relationsShowNodeLabels": true,
+        "relationsShowNodeValues": true,
+        "relationsEdgeArrows": true,
+        "relationsCurveness": 0.12,
+        "relationsFocusAdjacency": true,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "lgtm-tempo"
+          },
+          "queryType": "serviceMap"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": ["id", "source", "target", "secondarystat"]
+            }
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "grafana-relations-panel",
+      "title": "Where the requests go — sankey (cycles dropped)",
+      "description": "This Sankey chart uses the converted service map frames. A Sankey chart needs an acyclic graph, but a service map can contain self-loops and two-way calls.\n\nThe panel removes links that create cycles before it renders the chart. The panel notice reports how many links it removed.\n\nUse a graph or chord chart when you need to see every cyclic link.",
+      "datasource": {
+        "type": "tempo",
+        "uid": "lgtm-tempo"
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "editorMode": "advanced",
+        "seriesType": "sankey",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsSankeyOrient": "horizontal",
+        "relationsSankeyNodeAlign": "justify",
+        "relationsSankeyNodeWidth": 16,
+        "relationsSankeyNodeGap": 14,
+        "relationsSankeyLinkOpacity": 0.45,
+        "relationsShowNodeValues": true,
+        "relationsLinkColor": "source",
+        "relationsFocusAdjacency": true,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "lgtm-tempo"
+          },
+          "queryType": "serviceMap"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": ["id", "source", "target", "secondarystat"]
+            }
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "grafana-relations-panel",
+      "title": "Who calls whom — chord",
+      "description": "This chord chart uses the same converted service map frames. It can show self-loops and both directions between two services.\n\nEach ribbon keeps its own request rate. Link color comes from the source node.",
+      "datasource": {
+        "type": "tempo",
+        "uid": "lgtm-tempo"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 23
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "editorMode": "advanced",
+        "seriesType": "chord",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsChordPadAngle": 4,
+        "relationsChordLinkOpacity": 0.5,
+        "relationsLinkColor": "source",
+        "relationsFocusAdjacency": true,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "lgtm-tempo"
+          },
+          "queryType": "serviceMap"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": ["id", "source", "target", "secondarystat"]
+            }
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "grafana-relations-panel",
+      "title": "The same query with an empty Transform tab",
+      "description": "This panel sends the row-based Tempo response to the relations panel without manual transformations. The relations panel needs field-based node and edge data.\n\nIf automatic row conversion is available, the panel can convert the frames before rendering. Otherwise, add Filter fields by name and Rows to fields as shown in the other panels.\n\nThe error details identify the missing conversion when the panel cannot read the response.",
+      "datasource": {
+        "type": "tempo",
+        "uid": "lgtm-tempo"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "seriesType": "graph",
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsLayout": "circular",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "lgtm-tempo"
+          },
+          "queryType": "serviceMap"
+        }
+      ],
+      "transformations": []
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": ["echarts", "relations", "lgtm", "tempo", "live-data"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "ECharts Relations — Tempo service map (LGTM)",
+  "uid": "echarts-lgtm-relations-tempo",
+  "version": 1,
+  "weekStart": ""
+}

@@ -91,6 +91,35 @@ Do not assume `biome.json` / `.shared/` conventions apply inside this package un
 
 `src/external/**` (vendored) and `src/locales/**` (Crowdin-generated) are excluded from Prettier via `.prettierignore`, matching eslint's existing `src/external/**` ignore.
 
+### `grafana-echarts` is a special case too
+
+Imported wholesale from `gtk-grafana/grafana-echarts` via the same `git filter-repo` procedure, full
+upstream history preserved. Like clock-panel it keeps its **own toolchain** (ESLint + Prettier, own
+`webpack.config.ts` at the package root, own `tsconfig.json` extending `.config/tsconfig.json`,
+Playwright e2e) and is **not** wired into root `plugins/tsconfig.json` references — its
+`.config/tsconfig.json` is create-plugin-scaffolded with `declaration: false` and no `composite`,
+same blocker as clock-panel.
+
+Differences worth knowing:
+
+- **It is an `app` plugin** (`type: app`, id `grafana-echarts-app`), not a panel. Grafana requires the
+  plugin directory name to equal the plugin id, so the dev-stack mount is
+  `echarts-app-dist:/var/lib/grafana/plugins/grafana-echarts-app` even though the package directory is
+  `grafana-echarts`.
+- **Apache-2.0 licensed** (vs. `UNLICENSED` / clock-panel's MIT).
+- **Its `jest-canvas-mock` patch lives at the workspace root.** pnpm reads `patchedDependencies` only
+  from `plugins/pnpm-workspace.yaml`, never from a package's `pnpm` field, so the patch was moved there
+  with a root-relative path while the `.patch` file stayed in the package. Its canvas snapshot tests
+  depend on it; if it goes missing they fail as snapshot diffs, not as a missing-patch error.
+- **Scripts renamed onto this repo's turbo task names** (`typecheck` → `type-check`,
+  `prettier:check`/`prettier:fix` → `format`/`format:fix`), plus a `build:dev` added.
+- **`lefthook` was dropped** (config + dep + `prepare` script). A nested hook manager installs hooks
+  into the repo-root `.git`, so it would have gated commits for the whole monorepo on one package's
+  checks.
+- Its `AGENTS.md` / `CLAUDE.md` / `.config/AGENTS/` carry package-local agent rules (canvas snapshot
+  workflow, one-kind-of-test-per-file naming enforced by `src/test/suiteShape.test.ts`). They apply
+  inside the package.
+
 ## Adding a new plugin package
 
 1. Copy the template: `cp -r packages/@plugins/grafana-workspace-panel packages/@plugins/<new-name>`

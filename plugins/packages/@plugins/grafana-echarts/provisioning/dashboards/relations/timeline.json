@@ -1,0 +1,216 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "The relations time slider: read every mark at one timestamp instead of reducing its rows to a stat. Deterministic TestData throughout — fixed epoch timestamps, so every panel looks the same twice.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "description": "This panel has three edge series with different timestamps. Use the time slider, arrow keys, or step buttons to select a time. A missing sample keeps the edge but removes its weight. The data link on `gateway-->api` uses the value at the selected time.",
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "gateway-->api" },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Interpolated value: ${__value.numeric}",
+                    "url": "https://example.com/?edge=gateway-api&value=${__value.numeric}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 11, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "editorMode": "advanced",
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" },
+        "seriesType": "graph",
+        "relationsLayout": "circular",
+        "relationsTimeSlider": true,
+        "relationsShowEdgeValues": true
+      },
+      "targets": [
+        {
+          "csvContent": "time,gateway-->api\n1704067200000,10\n1704067500000,40\n1704067800000,20\n1704068100000,60\n1704068400000,30",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        },
+        {
+          "csvContent": "time,api-->db\n1704067500000,5\n1704067800000,50\n1704068100000,15\n1704068400000,45",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "refId": "B",
+          "scenarioId": "csv_content"
+        },
+        {
+          "csvContent": "time,api-->cache\n1704067200000,80\n1704067800000,20\n1704068400000,70",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "refId": "C",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "Ragged ranged edges — one frame per edge, scrubbable",
+      "type": "grafana-relations-panel"
+    },
+    {
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "description": "This panel uses the same edge series without the time slider. Calculation reduces each full series to one value. The default Last value matches the newest slider position. Select Max or Mean to summarize the full time range.",
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" } },
+        "overrides": []
+      },
+      "gridPos": { "h": 11, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "options": {
+        "editorMode": "advanced",
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" },
+        "seriesType": "graph",
+        "relationsLayout": "circular",
+        "relationsShowEdgeValues": true,
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "csvContent": "time,gateway-->api\n1704067200000,10\n1704067500000,40\n1704067800000,20\n1704068100000,60\n1704068400000,30",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        },
+        {
+          "csvContent": "time,api-->db\n1704067500000,5\n1704067800000,50\n1704068100000,15\n1704068400000,45",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "refId": "B",
+          "scenarioId": "csv_content"
+        },
+        {
+          "csvContent": "time,api-->cache\n1704067200000,80\n1704067800000,20\n1704068400000,70",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "refId": "C",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "The same edges, reduced by calcs[0] — no slider",
+      "type": "grafana-relations-panel"
+    },
+    {
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "description": "This Sankey chart uses one time field and one numeric field for each edge. The time slider selects one row. Ribbon width shows the edge value at that time.",
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" } },
+        "overrides": []
+      },
+      "gridPos": { "h": 11, "w": 12, "x": 0, "y": 11 },
+      "id": 3,
+      "options": {
+        "editorMode": "advanced",
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" },
+        "seriesType": "sankey",
+        "relationsTimeSlider": true,
+        "relationsShowEdgeValues": true
+      },
+      "targets": [
+        {
+          "csvContent": "time,gateway-->api,gateway-->web,api-->db,web-->db\n1704067200000,10,70,80,25\n1704067500000,40,30,55,60\n1704067800000,20,60,20,35\n1704068100000,60,20,65,50\n1704068400000,30,50,70,20",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "One wide ranged frame (the pivoted shape) — sankey",
+      "type": "grafana-relations-panel"
+    },
+    {
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "description": "This panel has one row and no time field, so it cannot show a time slider. An information notice explains why. The editor hides Time slider for instant data unless the saved panel already enables it.",
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" } },
+        "overrides": []
+      },
+      "gridPos": { "h": 11, "w": 12, "x": 12, "y": 11 },
+      "id": 4,
+      "options": {
+        "editorMode": "advanced",
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" },
+        "seriesType": "graph",
+        "relationsLayout": "circular",
+        "relationsTimeSlider": true,
+        "relationsShowEdgeValues": true
+      },
+      "targets": [
+        {
+          "csvContent": "gateway-->api,api-->db,api-->cache\n30,45,70",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "Instant data with the slider on — no strip, one advisory",
+      "type": "grafana-relations-panel"
+    },
+    {
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "description": "This Chord chart uses the same wide time series as the Sankey chart. Select another time to animate the arcs and ribbons to their new values.",
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" } },
+        "overrides": []
+      },
+      "gridPos": { "h": 11, "w": 12, "x": 0, "y": 22 },
+      "id": 5,
+      "options": {
+        "editorMode": "advanced",
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" },
+        "seriesType": "chord",
+        "relationsTimeSlider": true
+      },
+      "targets": [
+        {
+          "csvContent": "time,gateway-->api,gateway-->web,api-->db,web-->db\n1704067200000,10,70,80,25\n1704067500000,40,30,55,60\n1704067800000,20,60,20,35\n1704068100000,60,20,65,50\n1704068400000,30,50,70,20",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "The same wide frame as a chord — the variant that morphs",
+      "type": "grafana-relations-panel"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["echarts", "relations", "timeline"],
+  "templating": { "list": [] },
+  "time": { "from": "2024-01-01T00:00:00.000Z", "to": "2024-01-01T00:25:00.000Z" },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "ECharts Relations — time slider",
+  "uid": "echarts-relations-timeline",
+  "version": 1,
+  "weekStart": ""
+}

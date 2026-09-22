@@ -1,0 +1,416 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "description": "This Chord chart shows traffic in both directions between each region. It also shows the `us-east -> us-east` and `eu-west -> eu-west` self-links. Chord charts keep cycles and self-links. Sankey charts remove links that form cycles.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "targets": [
+        {
+          "csvContent": "id,source,target,mainstat\ne1,us-east,us-west,420\ne2,us-west,us-east,380\ne3,us-east,eu-west,310\ne4,eu-west,us-east,290\ne5,us-west,ap-south,180\ne6,ap-south,us-west,160\ne7,eu-west,ap-south,140\ne8,ap-south,eu-west,130\ne9,us-east,us-east,90\ne10,eu-west,eu-west,70",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "Dense adjacency — what a chord is for",
+      "type": "grafana-relations-panel",
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "chord"
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "description": "This panel uses the same queries as the Chord chart. It uses the Graph chart type with a Circular layout. Change Chart type to draw the same nodes and links in a different form.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "csvContent": "id,source,target,mainstat\ne1,us-east,us-west,420\ne2,us-west,us-east,380\ne3,us-east,eu-west,310\ne4,eu-west,us-east,290\ne5,us-west,ap-south,180\ne6,ap-south,us-west,160\ne7,eu-west,ap-south,140\ne8,ap-south,eu-west,130\ne9,us-east,us-east,90\ne10,eu-west,eu-west,70",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "The same data as a graph — for contrast",
+      "type": "grafana-relations-panel",
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "graph",
+        "relationsLayout": "circular"
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "description": "The `api -> db` and `db -> api` links form a cycle. Chord charts support cycles, so this panel draws all seven links. Compare this panel with the Sankey chart, which removes one link and shows a notice.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 11
+      },
+      "id": 3,
+      "targets": [
+        {
+          "csvContent": "id,source,target,mainstat\ne1,gateway,api,1200\ne2,gateway,web,800\ne3,api,auth,650\ne4,api,db,900\ne5,auth,db,300\ne6,db,api,120\ne7,web,api,450",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "Cyclic service graph — CHORD keeps every link",
+      "type": "grafana-relations-panel",
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "chord"
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "description": "This Sankey chart uses the same seven links as the Chord chart. It removes the `db -> api` link to break the cycle. A notice at the bottom left reports the removed link.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 11
+      },
+      "id": 4,
+      "targets": [
+        {
+          "csvContent": "id,source,target,mainstat\ne1,gateway,api,1200\ne2,gateway,web,800\ne3,api,auth,650\ne4,api,db,900\ne5,auth,db,300\ne6,db,api,120\ne7,web,api,450",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "Cyclic service graph — SANKEY drops one link",
+      "type": "grafana-relations-panel",
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "sankey"
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "description": "The data contains an edges frame and a nodes frame. The `title` field in the nodes frame supplies each label. The chart shows \"Database\" instead of the node ID `db`.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "id": 5,
+      "targets": [
+        {
+          "csvContent": "id,source,target,mainstat\ne1,gateway,api,1200\ne2,gateway,web,800\ne3,api,auth,650\ne4,api,db,900\ne5,auth,db,300\ne6,db,api,120\ne7,web,api,450",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        },
+        {
+          "csvContent": "id,title,mainstat\ngateway,Gateway,1200\napi,API,2450\nweb,Web,800\nauth,Auth,650\ndb,Database,1200",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "refId": "B",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "Named nodes — titles as labels",
+      "type": "grafana-relations-panel",
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "chord"
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "description": "The TestData `node_graph` random scenario can generate cycles. Chord charts draw these cycles without removing links.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "id": 6,
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "nodes": {
+            "count": 10,
+            "seed": 1,
+            "type": "random"
+          },
+          "refId": "A",
+          "scenarioId": "node_graph"
+        }
+      ],
+      "title": "TestData random — generated cycles",
+      "type": "grafana-relations-panel",
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "chord"
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "description": "This panel uses Advanced mode. The ring starts at 0 degrees and runs counterclockwise. Arc gap adds space between arcs in degrees. Ribbon opacity makes the ribbons less transparent. If you change the editor to Default mode, these configuration values reset.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "id": 7,
+      "targets": [
+        {
+          "csvContent": "id,source,target,mainstat\ne1,us-east,us-west,420\ne2,us-west,us-east,380\ne3,us-east,eu-west,310\ne4,eu-west,us-east,290\ne5,us-west,ap-south,180\ne6,ap-south,us-west,160\ne7,eu-west,ap-south,140\ne8,ap-south,eu-west,130\ne9,us-east,us-east,90\ne10,eu-west,eu-west,70",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "Advanced — ring geometry",
+      "type": "grafana-relations-panel",
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "chord",
+        "editorMode": "advanced",
+        "relationsChordStartAngle": 0,
+        "relationsChordClockwise": false,
+        "relationsChordPadAngle": 8,
+        "relationsChordLinkOpacity": 0.55,
+        "relationsFocusAdjacency": true
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "description": "Show node values adds the calculated node value below each node label. The node field supplies the unit and decimals. The tooltip shows the same value. If Show node labels is off, the editor hides Show node values.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      },
+      "id": 8,
+      "targets": [
+        {
+          "csvContent": "id,source,target,mainstat\ne1,gateway,api,1200\ne2,gateway,web,800\ne3,api,auth,650\ne4,api,db,900\ne5,auth,db,300\ne6,db,api,120\ne7,web,api,450",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        },
+        {
+          "csvContent": "id,title,mainstat\ngateway,Gateway,1200\napi,API,2450\nweb,Web,800\nauth,Auth,650\ndb,Database,1200",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "refId": "B",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "Node values — mainstat under each label",
+      "type": "grafana-relations-panel",
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "chord",
+        "relationsShowNodeValues": true
+      }
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["echarts", "relations", "chord", "node-graph"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "ECharts Relations — chord",
+  "uid": "echarts-relations-chord",
+  "version": 1,
+  "weekStart": ""
+}

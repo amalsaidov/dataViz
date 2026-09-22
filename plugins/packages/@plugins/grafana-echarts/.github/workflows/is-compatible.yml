@@ -1,0 +1,61 @@
+name: Latest Grafana API compatibility check
+on: [pull_request]
+
+jobs:
+  # Discover every module.ts(x) so each can be checked independently. A single
+  # $GITHUB_OUTPUT line cannot hold a multi-line list, so emit a JSON array.
+  find-modules:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      modules: ${{ steps.find-module-ts.outputs.modules }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Find module.ts or module.tsx
+        id: find-module-ts
+        run: |
+          MODULES="$(find ./src -type f \( -name "module.ts" -o -name "module.tsx" \) \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+          echo "modules=${MODULES}" >> "$GITHUB_OUTPUT"
+
+  compatibilitycheck:
+    needs: find-modules
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # is-compatible checks one module per run; fan out over every module.
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.find-modules.outputs.modules) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # pnpm action uses the packageManager field in package.json to
+      # understand which version to install.
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build plugin
+        run: pnpm run build
+
+      - name: Compatibility check
+        uses: grafana/plugin-actions/is-compatible@is-compatible/v1.0.3
+        with:
+          module: ${{ matrix.module }}
+          comment-pr: 'no'
+          fail-if-incompatible: 'yes'

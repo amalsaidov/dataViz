@@ -1,0 +1,210 @@
+import { createTheme, type DataFrame, dateTime, type FieldConfigSource, FieldType, toDataFrame } from '@grafana/data';
+import { LegendDisplayMode, SortOrder, TooltipDisplayMode } from '@grafana/schema';
+import { type RelationsChartContext } from 'lib/echarts/charts/types';
+import { type NodeGraphData } from 'lib/echarts/relations/converters/model';
+
+import { type EChartsFrame } from 'lib/grafana/types';
+import { type PanelOptions } from 'types';
+
+import { type RelationsSeriesContext } from 'lib/echarts/relations/context';
+import { type RelationsLinkItem, type RelationsNodeItem } from 'lib/echarts/relations/tooltip/types';
+/** Shared fixtures for the relations family's unit and canvas suites. */
+
+export const relationsTheme = createTheme();
+
+export const emptyFieldConfig: FieldConfigSource = { defaults: {}, overrides: [] };
+
+/** Panel options with the two keys every relations context needs. */
+export const relationsOptions = (extra: Partial<PanelOptions> = {}): PanelOptions => ({
+  legend: { showLegend: true, displayMode: LegendDisplayMode.List, placement: 'bottom', calcs: [] },
+  tooltip: { mode: TooltipDisplayMode.Single, sort: SortOrder.None },
+  ...extra,
+});
+
+interface RelationsContextInput {
+  /** Frames as the panel receives them: wide, and with field overrides already applied. */
+  frames?: DataFrame[];
+  options?: PanelOptions;
+  seriesType?: RelationsChartContext['seriesType'];
+  fieldConfig?: FieldConfigSource;
+}
+
+/** A relations chart context with no cast through `unknown`. */
+export const relationsContext = ({
+  frames = [],
+  options = relationsOptions(),
+  seriesType = 'graph',
+  fieldConfig = emptyFieldConfig,
+}: RelationsContextInput = {}): RelationsChartContext => ({
+  frames: frames as EChartsFrame[],
+  theme: relationsTheme,
+  timeZone: 'utc',
+  timeRange: {
+    from: dateTime(1783137094497),
+    to: dateTime(1783147894497),
+    raw: { from: 'now-3h', to: 'now' },
+  },
+  options,
+  seriesType,
+  formatValue: (value) => ({ text: String(value) }),
+  fieldConfig,
+  replaceVariables: (value) => value,
+});
+
+/** The same context as the series builders see it, with the per-mark lookup left off. */
+export const relationsSeriesContext = (input: RelationsContextInput = {}): RelationsSeriesContext =>
+  relationsContext(input);
+
+/** The node/link model the three variants share, as the converter produces it. */
+export const nodeGraph = (extra: Partial<NodeGraphData> = {}): NodeGraphData => ({
+  nodes: [
+    { id: 'a', name: 'A', value: 1 },
+    { id: 'b', name: 'B', value: 2 },
+  ],
+  links: [{ id: 'e1', source: 'a', target: 'b', value: 5 }],
+  ...extra,
+});
+
+/** A built series' node items, typed for assertions. */
+export const nodeItems = (series: { data?: unknown }): RelationsNodeItem[] => series.data as RelationsNodeItem[];
+
+/** A built series' link items, typed for assertions. */
+export const linkItems = (series: { links?: unknown }): RelationsLinkItem[] => series.links as RelationsLinkItem[];
+
+// Datasource fixtures use Grafana's row format.
+
+/** A small service graph: gateway fans out to api and web, both of which call db. */
+export const nodesFrame = toDataFrame({
+  name: 'nodes',
+  fields: [
+    { name: 'id', type: FieldType.string, values: ['gateway', 'api', 'web', 'db'] },
+    { name: 'title', type: FieldType.string, values: ['Gateway', 'API', 'Web', 'DB'] },
+    { name: 'mainstat', type: FieldType.number, values: [120, 80, 60, 200] },
+  ],
+});
+
+export const edgesFrame = toDataFrame({
+  name: 'edges',
+  fields: [
+    { name: 'id', type: FieldType.string, values: ['e1', 'e2', 'e3', 'e4'] },
+    { name: 'source', type: FieldType.string, values: ['gateway', 'gateway', 'api', 'web'] },
+    { name: 'target', type: FieldType.string, values: ['api', 'web', 'db', 'db'] },
+    { name: 'mainstat', type: FieldType.number, values: [100, 50, 90, 40] },
+  ],
+});
+
+/** An edge set with slack. */
+export const slackEdgesFrame = toDataFrame({
+  name: 'edges',
+  fields: [
+    { name: 'id', type: FieldType.string, values: ['e1', 'e2', 'e3'] },
+    { name: 'source', type: FieldType.string, values: ['gateway', 'api', 'gateway'] },
+    { name: 'target', type: FieldType.string, values: ['api', 'db', 'cache'] },
+    { name: 'mainstat', type: FieldType.number, values: [100, 90, 30] },
+  ],
+});
+
+/** The same edges plus `db -> gateway`, which closes a cycle. */
+export const cyclicEdgesFrame = toDataFrame({
+  name: 'edges',
+  fields: [
+    { name: 'id', type: FieldType.string, values: ['e1', 'e2', 'e3', 'e4', 'e5'] },
+    { name: 'source', type: FieldType.string, values: ['gateway', 'gateway', 'api', 'web', 'db'] },
+    { name: 'target', type: FieldType.string, values: ['api', 'web', 'db', 'db', 'gateway'] },
+    { name: 'mainstat', type: FieldType.number, values: [70, 30, 65, 25, 15] },
+  ],
+});
+
+/** The same four nodes with server-supplied coordinates, which selects `layout: 'none'`. */
+export const pinnedNodesFrame = toDataFrame({
+  name: 'nodes',
+  fields: [
+    { name: 'id', type: FieldType.string, values: ['gateway', 'api', 'web', 'db'] },
+    { name: 'title', type: FieldType.string, values: ['Gateway', 'API', 'Web', 'DB'] },
+    { name: 'mainstat', type: FieldType.number, values: [120, 80, 60, 200] },
+    { name: 'fixedx', type: FieldType.number, values: [50, 150, 150, 250] },
+    { name: 'fixedy', type: FieldType.number, values: [150, 80, 220, 150] },
+  ],
+});
+
+/** Twelve nodes with overlapping labels at the default width. */
+export const crowdedIds = [
+  'gateway',
+  'api',
+  'web',
+  'db',
+  'cache',
+  'queue',
+  'search',
+  'auth',
+  'billing',
+  'notify',
+  'audit',
+  'report',
+];
+
+export const crowdedNodesFrame = toDataFrame({
+  name: 'nodes',
+  fields: [
+    { name: 'id', type: FieldType.string, values: crowdedIds },
+    {
+      name: 'title',
+      type: FieldType.string,
+      values: crowdedIds.map((id) => `${id}-service-primary-eu-west-1-with-a-name-that-keeps-going`),
+    },
+    { name: 'mainstat', type: FieldType.number, values: crowdedIds.map((_, index) => 20 + index * 15) },
+  ],
+});
+
+export const crowdedEdgesFrame = toDataFrame({
+  name: 'edges',
+  fields: [
+    { name: 'id', type: FieldType.string, values: crowdedIds.slice(1).map((_, index) => `e${index}`) },
+    { name: 'source', type: FieldType.string, values: crowdedIds.slice(0, -1) },
+    { name: 'target', type: FieldType.string, values: crowdedIds.slice(1) },
+    { name: 'mainstat', type: FieldType.number, values: crowdedIds.slice(1).map((_, index) => 10 + index * 5) },
+  ],
+});
+
+/** Two links between the same pair of nodes. */
+export const overlappingNodesFrame = toDataFrame({
+  name: 'nodes',
+  fields: [
+    { name: 'id', type: FieldType.string, values: ['a', 'b', 'c'] },
+    { name: 'mainstat', type: FieldType.number, values: [1, 2, 3] },
+  ],
+});
+
+export const overlappingEdgesFrame = toDataFrame({
+  name: 'edges',
+  fields: [
+    { name: 'id', type: FieldType.string, values: ['one', 'two', 'three'] },
+    { name: 'source', type: FieldType.string, values: ['a', 'a', 'b'] },
+    { name: 'target', type: FieldType.string, values: ['b', 'b', 'c'] },
+    { name: 'mainstat', type: FieldType.number, values: [11, 22, 33] },
+  ],
+});
+
+/** The two edge weights that collide in `overlappingEdgesFrame`. */
+export const overlappingValues = ['11', '22'];
+
+/** Twelve chord nodes, four carrying real flow and eight reduced to slivers. */
+export const ringIds = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'];
+
+export const ringNodesFrame = toDataFrame({
+  name: 'nodes',
+  fields: [
+    { name: 'id', type: FieldType.string, values: ringIds },
+    { name: 'title', type: FieldType.string, values: ringIds.map((id) => `${id}-service-primary-eu-west-1`) },
+  ],
+});
+
+export const ringEdgesFrame = toDataFrame({
+  name: 'edges',
+  fields: [
+    { name: 'id', type: FieldType.string, values: ringIds.map((_, index) => `e${index}`) },
+    { name: 'source', type: FieldType.string, values: ringIds },
+    { name: 'target', type: FieldType.string, values: [...ringIds.slice(1), ringIds[0]] },
+    { name: 'mainstat', type: FieldType.number, values: ringIds.map((_, index) => (index < 4 ? 200 : 1)) },
+  ],
+});

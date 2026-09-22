@@ -1,0 +1,140 @@
+import { TooltipDisplayMode } from '@grafana/schema';
+import { type EChartsAxisType } from 'lib/echarts/axes/converters';
+import { type ECBasicOption, type TooltipOption, type TopLevelFormatterParams } from 'echarts/types/dist/shared';
+import { NOOP_TOOLTIP_SINK, toEmittingFormatter } from './model';
+import { type EChartsTooltipTrigger, type TooltipModel, type TooltipSink } from './types';
+
+/** Crosshair line color from Core Grafana's uPlot panels. */
+const CROSSHAIR_COLOR = 'rgba(120, 120, 130, 0.5)';
+
+/**
+ * ECharts declares `crossStyle` inline on `tooltip.axisPointer` with no named
+ * export, so derive it rather than redeclare it. It widens `lineStyle` with a
+ * `textStyle`, so a value of this type satisfies both keys.
+ * https://echarts.apache.org/en/option.html#tooltip.axisPointer.crossStyle
+ */
+type CrossStyle = NonNullable<NonNullable<TooltipOption['axisPointer']>['crossStyle']>;
+
+/**
+ * Pick the ECharts tooltip trigger for the chart's axis type and Grafana tooltip mode.
+ * https://echarts.apache.org/en/option.html#tooltip.trigger
+ */
+export function grafanaTooltipModeToEChartsTrigger(
+  axisType: EChartsAxisType,
+  mode: TooltipDisplayMode
+): EChartsTooltipTrigger {
+  if (mode === TooltipDisplayMode.None) {
+    return 'none';
+  }
+
+  // Categorical axes have no shared axis, so only per-item hover works.
+  if (axisType === 'category') {
+    return 'item';
+  }
+
+  // On cartesian axes, "All series" shows every series at the hovered x (axis),
+  // while "Single" shows just the hovered point (item).
+  return mode === TooltipDisplayMode.Multi ? 'axis' : 'item';
+}
+
+export function getNoTooltipOption() {
+  return { show: false };
+}
+
+/**
+ * A per-series `tooltip` for the families that build their own content model
+ * (pie, funnel, hierarchy, both heatmaps) instead of going through the panel's
+ * generic one. Defaulting the sink here is what lets those formatters be
+ * attached unconditionally, including in unit tests that build a series with no
+ * React overlay wired.
+ * https://echarts.apache.org/en/option.html#series-pie.tooltip
+ */
+export function seriesTooltip(produce: (params: TopLevelFormatterParams) => TooltipModel, sink?: TooltipSink) {
+  return { formatter: toEmittingFormatter(produce, sink ?? NOOP_TOOLTIP_SINK) };
+}
+
+/**
+ * Read the resolved `trigger` off a built panel option. `ECBasicOption` types
+ * every component through an index signature, so the value arrives as `unknown`
+ * and has to be narrowed rather than asserted.
+ */
+export function getTooltipTrigger(option: ECBasicOption): EChartsTooltipTrigger {
+  const tooltip: unknown = option.tooltip;
+  if (tooltip == null || typeof tooltip !== 'object' || !('trigger' in tooltip)) {
+    return undefined;
+  }
+  const { trigger } = tooltip;
+  return trigger === 'item' || trigger === 'axis' || trigger === 'none' ? trigger : undefined;
+}
+
+/**
+ *  ECharts axisPointer styled to match Core Grafana's uPlot cursor crosshair.
+ *  https://echarts.apache.org/en/option.html#tooltip.axisPointer
+ */
+export function getCrosshairAxisPointer(): TooltipOption['axisPointer'] {
+  const lineStyle: CrossStyle = { color: CROSSHAIR_COLOR, width: 1, type: 'dashed' };
+  return {
+    show: true,
+    type: 'cross',
+    // lineStyle is valid when axisPointer.type is 'line'
+    // https://echarts.apache.org/en/option.html#tooltip.axisPointer.lineStyle
+    lineStyle,
+    // crossStyle is valid when axisPointer.type is 'cross'.
+    // https://echarts.apache.org/en/option.html#tooltip.axisPointer.crossStyle
+    crossStyle: lineStyle,
+    label: { show: false },
+    // An axis pointer emphasises *every* series at the snapped x by default,
+    // which would mark a whole column of points as active. Only the
+    // proximity-focused point should carry the marker — matching Single mode and
+    // core Grafana, where one hover point is drawn at a time — so the automatic
+    // batch is suppressed and `useEChartsTooltip` highlights the one point
+    // itself.
+    // https://echarts.apache.org/en/option.html#axisPointer.triggerEmphasis
+    triggerEmphasis: false,
+  };
+}
+
+/**
+ * A tooltip config that is functionally active but **visually silent**: ECharts
+ * still does hover hit-testing, multi-series ("All") aggregation, and draws the
+ * crosshair axisPointer, but the HTML box renders nothing (transparent chrome +
+ * empty content). The `formatter` instead converts the hovered `params` into a
+ * {@link TooltipModel} and hands it to `sink`, which the React overlay
+ * (`EChartsTooltip`) renders with `@grafana/ui`'s `VizTooltip`.
+ *
+ * This keeps the ECharts tooltip as the hover/aggregation engine while all
+ * visible tooltip UI is owned by React — so the option layer stays free of
+ * presentation, and the React layer stays free of ECharts (it only consumes the
+ * model). Positioning is owned by `VizTooltipContainer`, so no `position` or
+ * `appendTo` is set here.
+ * See https://echarts.apache.org/en/option.html#tooltip
+ */
+export function getSilentTooltipOption(
+  trigger: EChartsTooltipTrigger,
+  mode: TooltipDisplayMode,
+  produce: (params: TopLevelFormatterParams) => TooltipModel,
+  sink: TooltipSink
+): TooltipOption {
+  if (mode === TooltipDisplayMode.None) {
+    return { show: false };
+  }
+
+  // https://echarts.apache.org/en/option.html#tooltip
+  return {
+    show: true,
+    trigger,
+    axisPointer: getCrosshairAxisPointer(),
+    // Emit the hovered content to React and render nothing native. Returning an
+    // empty string with transparent chrome makes the native box invisible.
+    // https://echarts.apache.org/en/option.html#tooltip.formatter
+    formatter: toEmittingFormatter(produce, sink),
+    // Neutralize every visual aspect of the native box; the React overlay draws
+    // the real tooltip. `pointer-events: none` keeps the empty box from
+    // intercepting hover.
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderWidth: 0,
+    padding: 0,
+    extraCssText: 'box-shadow: none; pointer-events: none;',
+  };
+}

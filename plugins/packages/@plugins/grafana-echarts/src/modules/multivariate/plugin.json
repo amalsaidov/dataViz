@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "panel",
+  "suggestions": true,
+  "name": "ECharts Multivariate",
+  "id": "grafana-echartsmultivariate-panel",
+  "info": {
+    "keywords": ["panel", "echarts", "radar", "parallel", "multivariate"],
+    "description": "Multivariate ECharts panel (radar and parallel coordinates) built from categorical data.",
+    "author": {
+      "name": "Grafana"
+    },
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=13.1.0",
+    "plugins": []
+  }
+}

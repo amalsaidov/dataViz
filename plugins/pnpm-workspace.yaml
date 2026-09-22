@@ -13,3 +13,8 @@ overrides:
   # bundle; scoped to that package so it doesn't affect other workspace
   # members that may depend on moment independently.
   '@plugins/grafana-clock-panel>moment': 2.30.1
+patchedDependencies:
+  # Imported with grafana-echarts; its canvas snapshot tests depend on this
+  # patch. pnpm only reads patchedDependencies from the workspace root, so the
+  # path is relative to this file, not to the package.
+  jest-canvas-mock@2.5.2: packages/@plugins/grafana-echarts/patches/jest-canvas-mock@2.5.2.patch

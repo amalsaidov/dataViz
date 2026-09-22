@@ -24,9 +24,11 @@ services:
       - |
         panel=/var/lib/grafana/plugins/grafana-workspace-panel
         clock=/var/lib/grafana/plugins/grafana-clock-panel
-        echo "Waiting for plugin builds in $$panel and $$clock ..."
+        echarts=/var/lib/grafana/plugins/grafana-echarts-app
+        echo "Waiting for plugin builds in $$panel, $$clock and $$echarts ..."
         until [ -f "$$panel/plugin.json" ] && [ -f "$$panel/module.js" ] \
-           && [ -f "$$clock/plugin.json" ] && [ -f "$$clock/module.js" ]; do
+           && [ -f "$$clock/plugin.json" ] && [ -f "$$clock/module.js" ] \
+           && [ -f "$$echarts/plugin.json" ] && [ -f "$$echarts/module.js" ]; do
           sleep 2
         done
         echo "Plugin builds detected. Starting Grafana."
@@ -35,6 +37,8 @@ services:
       # Shared, read-only: every Grafana instance reads the same plugin build.
       - workspace-panel-dist:/var/lib/grafana/plugins/grafana-workspace-panel:ro
       - clock-panel-dist:/var/lib/grafana/plugins/grafana-clock-panel:ro
+      # App plugin: the directory name must match the plugin id in plugin.json.
+      - echarts-app-dist:/var/lib/grafana/plugins/grafana-echarts-app:ro
       - ./provisioning:/etc/grafana/provisioning
       # Per-instance Grafana data (project-scoped, not shared across instances).
       - workspace-data-grafana:/var/lib/grafana
@@ -42,7 +46,7 @@ services:
       # Grafana settings
       GF_AUTH_ANONYMOUS_ENABLED: 'true'
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
-      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: grafana-workspace-panel,grafana-clock-panel
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: grafana-workspace-panel,grafana-clock-panel,grafana-echarts-app
 
       # Enable debug logging
       GF_LOG_LEVEL: debug
@@ -59,5 +63,8 @@ volumes:
   clock-panel-dist:
     external: true
     name: clock-panel-dist
+  echarts-app-dist:
+    external: true
+    name: echarts-app-dist
   # Project-scoped so each Grafana instance gets its own isolated data.
   workspace-data-grafana:

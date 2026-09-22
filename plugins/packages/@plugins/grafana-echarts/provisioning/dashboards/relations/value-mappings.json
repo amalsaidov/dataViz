@@ -1,0 +1,569 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "description": "What Grafana's standard **Value mappings** option does on a relations panel, one use case per panel. Three things actually happen: mapped text replaces a mark's number in the tooltip row and in the node value label; a mapping carrying a `color` recolours the mark; and a mapping is per *field*, so it targets one node or one edge rather than the panel. None of it is implemented by the plugin \u2014 it all arrives through `field.display`, the display processor `applyFieldOverrides` already built. The fifth panel is the counter-example: a null-matching mapping that fires and is still never shown, which is why the \"No value\" standard option is unregistered for this family.",
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["echarts", "relations", "standard-options", "value-mappings"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "ECharts Relations \u2014 value mappings",
+  "uid": "echarts-relations-value-mappings",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "id": 1,
+      "type": "grafana-relations-panel",
+      "title": "Control \u2014 no mappings",
+      "description": "This panel has no value mappings. The node labels show the raw values `1`, `2`, and `3`.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "graph",
+        "relationsLayout": "circular",
+        "relationsShowNodeValues": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway,api,db,cache,auth\n1,2,3,1,2"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway-->api,api-->db,api-->cache,gateway-->auth\n120,80,45,30"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "grafana-relations-panel",
+      "title": "Value \u2192 text on a node stat",
+      "description": "Value mappings change `1`, `2`, and `3` to `Healthy`, `Degraded`, and `Down`. The mapped text appears in node labels and tooltips.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Healthy",
+                  "index": 0
+                },
+                "2": {
+                  "text": "Degraded",
+                  "index": 1
+                },
+                "3": {
+                  "text": "Down",
+                  "index": 2
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "graph",
+        "relationsLayout": "circular",
+        "relationsShowNodeValues": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway,api,db,cache,auth\n1,2,3,1,2"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway-->api,api-->db,api-->cache,gateway-->auth\n120,80,45,30"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "grafana-relations-panel",
+      "title": "Mapping a colour, not just text",
+      "description": "Each value mapping also sets a color. The node symbols use green, orange, and red for the three mapped states.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Healthy",
+                  "color": "green",
+                  "index": 0
+                },
+                "2": {
+                  "text": "Degraded",
+                  "color": "orange",
+                  "index": 1
+                },
+                "3": {
+                  "text": "Down",
+                  "color": "red",
+                  "index": 2
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "graph",
+        "relationsLayout": "circular",
+        "relationsShowNodeValues": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway,api,db,cache,auth\n1,2,3,1,2"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway-->api,api-->db,api-->cache,gateway-->auth\n120,80,45,30"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "grafana-relations-panel",
+      "title": "Range \u2192 text on an edge weight",
+      "description": "Range mappings change the edge values `120`, `80`, and `45` to `saturated`, `busy`, and `light`. Show edge values displays the mapped text on each link. The node values stay numeric.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 0,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*-->.*"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "range",
+                    "options": {
+                      "from": 0,
+                      "to": 50,
+                      "result": {
+                        "text": "light",
+                        "index": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "range",
+                    "options": {
+                      "from": 50,
+                      "to": 100,
+                      "result": {
+                        "text": "busy",
+                        "index": 1
+                      }
+                    }
+                  },
+                  {
+                    "type": "range",
+                    "options": {
+                      "from": 100,
+                      "to": 100000,
+                      "result": {
+                        "text": "saturated",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "graph",
+        "relationsLayout": "circular",
+        "relationsShowEdgeValues": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway,api,db,cache,auth\n1,2,3,1,2"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway-->api,api-->db,api-->cache,gateway-->auth\n120,80,45,30"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "grafana-relations-panel",
+      "title": "Special \u2192 text on a null node stat (what does NOT happen)",
+      "description": "The `api` node has no value. The panel omits the value from its label and tooltip, so the `null` mapping text does not appear.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 8,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "unreported",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Healthy",
+                  "index": 0
+                },
+                "2": {
+                  "text": "Degraded",
+                  "index": 1
+                },
+                "3": {
+                  "text": "Down",
+                  "index": 2
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "graph",
+        "relationsLayout": "circular",
+        "relationsShowNodeValues": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway,api,db,cache,auth\n1,,3,1,2"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway-->api,api-->db,api-->cache,gateway-->auth\n120,80,45,30"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "grafana-relations-panel",
+      "title": "Same mappings, sankey",
+      "description": "Sankey uses the same node mappings. The labels show `Healthy`, `Degraded`, and `Down`.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 16,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Healthy",
+                  "index": 0
+                },
+                "2": {
+                  "text": "Degraded",
+                  "index": 1
+                },
+                "3": {
+                  "text": "Down",
+                  "index": 2
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "sankey",
+        "relationsShowNodeValues": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway,api,db,cache,auth\n1,2,3,1,2"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway-->api,api-->db,api-->cache,gateway-->auth\n120,80,45,30"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "grafana-relations-panel",
+      "title": "Same mappings, chord",
+      "description": "Chord uses the same node mappings. The labels show `Healthy`, `Degraded`, and `Down`.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Healthy",
+                  "color": "green",
+                  "index": 0
+                },
+                "2": {
+                  "text": "Degraded",
+                  "color": "orange",
+                  "index": 1
+                },
+                "3": {
+                  "text": "Down",
+                  "color": "red",
+                  "index": 2
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "chord",
+        "relationsShowNodeValues": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway,api,db,cache,auth\n1,2,3,1,2"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway-->api,api-->db,api-->cache,gateway-->auth\n120,80,45,30"
+        }
+      ]
+    }
+  ]
+}
