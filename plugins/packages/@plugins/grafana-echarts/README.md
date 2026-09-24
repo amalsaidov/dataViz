@@ -4,7 +4,7 @@ This repository contains Grafana panels that use Apache ECharts. It also contain
 
 ECharts Relations displays connected data as a graph, Sankey diagram, or chord diagram. It uses Grafana field configuration, tooltips, data links, value mappings, and color schemes.
 
-![ECharts Relations presets](https://raw.githubusercontent.com/gtk-grafana/grafana-echarts/main/src/modules/relations/img/relations-presets.png)
+![ECharts Relations presets](https://raw.githubusercontent.com/grafana/dataViz/main/plugins/packages/@plugins/grafana-echarts/src/modules/relations/img/relations-presets.png)
 
 ## Data requirements
 
@@ -12,7 +12,7 @@ The panel reads wide data frames. Each numeric edge field defines one edge and n
 
 Grafana can convert supported row-based data before the panel reads it. This feature is experimental in Grafana 13.3. Enable `grafana.panelPluginTransformations` to use it.
 
-For query examples, read the [data source guide](https://github.com/gtk-grafana/grafana-echarts/blob/main/docs/relations-data-sources.md).
+For query examples, read the [data source guide](https://github.com/grafana/dataViz/blob/main/plugins/packages/@plugins/grafana-echarts/docs/relations-data-sources.md).
 
 ## Development
 
@@ -70,9 +70,9 @@ pnpm run server:relations
 
 ## Documentation
 
-- [Relations data source guide](https://github.com/gtk-grafana/grafana-echarts/blob/main/docs/relations-data-sources.md)
-- [Relations data format reference](https://github.com/gtk-grafana/grafana-echarts/blob/main/data-plane/graph-wide.md)
+- [Relations data source guide](https://github.com/grafana/dataViz/blob/main/plugins/packages/@plugins/grafana-echarts/docs/relations-data-sources.md)
+- [Relations data format reference](https://github.com/grafana/dataViz/blob/main/plugins/packages/@plugins/grafana-echarts/data-plane/graph-wide.md)
 
 ## License
 
-This project uses the [Apache License 2.0](https://github.com/gtk-grafana/grafana-echarts/blob/main/LICENSE).
+This project uses the [Apache License 2.0](https://github.com/grafana/dataViz/blob/main/plugins/packages/@plugins/grafana-echarts/LICENSE).

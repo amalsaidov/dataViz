@@ -18,6 +18,10 @@ This directory contains current work and design references. Completed implementa
 - [Relations node size by value](./relations-node-size-by-value.md)
 - [Relations null edge weight](./relations-null-edge-weight.md)
 
+## Repo migration
+
+- [Repo migration leftovers](./repo-migration.md)
+
 ## Upstream work
 
 - [Canvas snapshot path duplication](./canvas-snapshot-props-path.md)
