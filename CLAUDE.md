@@ -118,6 +118,7 @@ Differences worth knowing:
   checks.
 - **Its nested `.github/` was removed; CI lives at root** as `echarts-ci.yml` (Playwright e2e matrix +
   levitate is-compatible) and `echarts-bundle-stats.yml`, both `paths:`-scoped to the package. The
+  `grafana-enterprise@nightly` e2e job is `continue-on-error` (non-blocking); don't make it required. The
   bundle-stats workflow does **not** `uses:` `grafana/plugin-actions/bundle-size` — that action runs
   `pnpm install` at the repo root, which has no `package.json` — so it inlines the action's steps and
   calls its `index.js` report script from a pinned checkout. Bump both pins together. The upstream

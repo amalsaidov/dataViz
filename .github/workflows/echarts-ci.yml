@@ -109,11 +109,16 @@ jobs:
   playwright-tests:
     needs: [resolve-versions, build]
     timeout-minutes: 15
+    # e2e-version adds a grafana-enterprise@nightly entry to the matrix. The
+    # nightly run is informational: a failure there shows on the job, but does
+    # not fail the workflow. Do not make its check required in branch protection,
+    # because that overrides this setting.
+    continue-on-error: ${{ matrix.GRAFANA_IMAGE.VERSION == 'nightly' }}
     strategy:
       fail-fast: false
       matrix:
         GRAFANA_IMAGE: ${{ fromJson(needs.resolve-versions.outputs.matrix) }}
-    name: e2e test ${{ matrix.GRAFANA_IMAGE.name }}@${{ matrix.GRAFANA_IMAGE.VERSION }}
+    name: e2e test ${{ matrix.GRAFANA_IMAGE.name }}@${{ matrix.GRAFANA_IMAGE.VERSION }}${{ matrix.GRAFANA_IMAGE.VERSION == 'nightly' && ' (non-blocking)' || '' }}
     runs-on: ubuntu-latest
     defaults:
       run:
