@@ -1,0 +1,226 @@
+# Revived from grafana-echarts' own .github/workflows/{ci,is-compatible}.yml,
+# which are inert where they live (GitHub Actions only discovers workflows at
+# the repo root). Format, lint, type-check, unit tests and build are already
+# covered for every package by the root ci.yml, so only the echarts-specific
+# jobs live here: Playwright e2e against a matrix of Grafana versions, and the
+# levitate API compatibility check.
+name: echarts CI
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/packages/@plugins/grafana-echarts/**'
+      - 'plugins/pnpm-lock.yaml'
+      - 'plugins/pnpm-workspace.yaml'
+      - '.github/workflows/echarts-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'plugins/packages/@plugins/grafana-echarts/**'
+      - 'plugins/pnpm-lock.yaml'
+      - 'plugins/pnpm-workspace.yaml'
+      - '.github/workflows/echarts-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PACKAGE_DIR: plugins/packages/@plugins/grafana-echarts
+
+jobs:
+  build:
+    name: Build plugin for e2e
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins
+    outputs:
+      plugin-id: ${{ steps.metadata.outputs.plugin-id }}
+      plugin-version: ${{ steps.metadata.outputs.plugin-version }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      # package_json_file is relative to the workspace root — action inputs are
+      # not affected by defaults.run.working-directory.
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          package_json_file: plugins/package.json
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: plugins/.nvmrc
+          cache: 'pnpm'
+          cache-dependency-path: plugins/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build frontend
+        run: pnpm --filter @plugins/grafana-echarts run build
+
+      - name: Get plugin metadata
+        id: metadata
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: |
+          plugin_id=$(node -p "require('./dist/plugin.json').id")
+          plugin_version=$(node -p "require('./dist/plugin.json').info.version")
+          {
+            echo "plugin-id=${plugin_id}"
+            echo "plugin-version=${plugin_version}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload test build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ steps.metadata.outputs.plugin-id }}-${{ steps.metadata.outputs.plugin-version }}
+          path: ${{ env.PACKAGE_DIR }}/dist
+          retention-days: 5
+
+  resolve-versions:
+    name: Resolve e2e images
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      matrix: ${{ steps.resolve-versions.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Resolve Grafana E2E versions
+        id: resolve-versions
+        uses: grafana/plugin-actions/e2e-version@3ef49643a84470fd25bafeb96701fa0be3be6746 # e2e-version/v3.0.2
+        with:
+          plugin-directory: ${{ env.PACKAGE_DIR }}
+
+  playwright-tests:
+    needs: [resolve-versions, build]
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        GRAFANA_IMAGE: ${{ fromJson(needs.resolve-versions.outputs.matrix) }}
+    name: e2e test ${{ matrix.GRAFANA_IMAGE.name }}@${{ matrix.GRAFANA_IMAGE.VERSION }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/packages/@plugins/grafana-echarts
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Download plugin
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          path: ${{ env.PACKAGE_DIR }}/dist
+          name: ${{ needs.build.outputs.plugin-id }}-${{ needs.build.outputs.plugin-version }}
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          package_json_file: plugins/package.json
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: plugins/.nvmrc
+          cache: 'pnpm'
+          cache-dependency-path: plugins/pnpm-lock.yaml
+
+      - name: Install dev dependencies
+        working-directory: plugins
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      # The package's own docker-compose.yaml, not the monorepo dev stack in
+      # plugins/: it mounts only this plugin's dist and builds the scaffolded
+      # .config/Dockerfile image the e2e tests expect.
+      - name: Start Grafana
+        env:
+          GRAFANA_VERSION: ${{ matrix.GRAFANA_IMAGE.VERSION }}
+          GRAFANA_IMAGE: ${{ matrix.GRAFANA_IMAGE.NAME }}
+        run: |
+          docker compose pull
+          ANONYMOUS_AUTH_ENABLED=false DEVELOPMENT=false docker compose up -d
+
+      - name: Wait for grafana server
+        uses: grafana/plugin-actions/wait-for-grafana@4205a0824a13b71fdb9b9b49f28f5f72b754f81f # wait-for-grafana/v1.0.5
+        with:
+          url: http://127.0.0.1:3001/login
+
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Run Playwright tests
+        id: run-tests
+        run: pnpm run e2e
+
+      # docker-compose.yaml names the container grafana-echarts-panel-${GRAFANA_PORT:-3001}.
+      - name: Docker logs
+        if: ${{ always() && steps.run-tests.outcome == 'failure' }}
+        run: docker logs grafana-echarts-panel-3001 >& grafana-server.log
+
+      - name: Stop grafana docker
+        run: docker compose down
+
+  # Discover every module.ts(x) so each can be checked independently. A single
+  # $GITHUB_OUTPUT line cannot hold a multi-line list, so emit a JSON array.
+  find-modules:
+    name: Find plugin modules
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.find-module-ts.outputs.modules }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Find module.ts or module.tsx
+        id: find-module-ts
+        run: |
+          MODULES="$(find "./${PACKAGE_DIR}/src" -type f \( -name "module.ts" -o -name "module.tsx" \) \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+          echo "modules=${MODULES}" >> "$GITHUB_OUTPUT"
+
+  compatibilitycheck:
+    name: Latest Grafana API compatibility check
+    needs: find-modules
+    runs-on: ubuntu-latest
+    # is-compatible checks one module per run; fan out over every module.
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.find-modules.outputs.modules) }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          package_json_file: plugins/package.json
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: plugins/.nvmrc
+          cache: 'pnpm'
+          cache-dependency-path: plugins/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: plugins
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build plugin
+        working-directory: plugins
+        run: pnpm --filter @plugins/grafana-echarts run build
+
+      # Module paths are repo-root-relative, which is where the action runs levitate.
+      - name: Compatibility check
+        uses: grafana/plugin-actions/is-compatible@4698961fa64137fcac207108397ebe8a738a33d1 # is-compatible/v1.0.3
+        with:
+          module: ${{ matrix.module }}
+          comment-pr: 'no'
+          fail-if-incompatible: 'yes'
