@@ -47,12 +47,13 @@ This repository contains a **Grafana plugin**. You must Read @./.config/AGENTS/i
 
 ## Development environment
 
-The user runs their own Grafana containers on 3xxx ports. Do not stop or reuse them.
+The [Docker Ports table in the monorepo README](../../../../README.md#docker-ports) is the single source of truth for
+the port of each Docker stack. The user runs their own containers on those ports. Do not stop or reuse them.
 
 1. In a new worktree, run `pnpm i && pnpm run build` to make the `dist` directory.
 2. Start a Grafana container that belongs only to your worktree:
-   `GRAFANA_PORT=4011 GRAFANA_CONTAINER_NAME=echarts-<task>-4011 pnpm run server`. Use a free port in the 4xxx range,
-   but not 4001. The `server:relations` script uses 4001.
+   `GRAFANA_PORT=<port> GRAFANA_CONTAINER_NAME=echarts-<task>-<port> pnpm run server`. Use a free port that the Docker
+   Ports table does not list.
 3. Run `pnpm run build` immediately before each test in a browser. Grafana serves the last build in `dist`, not the
    source files, so a stale build makes a working change look broken.
 4. Before each test in a browser, run
