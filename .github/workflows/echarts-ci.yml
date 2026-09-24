@@ -93,11 +93,18 @@ jobs:
         with:
           persist-credentials: false
 
+      # e2e-version has no plugin-directory input: left alone it reads
+      # src/plugin.json at the repo root, which doesn't exist here. Read the
+      # package's grafanaDependency and pass it in explicitly.
+      - name: Read grafanaDependency
+        id: grafana-dependency
+        run: echo "range=$(jq -r '.dependencies.grafanaDependency' "${PACKAGE_DIR}/src/plugin.json")" >> "$GITHUB_OUTPUT"
+
       - name: Resolve Grafana E2E versions
         id: resolve-versions
         uses: grafana/plugin-actions/e2e-version@3ef49643a84470fd25bafeb96701fa0be3be6746 # e2e-version/v3.0.2
         with:
-          plugin-directory: ${{ env.PACKAGE_DIR }}
+          grafana-dependency: ${{ steps.grafana-dependency.outputs.range }}
 
   playwright-tests:
     needs: [resolve-versions, build]
@@ -149,7 +156,7 @@ jobs:
       - name: Wait for grafana server
         uses: grafana/plugin-actions/wait-for-grafana@4205a0824a13b71fdb9b9b49f28f5f72b754f81f # wait-for-grafana/v1.0.5
         with:
-          url: http://127.0.0.1:3001/login
+          url: http://127.0.0.1:3020/login
 
       - name: Install Playwright Browsers
         run: pnpm exec playwright install chromium --with-deps
@@ -158,10 +165,10 @@ jobs:
         id: run-tests
         run: pnpm run e2e
 
-      # docker-compose.yaml names the container grafana-echarts-panel-${GRAFANA_PORT:-3001}.
+      # docker-compose.yaml names the container grafana-echarts-panel-${GRAFANA_PORT:-3020}.
       - name: Docker logs
         if: ${{ always() && steps.run-tests.outcome == 'failure' }}
-        run: docker logs grafana-echarts-panel-3001 >& grafana-server.log
+        run: docker logs grafana-echarts-panel-3020 >& grafana-server.log
 
       - name: Stop grafana docker
         run: docker compose down
