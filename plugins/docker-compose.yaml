@@ -14,7 +14,10 @@ services:
       - workspace-node-modules:/app/workspace/node_modules/
       - workspace-pnpm-store:/root/.local/share/pnpm/store
     working_dir: /app/workspace
-    command: sh -c "pnpm build"
+    # workspace-node-modules is a named volume: Docker seeds it from the image
+    # only on first creation, so after a lockfile change it would keep serving
+    # the old install. Re-sync it before building (fast — the store is a volume).
+    command: sh -c "pnpm install --frozen-lockfile && pnpm build"
 
   plugin:
     build:
