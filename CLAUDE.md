@@ -116,6 +116,13 @@ Differences worth knowing:
 - **`lefthook` was dropped** (config + dep + `prepare` script). A nested hook manager installs hooks
   into the repo-root `.git`, so it would have gated commits for the whole monorepo on one package's
   checks.
+- **Its nested `.github/` was removed; CI lives at root** as `echarts-ci.yml` (Playwright e2e matrix +
+  levitate is-compatible) and `echarts-bundle-stats.yml`, both `paths:`-scoped to the package. The
+  bundle-stats workflow does **not** `uses:` `grafana/plugin-actions/bundle-size` — that action runs
+  `pnpm install` at the repo root, which has no `package.json` — so it inlines the action's steps and
+  calls its `index.js` report script from a pinned checkout. Bump both pins together. The upstream
+  `release.yml` (tag-triggered sign + validate of the standalone Relations build) and `cp-update.yml`
+  (create-plugin update, which only works on a repo-root plugin) were not ported.
 - Its `AGENTS.md` / `CLAUDE.md` / `.config/AGENTS/` carry package-local agent rules (canvas snapshot
   workflow, one-kind-of-test-per-file naming enforced by `src/test/suiteShape.test.ts`). They apply
   inside the package.
@@ -149,10 +156,12 @@ zizmor .github/workflows/
 hash with:
 
 ```bash
-gh api repos/<owner>/<repo>/git/refs/tags/<tag> --jq '.object.sha'
+gh api repos/<owner>/<repo>/commits/<tag> --jq '.sha'
 ```
 
-and pin as `uses: <owner>/<repo>@<sha> # <tag>`.
+and pin as `uses: <owner>/<repo>@<sha> # <tag>`. Don't use `git/refs/tags/<tag> --jq '.object.sha'`:
+for an **annotated** tag that returns the tag *object's* SHA, not the commit, and zizmor flags it as an
+impostor commit (this is how `pnpm/action-setup@f520ece…` got pinned; its `v6` commit is `0977fd9…`).
 
 ## Bringing a plugin into this monorepo
 
