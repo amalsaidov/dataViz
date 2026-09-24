@@ -34,11 +34,39 @@ This repository contains a **Grafana plugin**. You must Read @./.config/AGENTS/i
 - Comments describe the current state, never a superseded one.
 - Docs and code comments are written with ASD-STE100 style
 
+## Silent failures in tests and dashboards
+
+- If a `*.canvas.test.*` assertion calls `toMatchCanvasSnapshot`, pass the events through `normalizeCanvasEvents`
+  from `src/test/canvas.ts` first. Raw coordinates differ in the last digit between Node versions, so the snapshot
+  passes locally and fails in CI.
+- If a provisioned relations panel sets an Advanced option, set `"editorMode": "advanced"` in the same panel JSON.
+  Without it, `applyEditorModeDefaults` resets every Advanced option, and the panel draws as if the option is not set.
+- Do not let a query return columns named both `source` and `target` when the dashboard has its own transformations.
+  The relations plugin converts that frame before the dashboard transformations run, and the panel shows "No data"
+  with no error. Name the columns `src` and `dst` in the query, and rename them in an `organize` transformation.
+
 ## Development environment
 
-    In a new worktree, the agent will need to pnpm i && pnpm run build to generate the dist directory.
-    To generate non conflicting docker image, run `GRAFANA_PORT=4001 pnpm run server` and pick a different port number in the 4xxx range to avoid conflicting with the user images running on 3xxx
-    Run .canvas tests with env variable `GEN_CANVAS_OUTPUT_ON_PASS=1` which will return a link to the `jest-canvas-mock-compare-viewer` tool which can be used to verify snapshots
+The user runs their own Grafana containers on 3xxx ports. Do not stop or reuse them.
+
+1. In a new worktree, run `pnpm i && pnpm run build` to make the `dist` directory.
+2. Start a Grafana container that belongs only to your worktree:
+   `GRAFANA_PORT=4011 GRAFANA_CONTAINER_NAME=echarts-<task>-4011 pnpm run server`. Use a free port in the 4xxx range,
+   but not 4001. The `server:relations` script uses 4001.
+3. Run `pnpm run build` immediately before each test in a browser. Grafana serves the last build in `dist`, not the
+   source files, so a stale build makes a working change look broken.
+4. Before each test in a browser, run
+   `docker inspect <container> --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}'`. Make sure that the `dist` path
+   is in your worktree. Another agent can replace a container with the same name during your session.
+5. Run `.canvas` tests with the environment variable `GEN_CANVAS_OUTPUT_ON_PASS=1`. The output gives a link to the
+   `jest-canvas-mock-compare-viewer` tool, which shows the snapshots.
+
+Do not set only `GRAFANA_PORT`. The container name then comes from the port, so two worktrees that pick the same port
+share one container, and it serves the `dist` of the worktree that started it.
+
+Do not delete the `dist` directory while a container uses it. On macOS, the container keeps the deleted directory and
+every plugin file returns 404. If you deleted it, run `docker compose up -d --force-recreate --no-deps grafana` with the
+same `GRAFANA_PORT` and `GRAFANA_CONTAINER_NAME`.
 
 ## Live dashboard debugging
 
