@@ -173,35 +173,14 @@ jobs:
       - name: Stop grafana docker
         run: docker compose down
 
-  # Discover every module.ts(x) so each can be checked independently. A single
-  # $GITHUB_OUTPUT line cannot hold a multi-line list, so emit a JSON array.
-  find-modules:
-    name: Find plugin modules
+  # Only the relations panel is checked. The package has 8 module entry points
+  # (the app plus 7 panels) and is-compatible takes one per run, so checking
+  # them all meant 8 jobs each repeating install + build. Relations is the
+  # panel this monorepo ships; the others are not compatibility-checked.
+  compatibilitycheck:
+    name: Latest Grafana API compatibility check (relations)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    outputs:
-      modules: ${{ steps.find-module-ts.outputs.modules }}
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          persist-credentials: false
-
-      - name: Find module.ts or module.tsx
-        id: find-module-ts
-        run: |
-          MODULES="$(find "./${PACKAGE_DIR}/src" -type f \( -name "module.ts" -o -name "module.tsx" \) \
-            | jq -R -s -c 'split("\n") | map(select(length > 0))')"
-          echo "modules=${MODULES}" >> "$GITHUB_OUTPUT"
-
-  compatibilitycheck:
-    name: Latest Grafana API compatibility check
-    needs: find-modules
-    runs-on: ubuntu-latest
-    # is-compatible checks one module per run; fan out over every module.
-    strategy:
-      fail-fast: false
-      matrix:
-        module: ${{ fromJSON(needs.find-modules.outputs.modules) }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -228,6 +207,6 @@ jobs:
       - name: Compatibility check
         uses: grafana/plugin-actions/is-compatible@4698961fa64137fcac207108397ebe8a738a33d1 # is-compatible/v1.0.3
         with:
-          module: ${{ matrix.module }}
+          module: ./${{ env.PACKAGE_DIR }}/src/modules/relations/module.tsx
           comment-pr: 'no'
           fail-if-incompatible: 'yes'
