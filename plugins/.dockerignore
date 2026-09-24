@@ -1,0 +1,10 @@
+# Host installs and build output must not reach the image: node_modules holds
+# macOS-native binaries (e.g. @swc/core) that break the Linux install, and
+# dist/ is served from the shared named volumes instead.
+**/node_modules
+**/dist
+**/.turbo
+**/coverage
+**/test-results
+**/playwright-report
+**/.eslintcache

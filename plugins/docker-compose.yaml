@@ -14,7 +14,13 @@ services:
       - workspace-node-modules:/app/workspace/node_modules/
       - workspace-pnpm-store:/root/.local/share/pnpm/store
     working_dir: /app/workspace
-    command: sh -c "pnpm build"
+    # workspace-node-modules is a named volume: Docker seeds it from the image
+    # only on first creation, so after a lockfile change it would keep serving
+    # the old install. Re-sync it before building (fast — the store is a volume).
+    # confirmModulesPurge=false: when the volume was filled from a different
+    # branch, pnpm wants to wipe and reinstall it, and without a TTY it aborts
+    # (ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY) instead of asking.
+    command: sh -c "pnpm install --frozen-lockfile --config.confirmModulesPurge=false && pnpm build"
 
   plugin:
     build:
