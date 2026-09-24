@@ -1,0 +1,168 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "description": "This table contains one row for each caller and callee pair. The columns do not yet use the Node graph field names.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 9, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {},
+      "targets": [
+        {
+          "csvContent": "caller,callee,calls\ngateway,api,1200\ngateway,web,800\napi,auth,650\napi,db,900\nauth,db,300\ndb,api,120\nweb,api,450",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "refId": "A",
+          "scenarioId": "csv_content"
+        }
+      ],
+      "title": "Input — flat call table",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "description": "SQL Expression B renames `caller` and `callee` to `source` and `target`. It also creates `id` and converts `count` to numeric `mainstat`.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 9, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "options": {},
+      "targets": [
+        {
+          "csvContent": "caller,callee,calls\ngateway,api,1200\ngateway,web,800\napi,auth,650\napi,db,900\nauth,db,300\ndb,api,120\nweb,api,450",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "hide": true,
+          "refId": "A",
+          "scenarioId": "csv_content"
+        },
+        {
+          "datasource": { "type": "__expr__", "uid": "__expr__" },
+          "expression": "SELECT CONCAT(caller, '->', callee) AS id,\n       caller AS source,\n       callee AS target,\n       CAST(calls AS DECIMAL(20, 4)) AS mainstat\nFROM A",
+          "refId": "B",
+          "type": "sql"
+        }
+      ],
+      "title": "Reshaped — edges frame",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "description": "SQL Expression C combines both endpoint columns into one list of unique nodes. This frame is optional, but it can provide node titles, subtitles, and values.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "options": {},
+      "targets": [
+        {
+          "csvContent": "caller,callee,calls\ngateway,api,1200\ngateway,web,800\napi,auth,650\napi,db,900\nauth,db,300\ndb,api,120\nweb,api,450",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "hide": true,
+          "refId": "A",
+          "scenarioId": "csv_content"
+        },
+        {
+          "datasource": { "type": "__expr__", "uid": "__expr__" },
+          "expression": "SELECT DISTINCT n.id AS id, n.id AS title\nFROM (SELECT caller AS id FROM A\n      UNION\n      SELECT callee AS id FROM A) AS n",
+          "refId": "C",
+          "type": "sql"
+        }
+      ],
+      "title": "Reshaped — nodes frame",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "description": "The core Node graph reads the edges from expression B and the nodes from expression C. Query A stays hidden but still runs because both expressions use it. SQL Expressions must be available on the Grafana server.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 9 },
+      "id": 4,
+      "options": {},
+      "targets": [
+        {
+          "csvContent": "caller,callee,calls\ngateway,api,1200\ngateway,web,800\napi,auth,650\napi,db,900\nauth,db,300\ndb,api,120\nweb,api,450",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "hide": true,
+          "refId": "A",
+          "scenarioId": "csv_content"
+        },
+        {
+          "datasource": { "type": "__expr__", "uid": "__expr__" },
+          "expression": "SELECT CONCAT(caller, '->', callee) AS id,\n       caller AS source,\n       callee AS target,\n       CAST(calls AS DECIMAL(20, 4)) AS mainstat\nFROM A",
+          "refId": "B",
+          "type": "sql"
+        },
+        {
+          "datasource": { "type": "__expr__", "uid": "__expr__" },
+          "expression": "SELECT DISTINCT n.id AS id, n.id AS title\nFROM (SELECT caller AS id FROM A\n      UNION\n      SELECT callee AS id FROM A) AS n",
+          "refId": "C",
+          "type": "sql"
+        }
+      ],
+      "title": "Node graph from the reshaped frames",
+      "type": "nodeGraph"
+    },
+    {
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "description": "The ECharts Relations panel reads the same edges and nodes from expressions B and C. Select `sankey` or `chord` under Chart type to compare layouts. Sankey removes a link when the input contains a cycle.",
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 9 },
+      "id": 5,
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": [] },
+        "tooltip": { "mode": "single" },
+        "seriesType": "graph",
+        "relationsLayout": "circular"
+      },
+      "targets": [
+        {
+          "csvContent": "caller,callee,calls\ngateway,api,1200\ngateway,web,800\napi,auth,650\napi,db,900\nauth,db,300\ndb,api,120\nweb,api,450",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "hide": true,
+          "refId": "A",
+          "scenarioId": "csv_content"
+        },
+        {
+          "datasource": { "type": "__expr__", "uid": "__expr__" },
+          "expression": "SELECT CONCAT(caller, '->', callee) AS id,\n       caller AS source,\n       callee AS target,\n       CAST(calls AS DECIMAL(20, 4)) AS mainstat\nFROM A",
+          "refId": "B",
+          "type": "sql"
+        },
+        {
+          "datasource": { "type": "__expr__", "uid": "__expr__" },
+          "expression": "SELECT DISTINCT n.id AS id, n.id AS title\nFROM (SELECT caller AS id FROM A\n      UNION\n      SELECT callee AS id FROM A) AS n",
+          "refId": "C",
+          "type": "sql"
+        }
+      ],
+      "title": "Same frames — ECharts relations panel",
+      "type": "grafana-relations-panel"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["echarts", "relations", "node-graph", "sql-expressions"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "ECharts Relations — reshaping with SQL Expressions",
+  "uid": "echarts-relations-sql-expressions",
+  "version": 1,
+  "weekStart": ""
+}

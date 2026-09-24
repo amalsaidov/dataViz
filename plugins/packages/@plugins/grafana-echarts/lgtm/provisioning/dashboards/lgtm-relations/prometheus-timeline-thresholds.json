@@ -1,0 +1,449 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Thresholds re-grading on every time-slider stop, on nodes and edges at once. Two ranged PromQL queries against lgtm-prometheus \u2014 the service graph's client/server rates for the edges, the same rate summed per server for the nodes \u2014 with one filtered `labelsToFields` to give each node a field name the wide contract can use as an id. The absolute and percentage panels are the same data under two threshold modes.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# Threshold colors on a timeline\n\nThe time slider selects one timestamp from ranged data. A by-value color scheme recalculates each mark color at that timestamp.\n\nThese panels use two queries:\n\n| Query | Result |\n| --- | --- |\n| A | One edge field for each `client` and `server` pair |\n| B | One node field for each `server` |\n\nQuery A keeps the endpoint labels on each ranged `Value` field. The panel reads those fields as edges without a transformation.\n\nQuery B also returns ranged `Value` fields. Labels to fields uses the `server` label as each node field name.\n\nThe transformation applies only to query B. Both edge and node fields keep their time values for the slider.\n\nEach relations panel enables ad hoc filters. Pin a tooltip to add a filter to the Ad hoc filters variable.\n\n## Compare the panels\n\nThe absolute panel uses fixed request-rate thresholds. The percentage panel compares each field with its own range because Field min/max is on.\n\nThe memory panel uses different measurements for nodes and edges. Node fields use bytes, while edge fields use requests per second.\n\nSome endpoints have no matching node series. The panel derives those nodes, but it cannot apply value thresholds without a node value."
+      },
+      "transparent": true
+    },
+    {
+      "id": 2,
+      "type": "grafana-relations-panel",
+      "title": "Absolute thresholds \u2014 0.1 / 0.5 reqps, nodes and edges",
+      "description": "Both queries return ranged request rates. Query A supplies edge fields, and Query B supplies node fields after Labels to fields.\n\nThe thresholds are green below `0.1 reqps`, orange from `0.1 reqps`, and red from `0.5 reqps`. Move the time slider to recalculate colors from the selected values.\n\nA client-only endpoint has no server series. The panel derives that node, so it keeps a palette color and has no displayed value.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lgtm-prometheus"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "reqps",
+          "decimals": 3,
+          "filterable": true,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.1
+              },
+              {
+                "color": "red",
+                "value": 0.5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "editorMode": "advanced",
+        "seriesType": "graph",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsLayout": "circular",
+        "relationsNodeSize": 22,
+        "relationsShowNodeLabels": true,
+        "relationsShowNodeValues": true,
+        "relationsShowEdgeValues": true,
+        "relationsEdgeArrows": true,
+        "relationsCurveness": 0.12,
+        "relationsFocusAdjacency": true,
+        "relationsTimeSlider": true,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lgtm-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (client, server) (\n  rate(traces_service_graph_request_total{client!=\"\", server!=\"\", server=~\"$server\"}[$__rate_interval])\n)",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{client}}-->{{server}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lgtm-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (server) (\n  rate(traces_service_graph_request_total{client!=\"\", server!=\"\", server=~\"$server\"}[$__rate_interval])\n)",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{server}}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "filter": {
+            "id": "byRefId",
+            "options": "B"
+          },
+          "options": {
+            "mode": "columns",
+            "valueLabel": "server"
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "grafana-relations-panel",
+      "title": "Percentage thresholds \u2014 each mark against its own range",
+      "description": "This panel uses the same request-rate data with percentage thresholds. Field min/max is on, so each field uses its own minimum and maximum.\n\nThe thresholds are green below 50 percent, orange from 50 percent, and red from 80 percent. Move the slider to compare each mark with its own range.\n\nA red mark means that its current value is high for that field. It does not mean that the value exceeds a shared request-rate limit.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lgtm-prometheus"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "reqps",
+          "decimals": 3,
+          "filterable": true,
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "fieldMinMax": true
+        },
+        "overrides": []
+      },
+      "options": {
+        "editorMode": "advanced",
+        "seriesType": "graph",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsLayout": "circular",
+        "relationsNodeSize": 22,
+        "relationsShowNodeLabels": true,
+        "relationsShowNodeValues": true,
+        "relationsShowEdgeValues": true,
+        "relationsEdgeArrows": true,
+        "relationsCurveness": 0.12,
+        "relationsFocusAdjacency": true,
+        "relationsTimeSlider": true,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lgtm-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (client, server) (\n  rate(traces_service_graph_request_total{client!=\"\", server!=\"\", server=~\"$server\"}[$__rate_interval])\n)",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{client}}-->{{server}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lgtm-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (server) (\n  rate(traces_service_graph_request_total{client!=\"\", server!=\"\", server=~\"$server\"}[$__rate_interval])\n)",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{server}}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "filter": {
+            "id": "byRefId",
+            "options": "B"
+          },
+          "options": {
+            "mode": "columns",
+            "valueLabel": "server"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "grafana-relations-panel",
+      "title": "A node value that is not the sum of anything \u2014 memory vs request rate",
+      "description": "Edges show request rate, while node fields show `process_resident_memory_bytes`. The node value is not calculated from the connected edges.\n\nNode fields use byte units and memory thresholds. The `Value` override gives edge fields request-per-second units and request-rate thresholds.\n\nServices without a memory series remain derived nodes. They have no node value, so value thresholds do not set their color.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lgtm-prometheus"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "bytes",
+          "decimals": 0,
+          "filterable": true,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 150000000
+              },
+              {
+                "color": "red",
+                "value": 280000000
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.1
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.5
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "editorMode": "advanced",
+        "seriesType": "graph",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsLayout": "circular",
+        "relationsNodeSize": 22,
+        "relationsShowNodeLabels": true,
+        "relationsShowNodeValues": true,
+        "relationsShowEdgeValues": true,
+        "relationsEdgeArrows": true,
+        "relationsCurveness": 0.12,
+        "relationsFocusAdjacency": true,
+        "relationsTimeSlider": true,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lgtm-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (client, server) (\n  rate(traces_service_graph_request_total{client!=\"\", server!=\"\", server=~\"$server\"}[$__rate_interval])\n)",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{client}}-->{{server}}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lgtm-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (service_name) (\n  process_resident_memory_bytes{service_name=~\"grafana|prometheus|alloy\"}\n)",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{service_name}}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "filter": {
+            "id": "byRefId",
+            "options": "C"
+          },
+          "options": {
+            "mode": "columns",
+            "valueLabel": "service_name"
+          }
+        }
+      ]
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": ["echarts", "relations", "lgtm", "prometheus", "live-data"],
+  "templating": {
+    "list": [
+      {
+        "name": "filters",
+        "label": "Ad hoc filters",
+        "type": "adhoc",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "lgtm-prometheus"
+        },
+        "filters": [],
+        "hide": 0
+      },
+      {
+        "name": "server",
+        "label": "Server",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "lgtm-prometheus"
+        },
+        "definition": "label_values(traces_service_graph_request_total, server)",
+        "query": {
+          "query": "label_values(traces_service_graph_request_total, server)",
+          "refId": "server"
+        },
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "current": {
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "options": [],
+        "sort": 1,
+        "hide": 0
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "ECharts Relations \u2014 time slider thresholds, nodes and edges (LGTM)",
+  "uid": "echarts-lgtm-relations-thresholds",
+  "version": 1,
+  "weekStart": ""
+}

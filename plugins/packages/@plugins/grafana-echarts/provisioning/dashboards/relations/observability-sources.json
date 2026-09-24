@@ -1,0 +1,1714 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Prometheus and Loki responses reshaped into the field-based graph contract with ordinary dashboard transformations. Every fixture reproduces a real datasource frame shape: predictable_csv_wave is a metric query (one frame per series, value field named Value), csv_content is an instant query with Format: Table. One joinByField on Time does the widening; filter.byRefId separates two queries in one panel. The PromQL/LogQL is in every panel description.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# Prometheus and Loki data\n\nPrometheus and Loki range queries usually return one frame for each series. Join by field on `Time` combines those frames into one wide frame.\n\nSet the legend to `source-->target` so each edge field contains both endpoint names. If the query provides `source` and `target` labels, the panel can read the endpoints from those labels.\n\nIf a panel has separate edge and node queries, filter each join by query letter. This keeps the two frame types separate."
+      },
+      "transparent": true
+    },
+    {
+      "id": 2,
+      "type": "text",
+      "title": "Prometheus \u2014 the queries",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Prometheus panels\n\nThe service Graph joins one edge query and one node error-ratio query. Each query uses a separate transformation filtered by query letter.\n\nThe CPU Sankey combines node-to-namespace and namespace-to-workload edges.\n\nThe cross-zone Chord keeps cycles and self-links. Use Chord for a traffic matrix that contains both directions.\n\nThe instant-table Graph creates edge ids with `label_join`. Organize fields and Rows to fields convert its rows into fields."
+      },
+      "transparent": true
+    },
+    {
+      "id": 3,
+      "type": "grafana-relations-panel",
+      "title": "Service dependency map \u2014 graph",
+      "description": "Prometheus query A provides service-call edges. Query B provides the error ratio for each server node. Separate Join by field transformations keep edges and nodes in different frames. Graph keeps the cycle in the service calls.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/-->/"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "palette-classic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gateway-->catalogue"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Traces: gateway \u2192 catalogue",
+                    "url": "/explore?left=%7B%22datasource%22%3A%22gdev-tempo%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22queryType%22%3A%22traceql%22%2C%22query%22%3A%22%7B%20span.client%20%3D%20%5C%22gateway%5C%22%20%26%26%20span.server%20%3D%20%5C%22catalogue%5C%22%20%7D%22%7D%5D%7D",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "seriesType": "graph",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "editorMode": "advanced",
+        "relationsLayout": "force",
+        "relationsEdgeArrows": true,
+        "relationsFocusAdjacency": true,
+        "relationsRepulsion": 260,
+        "relationsEdgeLength": 120,
+        "relationsNodeSize": 18,
+        "relationsLinkColor": "gradient",
+        "reduceOptions": {
+          "calcs": ["mean", "max"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "predictable_csv_wave",
+          "csvWave": [
+            {
+              "timeStep": 300,
+              "valuesCSV": "1480,1520,1495,1560",
+              "labels": "client=frontend, server=gateway",
+              "name": "frontend-->gateway"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "610,640,625,655",
+              "labels": "client=gateway, server=auth",
+              "name": "gateway-->auth"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "820,865,840,890",
+              "labels": "client=gateway, server=catalogue",
+              "name": "gateway-->catalogue"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "410,395,430,445",
+              "labels": "client=gateway, server=cart",
+              "name": "gateway-->cart"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "180,175,192,205",
+              "labels": "client=gateway, server=checkout",
+              "name": "gateway-->checkout"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "300,312,296,325",
+              "labels": "client=auth, server=postgres",
+              "name": "auth-->postgres"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "760,790,775,815",
+              "labels": "client=catalogue, server=postgres",
+              "name": "catalogue-->postgres"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "1220,1180,1265,1310",
+              "labels": "client=cart, server=redis",
+              "name": "cart-->redis"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "165,158,174,188",
+              "labels": "client=checkout, server=payments",
+              "name": "checkout-->payments"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "120,131,126,140",
+              "labels": "client=checkout, server=postgres",
+              "name": "checkout-->postgres"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "44,51,47,58",
+              "labels": "client=payments, server=gateway",
+              "name": "payments-->gateway"
+            }
+          ]
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "predictable_csv_wave",
+          "csvWave": [
+            {
+              "timeStep": 300,
+              "valuesCSV": "0.001,0.002,0.002,0.003",
+              "labels": "server=frontend",
+              "name": "frontend"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "0.003,0.004,0.004,0.005",
+              "labels": "server=gateway",
+              "name": "gateway"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "0.028,0.031,0.030,0.034",
+              "labels": "server=auth",
+              "name": "auth"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "0.007,0.008,0.009,0.008",
+              "labels": "server=catalogue",
+              "name": "catalogue"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "0.011,0.012,0.014,0.013",
+              "labels": "server=cart",
+              "name": "cart"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "0.000,0.000,0.001,0.000",
+              "labels": "server=redis",
+              "name": "redis"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "0.058,0.061,0.064,0.060",
+              "labels": "server=postgres",
+              "name": "postgres"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "0.088,0.092,0.090,0.095",
+              "labels": "server=checkout",
+              "name": "checkout"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "0.044,0.047,0.049,0.046",
+              "labels": "server=payments",
+              "name": "payments"
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          },
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "joinByField",
+          "filter": {
+            "id": "byRefId",
+            "options": "B"
+          },
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "grafana-relations-panel",
+      "title": "Kubernetes CPU requests \u2014 sankey",
+      "description": "Two Prometheus queries provide node-to-namespace and namespace-to-workload edges. Join by field gives each edge a field name. The input has no node frame, so the panel derives nodes from the endpoints.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "suffix:cores",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "seriesType": "sankey",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "editorMode": "advanced",
+        "relationsSankeyOrient": "horizontal",
+        "relationsSankeyNodeAlign": "justify",
+        "relationsSankeyNodeWidth": 18,
+        "relationsSankeyNodeGap": 10,
+        "relationsSankeyLinkOpacity": 0.45,
+        "relationsShowNodeValues": false,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "predictable_csv_wave",
+          "csvWave": [
+            {
+              "timeStep": 300,
+              "valuesCSV": "4",
+              "labels": "node=node-1, namespace=platform",
+              "name": "node-1-->platform"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "8",
+              "labels": "node=node-1, namespace=ecommerce",
+              "name": "node-1-->ecommerce"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "3",
+              "labels": "node=node-1, namespace=observability",
+              "name": "node-1-->observability"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "2",
+              "labels": "node=node-2, namespace=platform",
+              "name": "node-2-->platform"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "6",
+              "labels": "node=node-2, namespace=ecommerce",
+              "name": "node-2-->ecommerce"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "5",
+              "labels": "node=node-2, namespace=observability",
+              "name": "node-2-->observability"
+            }
+          ]
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "predictable_csv_wave",
+          "csvWave": [
+            {
+              "timeStep": 300,
+              "valuesCSV": "3.5",
+              "labels": "namespace=platform, workload=auth-api",
+              "name": "platform-->auth-api"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "2.5",
+              "labels": "namespace=platform, workload=config-svc",
+              "name": "platform-->config-svc"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "5",
+              "labels": "namespace=ecommerce, workload=storefront",
+              "name": "ecommerce-->storefront"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "4.5",
+              "labels": "namespace=ecommerce, workload=checkout-api",
+              "name": "ecommerce-->checkout-api"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "4.5",
+              "labels": "namespace=ecommerce, workload=search",
+              "name": "ecommerce-->search"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "5.5",
+              "labels": "namespace=observability, workload=prometheus",
+              "name": "observability-->prometheus"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "2.5",
+              "labels": "namespace=observability, workload=loki",
+              "name": "observability-->loki"
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "grafana-relations-panel",
+      "title": "Cross-AZ request matrix \u2014 chord",
+      "description": "A Prometheus query groups Istio requests by source and destination zone. Chord keeps both directions and self-links. Ribbon width shows the request rate.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "seriesType": "chord",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "editorMode": "advanced",
+        "relationsChordPadAngle": 4,
+        "relationsChordLinkOpacity": 0.5,
+        "relationsFocusAdjacency": true,
+        "relationsLinkColor": "source",
+        "reduceOptions": {
+          "calcs": ["mean"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "predictable_csv_wave",
+          "csvWave": [
+            {
+              "timeStep": 300,
+              "valuesCSV": "8200",
+              "labels": "source_zone=eu-west-1a, destination_zone=eu-west-1a",
+              "name": "eu-west-1a-->eu-west-1a"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "1450",
+              "labels": "source_zone=eu-west-1a, destination_zone=eu-west-1b",
+              "name": "eu-west-1a-->eu-west-1b"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "1120",
+              "labels": "source_zone=eu-west-1a, destination_zone=eu-west-1c",
+              "name": "eu-west-1a-->eu-west-1c"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "1310",
+              "labels": "source_zone=eu-west-1b, destination_zone=eu-west-1a",
+              "name": "eu-west-1b-->eu-west-1a"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "7600",
+              "labels": "source_zone=eu-west-1b, destination_zone=eu-west-1b",
+              "name": "eu-west-1b-->eu-west-1b"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "980",
+              "labels": "source_zone=eu-west-1b, destination_zone=eu-west-1c",
+              "name": "eu-west-1b-->eu-west-1c"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "1040",
+              "labels": "source_zone=eu-west-1c, destination_zone=eu-west-1a",
+              "name": "eu-west-1c-->eu-west-1a"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "890",
+              "labels": "source_zone=eu-west-1c, destination_zone=eu-west-1b",
+              "name": "eu-west-1c-->eu-west-1b"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "6900",
+              "labels": "source_zone=eu-west-1c, destination_zone=eu-west-1c",
+              "name": "eu-west-1c-->eu-west-1c"
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "grafana-relations-panel",
+      "title": "The table route \u2014 graph, instant + label_join",
+      "description": "This Prometheus instant-table query creates an edge `id` with `label_join`. Organize fields and Rows to fields convert each row into an edge field. The `source` and `target` labels provide the endpoints.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "seriesType": "graph",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "editorMode": "advanced",
+        "relationsLayout": "force",
+        "relationsEdgeArrows": true,
+        "relationsFocusAdjacency": true,
+        "relationsRepulsion": 260,
+        "relationsEdgeLength": 120,
+        "relationsNodeSize": 18,
+        "relationsLinkColor": "gradient",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "Time,client,id,server,Value\n1754400000000,frontend,frontend:gateway,gateway,1560\n1754400000000,gateway,gateway:auth,auth,655\n1754400000000,gateway,gateway:catalogue,catalogue,890\n1754400000000,gateway,gateway:cart,cart,445\n1754400000000,gateway,gateway:checkout,checkout,205\n1754400000000,auth,auth:postgres,postgres,325\n1754400000000,catalogue,catalogue:postgres,postgres,815\n1754400000000,cart,cart:redis,redis,1310\n1754400000000,checkout,checkout:payments,payments,188\n1754400000000,checkout,checkout:postgres,postgres,140\n1754400000000,payments,payments:gateway,gateway,58"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "id": 0,
+              "Value": 1,
+              "client": 2,
+              "server": 3
+            },
+            "renameByName": {
+              "client": "source",
+              "server": "target"
+            }
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "text",
+      "title": "Loki \u2014 the queries",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Loki panels\n\nLogQL metric queries return the same multi-frame shape as Prometheus range queries. Join by field on `Time` uses the legend names as edge field names.\n\nThe service Graph shows calls between services from structured logs. The log-volume Sankey combines cluster-to-namespace and namespace-to-level flows.\n\nThe page-transition Chord keeps forward links, back links, and self-links. The parallel-edge Graph groups by `protocol`, so HTTP and gRPC can connect the same nodes."
+      },
+      "transparent": true
+    },
+    {
+      "id": 8,
+      "type": "grafana-relations-panel",
+      "title": "Service call graph from structured logs \u2014 graph",
+      "description": "A LogQL metric query counts calls between services. Join by field converts the series into edge fields. Sum shows the total count over the selected time range.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 42
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "seriesType": "graph",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "editorMode": "advanced",
+        "relationsLayout": "circular",
+        "relationsEdgeArrows": true,
+        "relationsFocusAdjacency": true,
+        "relationsNodeSize": 20,
+        "relationsCurveness": 0.15,
+        "relationsLinkColor": "gradient",
+        "reduceOptions": {
+          "calcs": ["sum"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "predictable_csv_wave",
+          "csvWave": [
+            {
+              "timeStep": 300,
+              "valuesCSV": "820,910,865,940",
+              "labels": "service=api, upstream=orders-worker",
+              "name": "api-->orders-worker"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "790,880,835,905",
+              "labels": "service=orders-worker, upstream=inventory",
+              "name": "orders-worker-->inventory"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "410,455,430,470",
+              "labels": "service=orders-worker, upstream=billing",
+              "name": "orders-worker-->billing"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "405,450,428,466",
+              "labels": "service=billing, upstream=ledger",
+              "name": "billing-->ledger"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "300,340,318,352",
+              "labels": "service=inventory, upstream=warehouse",
+              "name": "inventory-->warehouse"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "42,61,50,74",
+              "labels": "service=warehouse, upstream=orders-worker",
+              "name": "warehouse-->orders-worker"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "1610,1720,1655,1780",
+              "labels": "service=api, upstream=search",
+              "name": "api-->search"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "1590,1700,1640,1762",
+              "labels": "service=search, upstream=catalogue-index",
+              "name": "search-->catalogue-index"
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "grafana-relations-panel",
+      "title": "Log volume by cluster \u2192 namespace \u2192 level \u2014 sankey",
+      "description": "Two LogQL queries provide cluster-to-namespace and namespace-to-level edges. Ribbon width shows the log count. The input has no node frame, so the panel derives nodes from the endpoints.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 42
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "seriesType": "sankey",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "editorMode": "advanced",
+        "relationsSankeyOrient": "horizontal",
+        "relationsSankeyNodeAlign": "justify",
+        "relationsSankeyNodeWidth": 18,
+        "relationsSankeyNodeGap": 10,
+        "relationsSankeyLinkOpacity": 0.45,
+        "relationsShowNodeValues": false,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "predictable_csv_wave",
+          "csvWave": [
+            {
+              "timeStep": 300,
+              "valuesCSV": "41000",
+              "labels": "cluster=prod-eu, namespace=ecommerce",
+              "name": "prod-eu-->ecommerce"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "11000",
+              "labels": "cluster=prod-eu, namespace=platform",
+              "name": "prod-eu-->platform"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "15000",
+              "labels": "cluster=prod-eu, namespace=observability",
+              "name": "prod-eu-->observability"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "32000",
+              "labels": "cluster=prod-us, namespace=ecommerce",
+              "name": "prod-us-->ecommerce"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "7000",
+              "labels": "cluster=prod-us, namespace=platform",
+              "name": "prod-us-->platform"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "11000",
+              "labels": "cluster=prod-us, namespace=observability",
+              "name": "prod-us-->observability"
+            }
+          ]
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "predictable_csv_wave",
+          "csvWave": [
+            {
+              "timeStep": 300,
+              "valuesCSV": "64000",
+              "labels": "namespace=ecommerce, level=info",
+              "name": "ecommerce-->info"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "7200",
+              "labels": "namespace=ecommerce, level=warn",
+              "name": "ecommerce-->warn"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "1800",
+              "labels": "namespace=ecommerce, level=error",
+              "name": "ecommerce-->error"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "15600",
+              "labels": "namespace=platform, level=info",
+              "name": "platform-->info"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "2100",
+              "labels": "namespace=platform, level=warn",
+              "name": "platform-->warn"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "300",
+              "labels": "namespace=platform, level=error",
+              "name": "platform-->error"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "24100",
+              "labels": "namespace=observability, level=info",
+              "name": "observability-->info"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "1600",
+              "labels": "namespace=observability, level=warn",
+              "name": "observability-->warn"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "300",
+              "labels": "namespace=observability, level=error",
+              "name": "observability-->error"
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "grafana-relations-panel",
+      "title": "Page-transition matrix from ingress access logs \u2014 chord",
+      "description": "A LogQL metric query groups ingress logs by referrer path and destination path. Chord keeps forward links, back links, and the `/home` self-link.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 54
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "seriesType": "chord",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "editorMode": "advanced",
+        "relationsChordPadAngle": 4,
+        "relationsChordLinkOpacity": 0.5,
+        "relationsFocusAdjacency": true,
+        "relationsLinkColor": "source",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "predictable_csv_wave",
+          "csvWave": [
+            {
+              "timeStep": 300,
+              "valuesCSV": "4200",
+              "labels": "referer_path=/home, path=/search",
+              "name": "/home-->/search"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "1800",
+              "labels": "referer_path=/home, path=/product",
+              "name": "/home-->/product"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "950",
+              "labels": "referer_path=/home, path=/home",
+              "name": "/home-->/home"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "3600",
+              "labels": "referer_path=/search, path=/product",
+              "name": "/search-->/product"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "1500",
+              "labels": "referer_path=/product, path=/cart",
+              "name": "/product-->/cart"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "1100",
+              "labels": "referer_path=/product, path=/search",
+              "name": "/product-->/search"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "900",
+              "labels": "referer_path=/cart, path=/checkout",
+              "name": "/cart-->/checkout"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "620",
+              "labels": "referer_path=/cart, path=/product",
+              "name": "/cart-->/product"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "540",
+              "labels": "referer_path=/checkout, path=/home",
+              "name": "/checkout-->/home"
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "grafana-relations-panel",
+      "title": "Parallel edges via label_format \u2014 graph",
+      "description": "The LogQL query creates `source` and `target` labels from JSON fields and groups by `protocol`. HTTP and gRPC therefore appear as separate edges between the same nodes.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 54
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gateway->api (grpc)"
+            },
+            "properties": [
+              {
+                "id": "custom.lineType",
+                "value": "dashed"
+              },
+              {
+                "id": "custom.curveness",
+                "value": 0.3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "api->cart (grpc)"
+            },
+            "properties": [
+              {
+                "id": "custom.lineType",
+                "value": "dashed"
+              },
+              {
+                "id": "custom.curveness",
+                "value": 0.3
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "seriesType": "graph",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "editorMode": "advanced",
+        "relationsLayout": "force",
+        "relationsEdgeArrows": true,
+        "relationsFocusAdjacency": true,
+        "relationsRepulsion": 320,
+        "relationsEdgeLength": 160,
+        "relationsNodeSize": 22,
+        "relationsLinkColor": "gradient",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "predictable_csv_wave",
+          "csvWave": [
+            {
+              "timeStep": 300,
+              "valuesCSV": "1450,1480,1505,1462",
+              "labels": "source=gateway, target=api, protocol=http",
+              "name": "gateway->api (http)"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "620,640,610,655",
+              "labels": "source=gateway, target=api, protocol=grpc",
+              "name": "gateway->api (grpc)"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "380,392,405,388",
+              "labels": "source=api, target=cart, protocol=http",
+              "name": "api->cart (http)"
+            },
+            {
+              "timeStep": 300,
+              "valuesCSV": "210,204,222,215",
+              "labels": "source=api, target=cart, protocol=grpc",
+              "name": "api->cart (grpc)"
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "text",
+      "title": "PR rollout by wave \u2014 the frame, and whether it suits this family",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 66
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### Rollout examples\n\nThe rollout query returns one row for each deployment wave. Rows to fields converts the rows into node fields. Field labels keep the version and estimated completion time.\n\nThe Graph uses a second query for edges between consecutive waves. Fixed positions show the rollout from left to right. A threshold colors each wave by `is_in_build`.\n\nThe Sankey connects each wave to its current version. Ribbon width shows how many waves use each version. Derived version nodes have no measured value."
+      },
+      "transparent": true
+    },
+    {
+      "id": 13,
+      "type": "grafana-relations-panel",
+      "title": "PR rollout by wave \u2014 graph",
+      "description": "Each deployment wave is a node. Fixed positions show the rollout from left to right. A threshold on `is_in_build` colors each wave. Select a node to see its version and estimated completion time.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 72
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "not in build",
+                  "index": 0
+                },
+                "1": {
+                  "text": "in build",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/-->/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "palette-classic"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": []
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dev0"
+            },
+            "properties": [
+              {
+                "id": "custom.fixedX",
+                "value": 0
+              },
+              {
+                "id": "custom.fixedY",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dev1"
+            },
+            "properties": [
+              {
+                "id": "custom.fixedX",
+                "value": 110
+              },
+              {
+                "id": "custom.fixedY",
+                "value": 46
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ops"
+            },
+            "properties": [
+              {
+                "id": "custom.fixedX",
+                "value": 220
+              },
+              {
+                "id": "custom.fixedY",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "prod0"
+            },
+            "properties": [
+              {
+                "id": "custom.fixedX",
+                "value": 330
+              },
+              {
+                "id": "custom.fixedY",
+                "value": 46
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "prod1"
+            },
+            "properties": [
+              {
+                "id": "custom.fixedX",
+                "value": 440
+              },
+              {
+                "id": "custom.fixedY",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "prod2"
+            },
+            "properties": [
+              {
+                "id": "custom.fixedX",
+                "value": 550
+              },
+              {
+                "id": "custom.fixedY",
+                "value": 46
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "prod3"
+            },
+            "properties": [
+              {
+                "id": "custom.fixedX",
+                "value": 660
+              },
+              {
+                "id": "custom.fixedY",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "prod4"
+            },
+            "properties": [
+              {
+                "id": "custom.fixedX",
+                "value": 770
+              },
+              {
+                "id": "custom.fixedY",
+                "value": 46
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "seriesType": "graph",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "editorMode": "advanced",
+        "relationsLayout": "none",
+        "relationsEdgeArrows": true,
+        "relationsFocusAdjacency": true,
+        "relationsNodeSize": 26,
+        "relationsShowNodeValues": true,
+        "relationsLinkColor": "gradient",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "stackwave,wavev2,is_in_build,version,pr_build_number,build_number,wave_idx,eta_epoch_ms\n,dev0,true,13.2.0-30986922018,30866803359,30986922018,0,\n,dev1,true,13.2.0-30986922018,30866803359,30986922018,1,\n,ops,true,13.2.0-30890958429,30866803359,30890958429,2,\n,prod0,false,13.2.0-30631161035,30866803359,30631161035,3,1786005900000\n,prod1,false,13.2.0-30616302309,30866803359,30616302309,4,1786093200000\n<< Wave for a02,prod2,false,13.2.0-30616302309,30866803359,30616302309,5,1786180500000\n,prod3,false,13.2.0-30616302309,30866803359,30616302309,6,1786267800000\n,prod4,false,13.2.0-30537469096,30866803359,30537469096,7,1786355100000"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "id,source,target,step\ndev0-->dev1,dev0,dev1,1\ndev1-->ops,dev1,ops,1\nops-->prod0,ops,prod0,1\nprod0-->prod1,prod0,prod1,1\nprod1-->prod2,prod1,prod2,1\nprod2-->prod3,prod2,prod3,1\nprod3-->prod4,prod3,prod4,1"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "fields": {},
+            "conversions": [
+              {
+                "targetField": "is_in_build",
+                "destinationType": "number"
+              }
+            ]
+          },
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "stackwave": true
+            },
+            "indexByName": {
+              "wavev2": 0,
+              "is_in_build": 1,
+              "version": 2,
+              "build_number": 3,
+              "wave_idx": 4,
+              "eta_epoch_ms": 5,
+              "pr_build_number": 6
+            },
+            "renameByName": {}
+          },
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {},
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "filter": {
+            "id": "byRefId",
+            "options": "B"
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "grafana-relations-panel",
+      "title": "Fleet version spread \u2014 sankey",
+      "description": "Each ribbon connects a deployment wave to its current version. Ribbon width shows how many waves use a version. Wave color shows whether its build contains the selected change.",
+      "datasource": {
+        "type": "grafana-testdata-datasource"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 72
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "not in build",
+                  "index": 0
+                },
+                "1": {
+                  "text": "in build",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/-->/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "palette-classic"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": []
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "seriesType": "sankey",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "editorMode": "advanced",
+        "relationsSankeyOrient": "horizontal",
+        "relationsSankeyNodeAlign": "left",
+        "relationsSankeyNodeWidth": 16,
+        "relationsSankeyNodeGap": 12,
+        "relationsSankeyLinkOpacity": 0.5,
+        "relationsShowNodeValues": false,
+        "relationsLinkColor": "gradient",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "stackwave,wavev2,is_in_build,version,pr_build_number,build_number,wave_idx,eta_epoch_ms\n,dev0,true,13.2.0-30986922018,30866803359,30986922018,0,\n,dev1,true,13.2.0-30986922018,30866803359,30986922018,1,\n,ops,true,13.2.0-30890958429,30866803359,30890958429,2,\n,prod0,false,13.2.0-30631161035,30866803359,30631161035,3,1786005900000\n,prod1,false,13.2.0-30616302309,30866803359,30616302309,4,1786093200000\n<< Wave for a02,prod2,false,13.2.0-30616302309,30866803359,30616302309,5,1786180500000\n,prod3,false,13.2.0-30616302309,30866803359,30616302309,6,1786267800000\n,prod4,false,13.2.0-30537469096,30866803359,30537469096,7,1786355100000"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-testdata-datasource"
+          },
+          "scenarioId": "csv_content",
+          "csvContent": "id,source,target,waves\ndev0-->13.2.0-30986922018,dev0,13.2.0-30986922018,1\ndev1-->13.2.0-30986922018,dev1,13.2.0-30986922018,1\nops-->13.2.0-30890958429,ops,13.2.0-30890958429,1\nprod0-->13.2.0-30631161035,prod0,13.2.0-30631161035,1\nprod1-->13.2.0-30616302309,prod1,13.2.0-30616302309,1\nprod2-->13.2.0-30616302309,prod2,13.2.0-30616302309,1\nprod3-->13.2.0-30616302309,prod3,13.2.0-30616302309,1\nprod4-->13.2.0-30537469096,prod4,13.2.0-30537469096,1"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "fields": {},
+            "conversions": [
+              {
+                "targetField": "is_in_build",
+                "destinationType": "number"
+              }
+            ]
+          },
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "stackwave": true
+            },
+            "indexByName": {
+              "wavev2": 0,
+              "is_in_build": 1,
+              "version": 2,
+              "build_number": 3,
+              "wave_idx": 4,
+              "eta_epoch_ms": 5,
+              "pr_build_number": 6
+            },
+            "renameByName": {}
+          },
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {},
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "filter": {
+            "id": "byRefId",
+            "options": "B"
+          },
+          "options": {}
+        }
+      ]
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["echarts", "relations", "prometheus", "loki", "transformations"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "ECharts Relations \u2014 Prometheus & Loki sources",
+  "uid": "echarts-relations-observability",
+  "version": 1,
+  "weekStart": ""
+}

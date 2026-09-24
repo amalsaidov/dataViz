@@ -1,0 +1,122 @@
+# Revived from grafana-echarts' own .github/workflows/bundle-stats.yml, which
+# is inert where it lives (GitHub Actions only discovers workflows at the repo
+# root).
+#
+# grafana/plugin-actions/bundle-size can't be used as-is here: its install step
+# runs `pnpm install` at the repo root, ignoring its working-directory input,
+# and the repo root has no package.json (the pnpm workspace is plugins/). So
+# this reproduces the action's steps with pnpm scoped to the workspace, and
+# calls the action's own report script, checked out at the same pinned commit.
+name: echarts bundle stats
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'plugins/packages/@plugins/grafana-echarts/**'
+      - 'plugins/pnpm-lock.yaml'
+      - 'plugins/pnpm-workspace.yaml'
+      - '.github/workflows/echarts-bundle-stats.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'plugins/packages/@plugins/grafana-echarts/**'
+      - 'plugins/pnpm-lock.yaml'
+      - 'plugins/pnpm-workspace.yaml'
+      - '.github/workflows/echarts-bundle-stats.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PACKAGE_DIR: plugins/packages/@plugins/grafana-echarts
+  # Namespaced per plugin: the action looks up the latest artifact by name
+  # repo-wide, so a generic name would collide with other plugins' stats.
+  MAIN_STATS_ARTIFACT: grafana-echarts-main-branch-stats
+  THRESHOLD: '5'
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Check out bundle-size report script
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: grafana/plugin-actions
+          ref: a66a1c96cdbb176f9cccf10cf23593e250db7cce # bundle-size/v1.1.0
+          path: .plugin-actions
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          package_json_file: plugins/package.json
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: plugins/.nvmrc
+          cache: 'pnpm'
+          cache-dependency-path: plugins/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: plugins
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build main branch stats
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: pnpm run build --profile --json stats.json
+
+      - name: Build PR stats
+        if: github.event_name == 'pull_request'
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: pnpm run build --profile --json pr-stats.json
+
+      - name: Upload main branch stats.json artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ env.MAIN_STATS_ARTIFACT }}
+          path: ${{ env.PACKAGE_DIR }}/stats.json
+          overwrite: true
+
+      - name: Get main stats artifact run-id
+        if: github.event_name == 'pull_request'
+        id: main-stats-info
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          MAIN_STATS_RUN_ID=$(gh api "/repos/${REPO}/actions/artifacts?name=${MAIN_STATS_ARTIFACT}" --jq ".artifacts | map(select(.name == \"${MAIN_STATS_ARTIFACT}\")) | sort_by(.created_at) | reverse | .[0].workflow_run.id")
+          echo "run-id=${MAIN_STATS_RUN_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Download main branch stats artifact
+        if: github.event_name == 'pull_request' && steps.main-stats-info.outputs.run-id != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: ${{ env.MAIN_STATS_ARTIFACT }}
+          path: ${{ env.PACKAGE_DIR }}
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.main-stats-info.outputs.run-id }}
+
+      - name: Generate stats report and comment on PR
+        if: github.event_name == 'pull_request' && steps.main-stats-info.outputs.run-id != ''
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const script = require(`${process.env.GITHUB_WORKSPACE}/.plugin-actions/bundle-size/index.js`);
+            const { THRESHOLD, PACKAGE_DIR } = process.env;
+            await script({ github, context, core }, THRESHOLD, `${PACKAGE_DIR}/stats.json`, `${PACKAGE_DIR}/pr-stats.json`, PACKAGE_DIR);
+
+      - name: Warn if main stats artifact could not be found
+        if: github.event_name == 'pull_request' && steps.main-stats-info.outputs.run-id == ''
+        run: echo "::warning title=Main stats artifact could not be found::Run this workflow manually on main (workflow_dispatch) or push an echarts change to main to generate it."

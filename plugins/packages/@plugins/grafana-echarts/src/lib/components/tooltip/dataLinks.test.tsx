@@ -1,0 +1,276 @@
+import { type DataFrame, FieldType, toDataFrame } from '@grafana/data';
+import { screen } from '@testing-library/react';
+import { type EChartsType } from 'echarts';
+import { type SeriesType } from 'editor/types';
+import { type ChartFamily } from 'lib/echarts/charts/autoSeriesType';
+
+import {
+  clickAt,
+  dispatch,
+  hoverAndPin,
+  markPoint,
+  renderTooltipPanel,
+  tooltipEl,
+  tooltipText,
+} from 'test/tooltipPointer';
+import { type PanelOptions } from 'types';
+
+import { GRAPH_EDGES_WIDE, GRAPH_NODES_WIDE } from 'lib/echarts/relations/converters/contract';
+/**
+ * End-to-end cover for the pinned tooltip's data-link footer, driven through
+ * zrender's real pointer pipeline so ECharts' own hit-testing and element
+ * handlers run — the layer where these bugs actually lived. Each family resolves
+ * a hovered item back to a source `Field` + row differently (see
+ * `lib/echarts/tooltip/model`), and a mistake there is invisible to unit tests
+ * on the model: the footer simply never renders.
+ */
+
+const LINK_TITLE = 'MyLink';
+
+/**
+ * Give `fieldName` a resolvable data link. Set directly on the field rather than
+ * through a `links` field-config override: `applyFieldOverrides` resolves
+ * override properties through Grafana's field-config registry, which plugins
+ * cannot populate in tests (see `test/panel.tsx`).
+ */
+const withLink = (frame: DataFrame, fieldName: string, title = LINK_TITLE): DataFrame => {
+  const field = frame.fields.find((candidate) => candidate.name === fieldName);
+  if (!field) {
+    throw new Error(`No field named ${fieldName}`);
+  }
+  field.config = { ...field.config, links: [{ title, url: 'http://example.com' }] };
+  field.getLinks = () => [{ title, href: 'http://example.com', target: '_self', origin: field }];
+  return frame;
+};
+
+const renderPanel = (
+  frames: DataFrame[],
+  seriesType: SeriesType,
+  family: ChartFamily,
+  options?: Partial<PanelOptions>
+) => renderTooltipPanel({ frames, seriesType, family, options });
+
+const categoryFrame = () =>
+  withLink(
+    toDataFrame({
+      fields: [
+        { name: 'category', type: FieldType.string, values: ['Sales', 'Admin', 'IT'] },
+        { name: 'value', type: FieldType.number, values: [43, 10, 30] },
+      ],
+    }),
+    'value'
+  );
+
+/** Two candidate points that hover *different* items, for re-pin coverage. */
+const findTwoItems = async (chart: EChartsType, points: Array<[number, number]>) => {
+  const found: Array<{ point: [number, number]; text: string }> = [];
+  for (const point of points) {
+    await dispatch(chart, 'mousemove', point[0], point[1]);
+    const text = tooltipText();
+    if (text !== '' && !found.some((entry) => entry.text === text)) {
+      found.push({ point, text });
+      if (found.length === 2) {
+        return found;
+      }
+    }
+  }
+  throw new Error('Could not hover two distinct items');
+};
+
+describe('re-pinning', () => {
+  it('moves an existing pin onto the newly clicked point, content and position', async () => {
+    const chart = await renderPanel([categoryFrame()], 'treemap', 'hierarchy');
+    const [first, second] = await findTwoItems(chart, [
+      [60, 60],
+      [200, 120],
+      [330, 60],
+      [330, 200],
+      [60, 200],
+    ]);
+
+    await dispatch(chart, 'mousemove', first.point[0], first.point[1]);
+    await clickAt(chart, first.point[0], first.point[1]);
+    const pinnedText = tooltipText();
+    const pinnedTransform = tooltipEl()?.style.transform;
+    expect(pinnedText).toContain(first.text);
+
+    // Click a different item while still pinned. Without re-pinning, a pinned
+    // tooltip freezes both content and position, so it would keep describing —
+    // and sit beside — the first point.
+    await dispatch(chart, 'mousemove', second.point[0], second.point[1]);
+    await clickAt(chart, second.point[0], second.point[1]);
+
+    expect(tooltipText()).toContain(second.text);
+    expect(tooltipEl()?.style.transform).not.toBe(pinnedTransform);
+  });
+});
+
+describe('pinned tooltip data links', () => {
+  it('resolves a treemap node back to its source row', async () => {
+    const chart = await renderPanel([categoryFrame()], 'treemap', 'hierarchy');
+    // Tiles fill the plot, so the centre always lands on one.
+    await hoverAndPin(chart, [[200, 120]]);
+
+    expect(screen.getByText(LINK_TITLE)).toBeInTheDocument();
+  });
+
+  it('resolves a pie slice back to its source row', async () => {
+    const chart = await renderPanel([categoryFrame()], 'pie', 'part-to-whole', {
+      reduceOptions: { calcs: [], values: true },
+    });
+    await hoverAndPin(chart, [
+      [200, 100],
+      [230, 110],
+      [170, 90],
+    ]);
+
+    expect(screen.getByText(LINK_TITLE)).toBeInTheDocument();
+  });
+
+  it('resolves a matrix heatmap cell back to its own column field and row', async () => {
+    const frame = withLink(
+      toDataFrame({
+        fields: [
+          { name: 'Service', type: FieldType.string, values: ['API', 'Web'] },
+          { name: 'Mon', type: FieldType.number, values: [12, 8] },
+          // Only the second column carries the link, so a hit proves the cell
+          // resolved its *own* column rather than the first.
+          { name: 'Tue', type: FieldType.number, values: [19, 11] },
+        ],
+      }),
+      'Tue'
+    );
+    const chart = await renderPanel([frame], 'heatmap', 'heatmap', { heatmapLayout: 'matrix' });
+    // Right-hand column (Tue), scanning down for a cell.
+    await hoverAndPin(chart, [
+      [280, 80],
+      [280, 140],
+      [240, 80],
+      [240, 140],
+    ]);
+
+    expect(screen.getByText(LINK_TITLE)).toBeInTheDocument();
+  });
+
+  /**
+   * A link on node `a` must not appear on node `b`. An edge must resolve its own
+   * field instead of an endpoint field. These assertions prevent both regressions.
+   */
+  describe('relations', () => {
+    const NODE_LINK = 'NodeLink';
+    const EDGE_LINK = 'EdgeLink';
+
+    /**
+     * Wide frames, written directly rather than converted: the row->field
+     * transformation the plugin registers runs in the host's pipeline, which the
+     * test harness does not have. Only `a` and `e2` carry a link.
+     */
+    const graphFrames = (): DataFrame[] => [
+      withLink(
+        toDataFrame({
+          name: 'nodes',
+          meta: { type: GRAPH_NODES_WIDE },
+          fields: [
+            { name: 'a', type: FieldType.number, values: [12] },
+            { name: 'b', type: FieldType.number, values: [8] },
+            { name: 'c', type: FieldType.number, values: [3] },
+          ],
+        }),
+        'a',
+        NODE_LINK
+      ),
+      withLink(
+        toDataFrame({
+          name: 'edges',
+          meta: { type: GRAPH_EDGES_WIDE },
+          fields: [
+            { name: 'e1', type: FieldType.number, labels: { source: 'a', target: 'b' }, values: [5] },
+            { name: 'e2', type: FieldType.number, labels: { source: 'b', target: 'c' }, values: [7] },
+          ],
+        }),
+        'e2',
+        EDGE_LINK
+      ),
+    ];
+
+    const pinMark = async (chart: EChartsType, dataType: 'node' | 'edge', dataIndex: number) => {
+      const [x, y] = markPoint(chart, dataType, dataIndex);
+      await dispatch(chart, 'mousemove', x, y);
+      expect(tooltipText()).not.toBe('');
+      await clickAt(chart, x, y);
+    };
+
+    // Circular layout so node positions are deterministic (the force simulation is
+    // not), and a wide symbol so the pointer lands inside it. Animation off because
+    // the family defaults it *on* and `waitForFinished` would then wait out the whole
+    // load animation before the first hover — see `RELATIONS_ANIMATION_ENABLED_DEFAULT`.
+    const staticOptions = { animation: { enabled: false } };
+    const renderGraph = () =>
+      renderPanel(graphFrames(), 'graph', 'relations', {
+        ...staticOptions,
+        relationsLayout: 'circular',
+        relationsNodeSize: 30,
+      });
+
+    it('resolves a node back to its own field, and leaves the other nodes linkless', async () => {
+      const chart = await renderGraph();
+
+      await pinMark(chart, 'node', 0);
+      expect(screen.getByText(NODE_LINK)).toBeInTheDocument();
+
+      // Gap 1: in the row form the same `mainstat` column backs every node, so this
+      // link would appear here too.
+      await pinMark(chart, 'node', 1);
+      expect(screen.queryByText(NODE_LINK)).not.toBeInTheDocument();
+    });
+
+    it('resolves an edge back to the edge’s own field, not an endpoint’s', async () => {
+      const chart = await renderGraph();
+
+      await pinMark(chart, 'edge', 1);
+      expect(screen.getByText(EDGE_LINK)).toBeInTheDocument();
+      // Gaps 2 and 3: the edge resolves neither the node frame's field nor the
+      // other edge's.
+      expect(screen.queryByText(NODE_LINK)).not.toBeInTheDocument();
+
+      await pinMark(chart, 'edge', 0);
+      expect(screen.queryByText(EDGE_LINK)).not.toBeInTheDocument();
+    });
+
+    it('carries the same resolution into the sankey variant', async () => {
+      // Sankey lays the identical model out as ribbons and drops the `graph`-only
+      // layout option, so this is the cheapest check that the wiring is per-family
+      // rather than per-variant.
+      const chart = await renderPanel(graphFrames(), 'sankey', 'relations', staticOptions);
+
+      await pinMark(chart, 'node', 0);
+
+      expect(screen.getByText(NODE_LINK)).toBeInTheDocument();
+    });
+  });
+
+  it('resolves a binned heatmap cell back to its source field and row', async () => {
+    // The default layout: cells are a custom series on continuous axes, a
+    // different resolution path from the matrix layout above.
+    const frame = withLink(
+      toDataFrame({
+        fields: [
+          { name: 'time', type: FieldType.time, values: [1783137094497, 1783140694497, 1783144294497] },
+          { name: 'A', type: FieldType.number, values: [3, 5, 8] },
+          { name: 'B', type: FieldType.number, values: [9, 4, 6] },
+        ],
+      }),
+      'B'
+    );
+    const chart = await renderPanel([frame], 'heatmap', 'heatmap');
+    await hoverAndPin(chart, [
+      [200, 80],
+      [200, 140],
+      [120, 80],
+      [120, 140],
+      [280, 100],
+    ]);
+
+    expect(screen.getByText(LINK_TITLE)).toBeInTheDocument();
+  });
+});

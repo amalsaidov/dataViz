@@ -91,6 +91,54 @@ Do not assume `biome.json` / `.shared/` conventions apply inside this package un
 
 `src/external/**` (vendored) and `src/locales/**` (Crowdin-generated) are excluded from Prettier via `.prettierignore`, matching eslint's existing `src/external/**` ignore.
 
+### `grafana-echarts` is a special case too
+
+Imported wholesale from `gtk-grafana/grafana-echarts` via the same `git filter-repo` procedure, full
+upstream history preserved. Like clock-panel it keeps its **own toolchain** (ESLint + Prettier, own
+`webpack.config.ts` at the package root, own `tsconfig.json` extending `.config/tsconfig.json`,
+Playwright e2e) and is **not** wired into root `plugins/tsconfig.json` references — its
+`.config/tsconfig.json` is create-plugin-scaffolded with `declaration: false` and no `composite`,
+same blocker as clock-panel.
+
+Differences worth knowing:
+
+- **It is an `app` plugin** (`type: app`, id `grafana-echarts-app`), not a panel. Grafana requires the
+  plugin directory name to equal the plugin id, so the dev-stack mount is
+  `echarts-app-dist:/var/lib/grafana/plugins/grafana-echarts-app` even though the package directory is
+  `grafana-echarts`.
+- **Apache-2.0 licensed** (vs. `UNLICENSED` / clock-panel's MIT).
+- **Its `jest-canvas-mock` patch lives at the workspace root.** pnpm reads `patchedDependencies` only
+  from `plugins/pnpm-workspace.yaml`, never from a package's `pnpm` field, so the patch was moved there
+  with a root-relative path while the `.patch` file stayed in the package. Its canvas snapshot tests
+  depend on it; if it goes missing they fail as snapshot diffs, not as a missing-patch error.
+- **Scripts renamed onto this repo's turbo task names** (`typecheck` → `type-check`,
+  `prettier:check`/`prettier:fix` → `format`/`format:fix`), plus a `build:dev` added.
+- **`lefthook` was dropped** (config + dep + `prepare` script). A nested hook manager installs hooks
+  into the repo-root `.git`, so it would have gated commits for the whole monorepo on one package's
+  checks.
+- **Its nested `.github/` was removed; CI lives at root** as `echarts-ci.yml` (Playwright e2e matrix +
+  levitate is-compatible) and `echarts-bundle-stats.yml`, both `paths:`-scoped to the package. The
+  `grafana-enterprise@nightly` e2e job is `continue-on-error` (non-blocking); don't make it required. The
+  bundle-stats workflow does **not** `uses:` `grafana/plugin-actions/bundle-size` — that action runs
+  `pnpm install` at the repo root, which has no `package.json` — so it inlines the action's steps and
+  calls its `index.js` report script from a pinned checkout. Bump both pins together. The upstream
+  `release.yml` (tag-triggered sign + validate of the standalone Relations build) and `cp-update.yml`
+  (create-plugin update, which only works on a repo-root plugin) were not ported.
+- **It keeps its own `.nvmrc` and `packageManager`**, both synced to the workspace root. Same reason as
+  clock-panel's `packageManager`: `grafana/plugin-ci-workflows` `ci.yml` reads
+  `<plugin-directory>/.nvmrc` for the Node version (falling back to its own default if absent).
+- **Its standalone dev/e2e stack (`pnpm run server` inside the package) defaults to port 3020**, not
+  upstream's 3001, so it can run alongside the monorepo stack (`pnpm run server` from `plugins/`, on
+  3001). `playwright.config.ts`, `docker-compose.yaml`, `echarts-ci.yml` and the `parity.md` live links
+  all assume 3020 — change them together. Its LGTM stack stays on 3010, standalone Relations on 4001.
+- **Two `plugin.json`s ship on their own:** `src/plugin.json` (the app) and
+  `src/modules/relations/plugin.json` (`build:relations` publishes it standalone as
+  `grafana-relations-panel`). Both use the reserved link names from `plugin-metadata.md`. The other
+  `src/modules/*/plugin.json` ship only inside the app.
+- Its `AGENTS.md` / `CLAUDE.md` / `.config/AGENTS/` carry package-local agent rules (canvas snapshot
+  workflow, one-kind-of-test-per-file naming enforced by `src/test/suiteShape.test.ts`). They apply
+  inside the package.
+
 ## Adding a new plugin package
 
 1. Copy the template: `cp -r packages/@plugins/grafana-workspace-panel packages/@plugins/<new-name>`
@@ -120,10 +168,12 @@ zizmor .github/workflows/
 hash with:
 
 ```bash
-gh api repos/<owner>/<repo>/git/refs/tags/<tag> --jq '.object.sha'
+gh api repos/<owner>/<repo>/commits/<tag> --jq '.sha'
 ```
 
-and pin as `uses: <owner>/<repo>@<sha> # <tag>`.
+and pin as `uses: <owner>/<repo>@<sha> # <tag>`. Don't use `git/refs/tags/<tag> --jq '.object.sha'`:
+for an **annotated** tag that returns the tag *object's* SHA, not the commit, and zizmor flags it as an
+impostor commit (this is how `pnpm/action-setup@f520ece…` got pinned; its `v6` commit is `0977fd9…`).
 
 ## Bringing a plugin into this monorepo
 

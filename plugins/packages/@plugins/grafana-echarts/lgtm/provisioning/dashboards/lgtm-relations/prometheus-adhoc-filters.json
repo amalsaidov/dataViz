@@ -1,0 +1,471 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Ad-hoc filter behaviour of the relations tooltip footer against the LGTM stack's own service graph, which Tempo's metrics-generator publishes with real client/server labels. Sibling of echarts-relations-adhoc-filters on the dev Grafana; same six panels, a topology small enough to hold in your head. Grafana and Prometheus sit in the middle, user is a pure origin, elasticsearch and grafana-assistant-app are pure destinations, and prometheus calls itself.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [
+    {
+      "title": "The rest of the LGTM relations dashboards",
+      "type": "dashboards",
+      "tags": ["lgtm"],
+      "icon": "external link",
+      "url": "",
+      "targetBlank": false,
+      "asDropdown": true,
+      "includeVars": false,
+      "keepTime": true
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# Ad hoc filters for relations\n\nPin a tooltip by selecting a node or edge. If the field is filterable, the tooltip can add or remove an ad hoc filter.\n\nThe panel writes filters to the Ad hoc filters variable at the top of this dashboard. Prometheus applies the variable to the metric selectors.\n\nAn edge can use `source` and `target` as display labels while the query uses different label keys. Keep the original labels in the query result so the panel can detect their names.\n\nThe examples use these cases:\n\n| Panel | Case |\n| --- | --- |\n| 2 | Filterable fields and derived nodes |\n| 3 | Fields that are not filterable |\n| 4 | Source and target direction for node filters |\n| 5 | A derived node with no matching field |\n| 6 | Different endpoint labels in one graph |\n| 7 | Copied endpoint labels with automatic name detection |\n\nClear the Ad hoc filters variable before you compare panels. An existing filter changes the data in every panel."
+      },
+      "transparent": true
+    },
+    {
+      "id": 2,
+      "type": "grafana-relations-panel",
+      "title": "The gate is on — and every node here is derived",
+      "description": "The query groups the metric by `client` and `server`. The panel recognizes this endpoint pair and uses the same keys for filters.\n\nThe query returns edge fields only. The panel derives each node from the edge endpoints, and the node uses the filterable state of those edges.\n\nSelect an edge to filter by `client`, `server`, or `connection_type`.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lgtm-prometheus"
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 0,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps",
+          "decimals": 2,
+          "filterable": true
+        },
+        "overrides": []
+      },
+      "options": {
+        "seriesType": "graph",
+        "editorMode": "advanced",
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsFocusAdjacency": true,
+        "relationsLayout": "force",
+        "relationsEdgeArrows": true,
+        "relationsNodeSize": 16,
+        "relationsCurveness": 0.1,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lgtm-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (client, server) (\n  rate(traces_service_graph_request_total{client!=\"\", server!=\"\"}[$__range])\n)",
+          "exemplar": false,
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "__auto"
+        }
+      ],
+      "transformations": []
+    },
+    {
+      "id": 3,
+      "type": "grafana-relations-panel",
+      "title": "The same panel with Filterable off — no buttons at all",
+      "description": "This panel uses the same query as panel 2, but Filterable is off. Node and edge tooltips do not offer ad hoc filter actions.\n\nData links use separate field configuration. Turning Filterable off does not turn data links off.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lgtm-prometheus"
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 12,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "seriesType": "graph",
+        "editorMode": "advanced",
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsFocusAdjacency": true,
+        "relationsLayout": "force",
+        "relationsEdgeArrows": true,
+        "relationsNodeSize": 16,
+        "relationsCurveness": 0.1,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lgtm-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (client, server) (\n  rate(traces_service_graph_request_total{client!=\"\", server!=\"\"}[$__range])\n)",
+          "exemplar": false,
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "__auto"
+        }
+      ],
+      "transformations": []
+    },
+    {
+      "id": 4,
+      "type": "grafana-relations-panel",
+      "title": "Direction — a destination-only node asserts its target key",
+      "description": "A node filter uses the endpoint labels for the edges that touch the node. Select `elasticsearch` to create a `server` filter because it appears only as a target.\n\nSelect `grafana` to create a `client` filter because it appears as a source. The panel does not create an either-endpoint filter.\n\nFilter out this value excludes the node from both endpoint keys. This prevents the node from returning through the other direction.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lgtm-prometheus"
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps",
+          "decimals": 2,
+          "filterable": true
+        },
+        "overrides": []
+      },
+      "options": {
+        "seriesType": "graph",
+        "editorMode": "advanced",
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsFocusAdjacency": true,
+        "relationsLayout": "force",
+        "relationsEdgeArrows": true,
+        "relationsNodeSize": 16,
+        "relationsCurveness": 0.1,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lgtm-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (client, server) (\n  rate(traces_service_graph_request_total{client!=\"\", server!=\"\"}[$__range])\n)",
+          "exemplar": false,
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "__auto"
+        }
+      ],
+      "transformations": []
+    },
+    {
+      "id": 5,
+      "type": "grafana-relations-panel",
+      "title": "Why the fallback exists — a node override with nothing to bind to",
+      "description": "The query returns edges but no node fields. The panel derives the `elasticsearch` node from the edge endpoints.\n\nA field override can match only a field that exists before the panel renders it. If no node field exists, the derived node uses the filterable state of its edges.\n\nTurn Filterable off for the edge fields if no mark in the panel must offer filter actions.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lgtm-prometheus"
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 12,
+        "y": 26
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps",
+          "decimals": 2,
+          "filterable": true
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "elasticsearch"
+            },
+            "properties": [
+              {
+                "id": "filterable",
+                "value": false
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "seriesType": "graph",
+        "editorMode": "advanced",
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsFocusAdjacency": true,
+        "relationsLayout": "force",
+        "relationsEdgeArrows": true,
+        "relationsNodeSize": 16,
+        "relationsCurveness": 0.1,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lgtm-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (client, server) (\n  rate(traces_service_graph_request_total{client!=\"\", server!=\"\"}[$__range])\n)",
+          "exemplar": false,
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "__auto"
+        }
+      ],
+      "transformations": []
+    },
+    {
+      "id": 6,
+      "type": "grafana-relations-panel",
+      "title": "Two levels in one frame, each filtering under its own keys",
+      "description": "This graph combines two endpoint pairs. Level 1 uses `stack` and `client`, while level 2 uses `client` and `server`.\n\nThe query keeps the original labels after it adds `source` and `target`. The panel can therefore recover the correct filter keys for each edge.\n\nThe `grafana` node appears in both levels. Its connected edges resolve to one `client` filter key.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lgtm-prometheus"
+      },
+      "gridPos": {
+        "h": 15,
+        "w": 12,
+        "x": 0,
+        "y": 41
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps",
+          "decimals": 2,
+          "filterable": true
+        },
+        "overrides": []
+      },
+      "options": {
+        "seriesType": "graph",
+        "editorMode": "advanced",
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsFocusAdjacency": true,
+        "relationsLayout": "circular",
+        "relationsEdgeArrows": true,
+        "relationsNodeSize": 14,
+        "relationsCurveness": 0.1,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lgtm-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (source, target, stack, client) (\n  label_replace(\n    label_replace(\n      rate(traces_service_graph_request_total{client!=\"\", server!=\"\"}[$__range]),\n    \"source\", \"$1\", \"stack\", \"(.*)\"),\n  \"target\", \"$1\", \"client\", \"(.*)\")\n)\nor\nsum by (source, target, client, server) (\n  label_replace(\n    label_replace(\n      rate(traces_service_graph_request_total{client!=\"\", server!=\"\"}[$__range]),\n    \"source\", \"$1\", \"client\", \"(.*)\"),\n  \"target\", \"$1\", \"server\", \"(.*)\")\n)",
+          "exemplar": false,
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "__auto"
+        }
+      ],
+      "transformations": []
+    },
+    {
+      "id": 7,
+      "type": "grafana-relations-panel",
+      "title": "Copied endpoints: original labels provide the filter names",
+      "description": "This query copies `client` and `server` to `source` and `target`. The outer aggregation also keeps the original labels.\n\nThe panel matches the endpoint values to the original labels. It then uses `client` and `server` as the ad hoc filter names without manual configuration.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lgtm-prometheus"
+      },
+      "gridPos": {
+        "h": 15,
+        "w": 12,
+        "x": 12,
+        "y": 41
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps",
+          "decimals": 2,
+          "filterable": true
+        },
+        "overrides": []
+      },
+      "options": {
+        "seriesType": "graph",
+        "editorMode": "advanced",
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "relationsFocusAdjacency": true,
+        "relationsLayout": "circular",
+        "relationsEdgeArrows": true,
+        "relationsNodeSize": 14,
+        "relationsCurveness": 0.1,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lgtm-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (source, target, client, server) (\n  label_replace(\n    label_replace(\n      rate(traces_service_graph_request_total{client!=\"\", server!=\"\"}[$__range]),\n    \"source\", \"$1\", \"client\", \"(.*)\"),\n  \"target\", \"$1\", \"server\", \"(.*)\")\n)",
+          "exemplar": false,
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "__auto"
+        }
+      ],
+      "transformations": []
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["echarts", "relations", "lgtm", "prometheus", "ad-hoc-filters"],
+  "templating": {
+    "list": [
+      {
+        "name": "filters",
+        "label": "Ad hoc filters",
+        "type": "adhoc",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "lgtm-prometheus"
+        },
+        "filters": [],
+        "hide": 0
+      }
+    ]
+  },
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "ECharts Relations — ad-hoc filters (LGTM)",
+  "uid": "echarts-lgtm-relations-adhoc-filters",
+  "version": 1,
+  "weekStart": ""
+}

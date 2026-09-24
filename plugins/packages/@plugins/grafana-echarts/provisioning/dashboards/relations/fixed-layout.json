@@ -1,0 +1,220 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "description": "Proof for the graph variant's Fixed layout (ECharts `series.graph.layout: 'none'`). Every panel here selects Fixed; they differ only in where the node positions come from — nowhere, the data's fixedx/fixedy columns, per-node custom.fixedX/fixedY overrides, or a mix. The first panel is the regression: Fixed used to draw an empty panel whenever the response pinned nothing, because ECharts lays a node with no `x` out at [NaN, NaN] and drops it along with every link touching it.",
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["echarts", "relations", "node-graph", "graph-wide", "layout"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "ECharts Relations — fixed layout",
+  "uid": "echarts-relations-fixed-layout",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "Fixed layout — where the coordinates come from",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "markdown",
+        "content": "# Fixed layout\n\nFixed layout draws each Graph node at a saved x and y position. You can supply positions with `fixedx` and `fixedy` node fields. You can also set `Fixed x` and `Fixed y` for a node with field overrides.\n\nIf a node does not have both coordinates, the panel places it on a stable ring. If some nodes have coordinates, the ring surrounds those nodes. A dashboard reload keeps the same fallback positions.\n\nUse a practical coordinate range, such as pixel values. A range from 0 to 1 can offset horizontal or vertical links from their nodes.\n\nPanels 1 and 4 enable Draggable nodes. Drag a node to save the displayed positions as field overrides."
+      }
+    },
+    {
+      "id": 2,
+      "type": "grafana-relations-panel",
+      "title": "1 · Fixed, nothing pinned — every node seeded",
+      "description": "The edge-only query does not provide node coordinates. The panel places all four nodes on a ring in data order. Reload the dashboard to see that the fallback positions stay the same. Draggable nodes is on, so you can move a node.",
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 7 },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": [] },
+        "tooltip": { "mode": "single" },
+        "seriesType": "graph",
+        "editorMode": "advanced",
+        "relationsLayout": "none",
+        "relationsDraggable": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway-->api,gateway-->web,api-->db,web-->db\n100,52,88,41"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "grafana-relations-panel",
+      "title": "2 · Fixed, pinned by the data",
+      "description": "The nodes frame contains `fixedx` and `fixedy` fields for every node. These fields set the node positions. If Layout is not set, the panel selects Fixed when every node has both coordinates. ECharts scales the coordinate shape to fit the panel.",
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 7 },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": [] },
+        "tooltip": { "mode": "single" },
+        "seriesType": "graph",
+        "editorMode": "advanced",
+        "relationsLayout": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "scenarioId": "csv_content",
+          "csvContent": "id,title,mainstat,fixedx,fixedy\ngateway,Gateway,120,60,150\napi,API,80,200,60\nweb,Web,60,200,240\ndb,DB,200,340,150"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "scenarioId": "csv_content",
+          "csvContent": "id,source,target,mainstat\ne1,gateway,api,100\ne2,gateway,web,52\ne3,api,db,88\ne4,web,db,41"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "grafana-relations-panel",
+      "title": "3 · Fixed, pinned by per-node overrides",
+      "description": "This panel uses the same positions as panel 2. `Fixed x` and `Fixed y` field overrides set each node position instead of query fields. Select a node by name in the Overrides tab to edit or remove its coordinates.",
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 19 },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "gateway" },
+            "properties": [
+              { "id": "custom.fixedX", "value": 60 },
+              { "id": "custom.fixedY", "value": 150 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "api" },
+            "properties": [
+              { "id": "custom.fixedX", "value": 200 },
+              { "id": "custom.fixedY", "value": 60 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "web" },
+            "properties": [
+              { "id": "custom.fixedX", "value": 200 },
+              { "id": "custom.fixedY", "value": 240 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "db" },
+            "properties": [
+              { "id": "custom.fixedX", "value": 340 },
+              { "id": "custom.fixedY", "value": 150 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": [] },
+        "tooltip": { "mode": "single" },
+        "seriesType": "graph",
+        "editorMode": "advanced",
+        "relationsLayout": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway-->api,gateway-->web,api-->db,web-->db\n100,52,88,41"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "grafana-relations-panel",
+      "title": "4 · Fixed, half pinned — the two halves coexist",
+      "description": "`Fixed x` and `Fixed y` field overrides position `gateway` and `db`. The `api` and `web` nodes do not have coordinates, so the panel places them around the positioned nodes. Draggable nodes is on. Drag an unpositioned node to save the displayed positions.",
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 19 },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "gateway" },
+            "properties": [
+              { "id": "custom.fixedX", "value": 60 },
+              { "id": "custom.fixedY", "value": 150 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "db" },
+            "properties": [
+              { "id": "custom.fixedX", "value": 340 },
+              { "id": "custom.fixedY", "value": 150 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": [] },
+        "tooltip": { "mode": "single" },
+        "seriesType": "graph",
+        "editorMode": "advanced",
+        "relationsLayout": "none",
+        "relationsDraggable": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway-->api,gateway-->web,api-->db,web-->db\n100,52,88,41"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "grafana-relations-panel",
+      "title": "5 · Drag a node — the position is written back as an override",
+      "description": "Drag a node to move it. The panel saves the displayed position of every node as `Fixed x` and `Fixed y` field overrides. Open the Overrides tab to edit or remove the saved positions. The dashboard has unsaved changes until you save it.\n\nRemember view is also on. Drag the background to pan, or use the zoom controls. Save the dashboard to keep the view after a reload.",
+      "datasource": { "type": "grafana-testdata-datasource" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 31 },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": [] },
+        "tooltip": { "mode": "single" },
+        "seriesType": "graph",
+        "editorMode": "advanced",
+        "relationsLayout": "none",
+        "relationsDraggable": true,
+        "relationsPan": true,
+        "relationsZoom": true,
+        "relationsRememberView": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway,api,web,db\n120,80,60,200"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "grafana-testdata-datasource" },
+          "scenarioId": "csv_content",
+          "csvContent": "gateway-->api,gateway-->web,api-->db,web-->db\n100,52,88,41"
+        }
+      ]
+    }
+  ]
+}

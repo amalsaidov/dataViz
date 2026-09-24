@@ -1,0 +1,143 @@
+// Single entry point for the ECharts runtime surface used by the plugin.
+import {
+  BarChart,
+  BoxplotChart,
+  CandlestickChart,
+  ChordChart,
+  CustomChart,
+  EffectScatterChart,
+  FunnelChart,
+  GraphChart,
+  HeatmapChart,
+  LineChart,
+  ParallelChart,
+  PieChart,
+  RadarChart,
+  SankeyChart,
+  ScatterChart,
+  SunburstChart,
+  ThemeRiverChart,
+  TreemapChart,
+} from 'echarts/charts';
+import {
+  AxisPointerComponent,
+  BrushComponent,
+  GridComponent,
+  LegendComponent,
+  MarkAreaComponent,
+  MarkLineComponent,
+  ParallelComponent,
+  RadarComponent,
+  SingleAxisComponent,
+  TitleComponent,
+  TooltipComponent,
+  VisualMapContinuousComponent,
+} from 'echarts/components';
+//
+// Instead of importing the full `echarts` barrel (which bundles every series
+// type and component), we pull in the modular `echarts/core` and register only
+// the charts/components the panels actually render. This lets webpack
+// tree-shake everything unused and keeps each panel bundle small.
+// See https://echarts.apache.org/handbook/en/basics/import (import by parts).
+//
+// The registered set is the UNION of what the shared `Panel`/`resolveChartModule`
+// dispatch can render at runtime (cartesian line/bar/scatter, heatmap cells via
+// a custom series, pie, radar). It is intentionally not split per family yet:
+// the shared runtime can route any family, so under-registering would break
+// rendering. Narrowing this per panel is a follow-up once the registry dispatch
+// is collapsed.
+//
+// `use` is aliased to avoid the react-hooks lint rule mistaking ECharts' `use()`
+// for the React `use` hook.
+import { use as registerEChartsModules } from 'echarts/core';
+// In ECharts 6 `grid.containLabel` is a no-op unless this legacy feature is
+// registered; without it axis labels overflow the grid. Registering it restores
+// label-aware grid layout for the cartesian charts.
+// https://echarts.apache.org/handbook/en/basics/release-note/v6-upgrade-guide/#about-grid-containlabel
+//
+// `LabelLayout` is the same kind of trap and easier to miss. `series.labelLayout`
+// (`hideOverlap`, `moveOverlap`) reads like a plain series option, but the stage that
+// acts on it is a *feature*: the full `echarts` barrel calls `use(installLabelLayout)`,
+// and a modular build gets it only if something drags the barrel in. Registered here so
+// the relations family's overlapping-label handling depends on a declaration rather than
+// on that accident — an unregistered stage would leave the key accepted, present on the
+// built option, and completely inert.
+// https://echarts.apache.org/en/option.html#series-line.labelLayout
+import { LabelLayout, LegacyGridContainLabel } from 'echarts/features';
+import { CanvasRenderer } from 'echarts/renderers';
+
+import { registerChordLiteralFill } from 'lib/echarts/relations/chordFill/register';
+import { registerEdgeLabelFadeIn, registerEdgeLabelLayout } from 'lib/echarts/relations/edgeLabels/register';
+// Before `use`, unlike `registerEdgeLabelLayout` below: this one has to set its flag before
+// `LabelLayout`'s stage reads it, and hooks run in registration order.
+registerEdgeLabelFadeIn();
+
+registerEChartsModules([
+  // Series renderers
+  LineChart,
+  BarChart,
+  ScatterChart,
+  EffectScatterChart,
+  CandlestickChart, // multi-value cartesian: OHLC
+  BoxplotChart, // multi-value cartesian: [min, Q1, median, Q3, max]
+  PieChart,
+  FunnelChart, // part-to-whole family: stacked trapezoids sharing the pie slice model
+  RadarChart,
+  ParallelChart, // multivariate family: parallel coordinates (one axis per category, one polyline per field)
+  TreemapChart, // hierarchy family: nested rectangles sized by value
+  SunburstChart, // hierarchy family: radial rings sized by value
+  // relations family: nodes + links. Self-contained — it ships its own `View`
+  // coordinate system, so no extra component registration is needed.
+  GraphChart,
+  // relations family: the same node/link model laid out as weighted flow ribbons.
+  // Also self-contained (box layout, no coordinate component). Note its layout
+  // throws on cyclic input, which `converters/dag.ts` prevents.
+  SankeyChart,
+  // relations family: the same node/link model as a ring of arcs joined by ribbons.
+  // Self-contained — it pins `coordinateSystem: 'none'`. New in ECharts 6.0.0, and
+  // unrelated to the `chord` series removed in 3.x.
+  ChordChart,
+  ThemeRiverChart, // stream family: stacked ribbons over a single time axis
+  CustomChart, // binned heatmap cells are drawn as a custom series
+  HeatmapChart, // native series for the matrix heatmap layout (category x category grid)
+  // ToolboxComponent,
+  // Components
+  GridComponent,
+  TooltipComponent,
+  LegendComponent,
+  TitleComponent, // centered donut-center readout for the pie (label position: center)
+  AxisPointerComponent,
+  BrushComponent, // drag-select on the time axis for range zoom
+  RadarComponent, // radar coordinate system
+  ParallelComponent, // parallel-coordinates coordinate system (parallel + parallelAxis)
+  // singleAxis coordinate system, required by themeRiver:
+  // `ThemeRiverSeriesModel.dependencies` is `['singleAxis']` and `ThemeRiverChart`'s
+  // own `install` does not register it, so the series would not lay out without this.
+  SingleAxisComponent,
+  VisualMapContinuousComponent, // heatmap color gradient
+  MarkLineComponent, // threshold lines on cartesian series
+  MarkAreaComponent, // threshold filled regions on cartesian series
+  // Features
+  LegacyGridContainLabel, // makes `grid.containLabel` work in ECharts 6
+  LabelLayout, // the stage `series.labelLayout` (hideOverlap) needs — see the import
+  // Renderer
+  CanvasRenderer,
+]);
+
+// After `use`, because it repairs what `LabelLayout` does and lifecycle hooks run in
+// registration order. See `registerEdgeLabelLayout`.
+registerEdgeLabelLayout();
+registerChordLiteralFill();
+
+// `init` creates a chart instance bound to a DOM node. This module is imported
+// statically by Panel.tsx, which is itself React.lazy-loaded (see
+// lib/components/LazyPanel), so the registered ECharts bundle becomes a shared
+// async chunk across the nested panels rather than being duplicated into each
+// panel's entry.
+export { init } from 'echarts/core';
+export type { EChartsType } from 'echarts/core';
+
+// Recovers the instance bound to a DOM node by `init`. Used by tests to gate on
+// instance lifecycle events (e.g. 'finished') without threading the instance out
+// of Panel. https://echarts.apache.org/en/api.html#echarts.getInstanceByDom
+export { getInstanceByDom } from 'echarts/core';

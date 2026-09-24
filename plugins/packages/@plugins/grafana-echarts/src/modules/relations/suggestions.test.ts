@@ -1,0 +1,169 @@
+import { createDataFrame, FieldType, getPanelDataSummary, VisualizationSuggestionScore } from '@grafana/data';
+import {
+  PREVIEW_MAX_SERIES,
+  RELATIONS_CHORD_MAX_NODES,
+  RELATIONS_MAX_EDGES,
+  RELATIONS_SANKEY_MAX_LEVELS,
+  RELATIONS_SANKEY_MAX_NODES,
+} from 'lib/echarts/charts/suggestionLimits';
+import { type PanelOptions } from 'types';
+import { relationsSuggestionsSupplier } from './suggestions';
+
+const edgesFrame = (rows: number) =>
+  createDataFrame({
+    name: 'edges',
+    fields: [
+      { name: 'id', type: FieldType.string, values: Array.from({ length: rows }, (_, row) => `e${row}`) },
+      { name: 'source', type: FieldType.string, values: Array.from({ length: rows }, (_, row) => `n${row}`) },
+      { name: 'target', type: FieldType.string, values: Array.from({ length: rows }, (_, row) => `n${row + 1}`) },
+    ],
+  });
+
+const nodesFrame = (rows: number) =>
+  createDataFrame({
+    name: 'nodes',
+    fields: [
+      { name: 'id', type: FieldType.string, values: Array.from({ length: rows }, (_, row) => `n${row}`) },
+      { name: 'title', type: FieldType.string, values: Array.from({ length: rows }, (_, row) => `node ${row}`) },
+    ],
+  });
+
+const edgePairsFrame = (pairs: Array<[string, string]>) =>
+  createDataFrame({
+    name: 'edges',
+    fields: [
+      { name: 'id', type: FieldType.string, values: pairs.map((_, row) => `e${row}`) },
+      { name: 'source', type: FieldType.string, values: pairs.map(([source]) => source) },
+      { name: 'target', type: FieldType.string, values: pairs.map(([, target]) => target) },
+    ],
+  });
+
+describe('relationsSuggestionsSupplier', () => {
+  it('suggests graph, sankey and chord for a node graph frame pair', () => {
+    const result = relationsSuggestionsSupplier(getPanelDataSummary([nodesFrame(3), edgesFrame(2)]));
+
+    expect(result).toHaveLength(3);
+    expect(result!.map((suggestion) => suggestion.name)).toEqual(['Graph', 'Sankey', 'Chord']);
+    expect(result!.map((suggestion) => suggestion.options?.seriesType)).toEqual(['graph', 'sankey', 'chord']);
+    expect(result!.every((suggestion) => suggestion.score === VisualizationSuggestionScore.Good)).toBe(true);
+  });
+
+  it('suggests all three for an edges-only response', () => {
+    const result = relationsSuggestionsSupplier(getPanelDataSummary([edgesFrame(2)]));
+
+    expect(result).toHaveLength(3);
+  });
+
+  it('scores Best for the nodeGraph preferred visualisation hint', () => {
+    const frame = edgesFrame(2);
+    const result = relationsSuggestionsSupplier(
+      getPanelDataSummary([{ ...frame, meta: { preferredVisualisationType: 'nodeGraph' } }])
+    );
+
+    expect(result!.every((suggestion) => suggestion.score === VisualizationSuggestionScore.Best)).toBe(true);
+  });
+
+  it('returns void for an ordinary two-string-column table', () => {
+    const result = relationsSuggestionsSupplier(
+      getPanelDataSummary([
+        createDataFrame({
+          fields: [
+            { name: 'host', type: FieldType.string, values: ['a', 'b'] },
+            { name: 'region', type: FieldType.string, values: ['eu', 'us'] },
+          ],
+        }),
+      ])
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it('returns void for a table with a source column but no target', () => {
+    const result = relationsSuggestionsSupplier(
+      getPanelDataSummary([
+        createDataFrame({
+          fields: [
+            { name: 'source', type: FieldType.string, values: ['a', 'b'] },
+            { name: 'count', type: FieldType.number, values: [1, 2] },
+          ],
+        }),
+      ])
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it('returns void for unrelated numeric data', () => {
+    const result = relationsSuggestionsSupplier(
+      getPanelDataSummary([
+        createDataFrame({
+          fields: [
+            { name: 'time', type: FieldType.time, values: [0, 100] },
+            { name: 'value', type: FieldType.number, values: [1, 2] },
+          ],
+        }),
+      ])
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it('returns void for an empty response', () => {
+    expect(relationsSuggestionsSupplier(getPanelDataSummary([]))).toBeUndefined();
+  });
+
+  it(`returns void past ${RELATIONS_MAX_EDGES} edges`, () => {
+    expect(relationsSuggestionsSupplier(getPanelDataSummary([edgesFrame(RELATIONS_MAX_EDGES)]))).toHaveLength(1);
+    expect(relationsSuggestionsSupplier(getPanelDataSummary([edgesFrame(RELATIONS_MAX_EDGES + 1)]))).toBeUndefined();
+  });
+
+  it(`drops the chord card past ${RELATIONS_CHORD_MAX_NODES} nodes, keeping graph and sankey`, () => {
+    const result = relationsSuggestionsSupplier(
+      getPanelDataSummary([nodesFrame(RELATIONS_CHORD_MAX_NODES + 1), edgesFrame(2)])
+    );
+
+    expect(result!.map((suggestion) => suggestion.name)).toEqual(['Graph', 'Sankey']);
+  });
+
+  it('drops the sankey card for cycles and deep graphs', () => {
+    const cyclic = edgePairsFrame([
+      ['a', 'b'],
+      ['b', 'c'],
+      ['c', 'a'],
+    ]);
+    const deep = edgePairsFrame(
+      Array.from({ length: RELATIONS_SANKEY_MAX_LEVELS }, (_, index) => [`n${index}`, `n${index + 1}`]) as Array<
+        [string, string]
+      >
+    );
+
+    expect(relationsSuggestionsSupplier(getPanelDataSummary([cyclic]))?.map(({ name }) => name)).toEqual([
+      'Graph',
+      'Chord',
+    ]);
+    expect(relationsSuggestionsSupplier(getPanelDataSummary([deep]))?.map(({ name }) => name)).toEqual([
+      'Graph',
+      'Chord',
+    ]);
+  });
+
+  it(`drops sankey past ${RELATIONS_SANKEY_MAX_NODES} nodes`, () => {
+    const atLimit = relationsSuggestionsSupplier(
+      getPanelDataSummary([nodesFrame(RELATIONS_SANKEY_MAX_NODES), edgesFrame(2)])
+    );
+    const aboveLimit = relationsSuggestionsSupplier(
+      getPanelDataSummary([nodesFrame(RELATIONS_SANKEY_MAX_NODES + 1), edgesFrame(2)])
+    );
+
+    expect(atLimit?.map(({ name }) => name)).toEqual(['Graph', 'Sankey']);
+    expect(aboveLimit?.map(({ name }) => name)).toEqual(['Graph']);
+  });
+
+  it('bounds every preview card and suppresses node labels', () => {
+    const result = relationsSuggestionsSupplier(getPanelDataSummary([nodesFrame(3), edgesFrame(2)]));
+
+    expect(result!.every((suggestion) => suggestion.cardOptions?.maxSeries === PREVIEW_MAX_SERIES)).toBe(true);
+
+    const preview: { options?: Partial<PanelOptions> } = { options: { ...result![0].options } };
+    result![0].cardOptions!.previewModifier!(preview);
+    expect(preview.options?.relationsShowNodeLabels).toBe(false);
+    expect(preview.options?.legend?.showLegend).toBe(false);
+  });
+});
