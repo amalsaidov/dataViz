@@ -123,6 +123,17 @@ Differences worth knowing:
   calls its `index.js` report script from a pinned checkout. Bump both pins together. The upstream
   `release.yml` (tag-triggered sign + validate of the standalone Relations build) and `cp-update.yml`
   (create-plugin update, which only works on a repo-root plugin) were not ported.
+- **It keeps its own `.nvmrc` and `packageManager`**, both synced to the workspace root. Same reason as
+  clock-panel's `packageManager`: `grafana/plugin-ci-workflows` `ci.yml` reads
+  `<plugin-directory>/.nvmrc` for the Node version (falling back to its own default if absent).
+- **Its standalone dev/e2e stack (`pnpm run server` inside the package) defaults to port 3020**, not
+  upstream's 3001, so it can run alongside the monorepo stack (`pnpm run server` from `plugins/`, on
+  3001). `playwright.config.ts`, `docker-compose.yaml`, `echarts-ci.yml` and the `parity.md` live links
+  all assume 3020 — change them together. Its LGTM stack stays on 3010, standalone Relations on 4001.
+- **Two `plugin.json`s ship on their own:** `src/plugin.json` (the app) and
+  `src/modules/relations/plugin.json` (`build:relations` publishes it standalone as
+  `grafana-relations-panel`). Both use the reserved link names from `plugin-metadata.md`. The other
+  `src/modules/*/plugin.json` ship only inside the app.
 - Its `AGENTS.md` / `CLAUDE.md` / `.config/AGENTS/` carry package-local agent rules (canvas snapshot
   workflow, one-kind-of-test-per-file naming enforced by `src/test/suiteShape.test.ts`). They apply
   inside the package.

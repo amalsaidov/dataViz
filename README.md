@@ -48,6 +48,24 @@ A template for building Grafana **frontend** plugins (panel and app plugins) in 
    - A demo dashboard (**Workspace Panel Demo**) renders the panel with TestData
    - The panel plugin is also available in any dashboard's panel picker as **Workspace Panel**
 
+## Docker Ports
+
+Default host ports for every Docker stack in the repo. Commands run from the directory in the **Run from** column. Ports marked with a variable can be overridden (e.g. `GRAFANA_PORT=3005 pnpm run server`).
+
+| Package | Stack | Run from | Service | Host port | Override |
+|---|---|---|---|---|---|
+| monorepo | plugin build/watch | `plugins/` — `pnpm run plugin` | live reload | `35729` | — |
+| monorepo | Grafana (all plugins) | `plugins/` — `pnpm run server` | Grafana | `3001` | `GRAFANA_PORT` |
+| `grafana-clock-panel` | standalone | package — `pnpm run server` | Grafana | `3000` | — |
+| `grafana-echarts` | standalone | package — `pnpm run server` | Grafana | `3020` | `GRAFANA_PORT` |
+| `grafana-echarts` | relations build | package — `pnpm run server:relations` | Grafana | `4001` | `GRAFANA_PORT` |
+| `grafana-echarts` | LGTM | package — `pnpm run server:lgtm` | Grafana | `3010` | `GRAFANA_PORT` |
+| | | | Loki | `3100` | `LOKI_PORT` |
+| | | | Tempo HTTP | `3200` | `TEMPO_PORT` |
+| | | | Tempo OTLP gRPC / HTTP | `4317` / `4318` | `TEMPO_OTLP_GRPC_PORT` / `TEMPO_OTLP_HTTP_PORT` |
+| | | | Prometheus | `9090` | `PROMETHEUS_PORT` |
+| | | | Alloy | `12345` | `ALLOY_PORT` |
+
 ## Prerequisites
 
 - **Node.js** 22 (see `plugins/.nvmrc`)
