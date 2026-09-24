@@ -4,8 +4,8 @@
   "name": "ECharts",
   "id": "grafana-echarts-app",
   "info": {
-    "keywords": ["panel"],
-    "description": "",
+    "keywords": ["app", "panel", "echarts", "visualization"],
+    "description": "Apache ECharts visualizations for Grafana: cartesian, part-to-whole, hierarchy, multivariate, stream, heatmap, and relations panels.",
     "author": {
       "name": "Grafana"
     },
@@ -13,7 +13,24 @@
       "small": "img/logo.svg",
       "large": "img/logo.svg"
     },
-    "links": [],
+    "links": [
+      {
+        "name": "documentation",
+        "url": "https://grafana.com/grafana/plugins/grafana-echarts-app/"
+      },
+      {
+        "name": "repository",
+        "url": "https://github.com/grafana/dataViz"
+      },
+      {
+        "name": "license",
+        "url": "https://github.com/grafana/dataViz/blob/main/plugins/packages/@plugins/grafana-echarts/LICENSE"
+      },
+      {
+        "name": "raise issue",
+        "url": "https://github.com/grafana/dataViz/issues"
+      }
+    ],
     "screenshots": [],
     "version": "%VERSION%",
     "updated": "%TODAY%"

@@ -39,7 +39,7 @@ services:
       service: grafana
     container_name: ${GRAFANA_CONTAINER_NAME:-grafana-echarts-panel-lgtm-${GRAFANA_PORT:-3010}}
     labels: *lgtm-labels
-    # Default to 3010 so this never fights the e2e stack on 3001.
+    # Default to 3010 so this never fights the e2e stack on 3020.
     ports: !override
       - ${GRAFANA_PORT:-3010}:3000/tcp
     # The base mounts ../provisioning; this stack needs its own datasources, so

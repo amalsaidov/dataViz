@@ -16,20 +16,20 @@
     },
     "links": [
       {
-        "name": "Documentation",
-        "url": "https://github.com/gtk-grafana/grafana-echarts/blob/main/src/README.md"
+        "name": "documentation",
+        "url": "https://grafana.com/grafana/plugins/grafana-relations-panel/"
       },
       {
-        "name": "Repository",
-        "url": "https://github.com/gtk-grafana/grafana-echarts"
+        "name": "repository",
+        "url": "https://github.com/grafana/dataViz"
       },
       {
-        "name": "License",
-        "url": "https://github.com/gtk-grafana/grafana-echarts/blob/main/LICENSE"
+        "name": "license",
+        "url": "https://github.com/grafana/dataViz/blob/main/plugins/packages/@plugins/grafana-echarts/LICENSE"
       },
       {
-        "name": "Report an issue",
-        "url": "https://github.com/gtk-grafana/grafana-echarts/issues/new/choose"
+        "name": "raise issue",
+        "url": "https://github.com/grafana/dataViz/issues"
       }
     ],
     "screenshots": [

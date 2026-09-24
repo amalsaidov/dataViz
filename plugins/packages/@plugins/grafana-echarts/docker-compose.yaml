@@ -5,6 +5,6 @@ services:
       service: grafana
     # Override the base container_name so multiple instances don't clash.
     # Falls back to a port-suffixed name so setting only GRAFANA_PORT is enough.
-    container_name: ${GRAFANA_CONTAINER_NAME:-grafana-echarts-panel-${GRAFANA_PORT:-3001}}
+    container_name: ${GRAFANA_CONTAINER_NAME:-grafana-echarts-panel-${GRAFANA_PORT:-3020}}
     ports: !override
-      - ${GRAFANA_PORT:-3001}:3000/tcp
+      - ${GRAFANA_PORT:-3020}:3000/tcp

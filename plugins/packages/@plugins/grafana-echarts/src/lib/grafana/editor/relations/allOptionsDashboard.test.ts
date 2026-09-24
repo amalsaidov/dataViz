@@ -198,6 +198,6 @@ describe('parity.md option links', () => {
     const uid = JSON.parse(readFileSync(repoFile('provisioning/dashboards/relations/all-options.json'), 'utf8')).uid;
 
     expect(uid).toBe('echarts-relations-all-options');
-    expect(parityDoc()).toContain(`[live-opt-1]: http://localhost:3001/d/${uid}?viewPanel=1`);
+    expect(parityDoc()).toContain(`[live-opt-1]: http://localhost:3020/d/${uid}?viewPanel=1`);
   });
 });

@@ -137,7 +137,7 @@ Legend hiding removes a node and each link that touches it. It removes one edge 
 
 ## Live option examples
 
-These links need Grafana on `http://localhost:3001`. Each link opens one panel in the provisioned all-options dashboard.
+These links need Grafana on `http://localhost:3020`. Each link opens one panel in the provisioned all-options dashboard.
 
 | Panel                   | Example                       | Panel                   | Example                        |
 | ----------------------- | ----------------------------- | ----------------------- | ------------------------------ |
@@ -276,50 +276,50 @@ Sankey node width and gap are series options. They cannot vary by node. Graph no
 [db-timeline]: ../../../provisioning/dashboards/relations/timeline.json
 [db-chord]: ../../../provisioning/dashboards/relations/chord.json
 [db-performance-limits]: ../../../provisioning/dashboards/relations/performance-limits.json
-[live-opt-1]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=1
-[live-opt-2]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=2
-[live-opt-3]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=3
-[live-opt-4]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=4
-[live-opt-5]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=5
-[live-opt-6]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=6
-[live-opt-7]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=7
-[live-opt-8]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=8
-[live-opt-9]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=9
-[live-opt-10]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=10
-[live-opt-11]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=11
-[live-opt-12]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=12
-[live-opt-13]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=13
-[live-opt-14]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=14
-[live-opt-15]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=15
-[live-opt-16]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=16
-[live-opt-17]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=17
-[live-opt-18]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=18
-[live-opt-19]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=19
-[live-opt-20]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=20
-[live-opt-21]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=21
-[live-opt-22]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=22
-[live-opt-23]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=23
-[live-opt-24]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=24
-[live-opt-25]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=25
-[live-opt-26]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=26
-[live-opt-27]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=27
-[live-opt-28]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=28
-[live-opt-29]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=29
-[live-opt-30]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=30
-[live-opt-31]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=31
-[live-opt-32]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=32
-[live-opt-33]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=33
-[live-opt-34]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=34
-[live-opt-35]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=35
-[live-opt-36]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=36
-[live-opt-37]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=37
-[live-opt-38]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=38
-[live-opt-39]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=39
-[live-opt-40]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=40
-[live-opt-41]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=41
-[live-opt-42]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=42
-[live-opt-43]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=43
-[live-opt-44]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=44
-[live-opt-45]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=45
-[live-opt-46]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=46
-[live-opt-47]: http://localhost:3001/d/echarts-relations-all-options?viewPanel=47
+[live-opt-1]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=1
+[live-opt-2]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=2
+[live-opt-3]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=3
+[live-opt-4]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=4
+[live-opt-5]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=5
+[live-opt-6]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=6
+[live-opt-7]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=7
+[live-opt-8]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=8
+[live-opt-9]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=9
+[live-opt-10]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=10
+[live-opt-11]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=11
+[live-opt-12]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=12
+[live-opt-13]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=13
+[live-opt-14]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=14
+[live-opt-15]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=15
+[live-opt-16]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=16
+[live-opt-17]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=17
+[live-opt-18]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=18
+[live-opt-19]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=19
+[live-opt-20]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=20
+[live-opt-21]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=21
+[live-opt-22]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=22
+[live-opt-23]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=23
+[live-opt-24]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=24
+[live-opt-25]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=25
+[live-opt-26]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=26
+[live-opt-27]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=27
+[live-opt-28]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=28
+[live-opt-29]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=29
+[live-opt-30]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=30
+[live-opt-31]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=31
+[live-opt-32]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=32
+[live-opt-33]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=33
+[live-opt-34]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=34
+[live-opt-35]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=35
+[live-opt-36]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=36
+[live-opt-37]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=37
+[live-opt-38]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=38
+[live-opt-39]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=39
+[live-opt-40]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=40
+[live-opt-41]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=41
+[live-opt-42]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=42
+[live-opt-43]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=43
+[live-opt-44]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=44
+[live-opt-45]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=45
+[live-opt-46]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=46
+[live-opt-47]: http://localhost:3020/d/echarts-relations-all-options?viewPanel=47

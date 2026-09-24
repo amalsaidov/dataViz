@@ -50,7 +50,7 @@ Run the test suite:
 pnpm run test:ci
 ```
 
-Run Grafana with TestData on port 3001:
+Run Grafana with TestData on port 3020:
 
 ```sh
 pnpm run server

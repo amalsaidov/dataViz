@@ -35,7 +35,7 @@ Every table below carries two columns that track _proof_ rather than implementat
 - **Demo panel** — the provisioned dashboard panel that exercises the option: the first
   link is the committed JSON, the second the same panel in a running Grafana. Live
   links assume `docker compose up` on the default `GRAFANA_PORT`
-  (`http://localhost:3001`) with the plugin built into `dist/`. `—` means no
+  (`http://localhost:3020`) with the plugin built into `dist/`. `—` means no
   provisioned panel moves this option off its default.
 
 Both columns describe what exists **today** — the gaps are a to-do list, not a claim
@@ -161,32 +161,32 @@ registered runtime surface.
 <!-- Provisioned dashboards: committed JSON, then the panel in a running Grafana -->
 
 [db-parity]: ../../../provisioning/dashboards/part-to-whole/pie-parity.json
-[live-parity-2]: http://localhost:3001/d/e1a2b3c4-d5e6-4f70-8192-a3b4c5d6e7f0?viewPanel=2
-[live-parity-4]: http://localhost:3001/d/e1a2b3c4-d5e6-4f70-8192-a3b4c5d6e7f0?viewPanel=4
+[live-parity-2]: http://localhost:3020/d/e1a2b3c4-d5e6-4f70-8192-a3b4c5d6e7f0?viewPanel=2
+[live-parity-4]: http://localhost:3020/d/e1a2b3c4-d5e6-4f70-8192-a3b4c5d6e7f0?viewPanel=4
 [db-sort]: ../../../provisioning/dashboards/part-to-whole/pie-sort.json
-[live-sort-2]: http://localhost:3001/d/e4d5e6f7-0819-42a3-b4c5-d6e7f0010203?viewPanel=2
+[live-sort-2]: http://localhost:3020/d/e4d5e6f7-0819-42a3-b4c5-d6e7f0010203?viewPanel=2
 [db-labels]: ../../../provisioning/dashboards/part-to-whole/pie-labels.json
-[live-labels-8]: http://localhost:3001/d/e3c4d5e6-f708-4192-a3b4-c5d6e7f00102?viewPanel=8
+[live-labels-8]: http://localhost:3020/d/e3c4d5e6-f708-4192-a3b4-c5d6e7f00102?viewPanel=8
 [db-angles]: ../../../provisioning/dashboards/part-to-whole/pie-angles.json
-[live-angles-2]: http://localhost:3001/d/b7c8d9e0-1a2b-43c4-95d6-e7f801020304?viewPanel=2
+[live-angles-2]: http://localhost:3020/d/b7c8d9e0-1a2b-43c4-95d6-e7f801020304?viewPanel=2
 [db-legib]: ../../../provisioning/dashboards/part-to-whole/pie-legibility.json
-[live-legib-1]: http://localhost:3001/d/f5e6f7a8-1920-43b4-c5d6-e7f011223344?viewPanel=1
-[live-legib-2]: http://localhost:3001/d/f5e6f7a8-1920-43b4-c5d6-e7f011223344?viewPanel=2
-[live-legib-3]: http://localhost:3001/d/f5e6f7a8-1920-43b4-c5d6-e7f011223344?viewPanel=3
+[live-legib-1]: http://localhost:3020/d/f5e6f7a8-1920-43b4-c5d6-e7f011223344?viewPanel=1
+[live-legib-2]: http://localhost:3020/d/f5e6f7a8-1920-43b4-c5d6-e7f011223344?viewPanel=2
+[live-legib-3]: http://localhost:3020/d/f5e6f7a8-1920-43b4-c5d6-e7f011223344?viewPanel=3
 [db-rose]: ../../../provisioning/dashboards/part-to-whole/pie-rose-type.json
-[live-rose-2]: http://localhost:3001/d/f5e6f708-1920-43b4-c5d6-e7f011121314?viewPanel=2
+[live-rose-2]: http://localhost:3020/d/f5e6f708-1920-43b4-c5d6-e7f011121314?viewPanel=2
 [db-minangle]: ../../../provisioning/dashboards/part-to-whole/pie-min-angle.json
-[live-minangle-2]: http://localhost:3001/d/f5e6f708-192a-43b4-c5d6-e7f001020304?viewPanel=2
+[live-minangle-2]: http://localhost:3020/d/f5e6f708-192a-43b4-c5d6-e7f001020304?viewPanel=2
 [db-labelpos]: ../../../provisioning/dashboards/part-to-whole/pie-label-position.json
-[live-labelpos-2]: http://localhost:3001/d/f5e6f708-1920-42a3-b4c5-d6e7f0020304?viewPanel=2
-[live-labelpos-3]: http://localhost:3001/d/f5e6f708-1920-42a3-b4c5-d6e7f0020304?viewPanel=3
+[live-labelpos-2]: http://localhost:3020/d/f5e6f708-1920-42a3-b4c5-d6e7f0020304?viewPanel=2
+[live-labelpos-3]: http://localhost:3020/d/f5e6f708-1920-42a3-b4c5-d6e7f0020304?viewPanel=3
 [db-inter]: ../../../provisioning/dashboards/part-to-whole/pie-interactivity.json
-[live-inter-1]: http://localhost:3001/d/b1c2d3e4-1a2b-43c4-95d6-e7f801020310?viewPanel=1
-[live-inter-2]: http://localhost:3001/d/b1c2d3e4-1a2b-43c4-95d6-e7f801020310?viewPanel=2
-[live-inter-3]: http://localhost:3001/d/b1c2d3e4-1a2b-43c4-95d6-e7f801020310?viewPanel=3
+[live-inter-1]: http://localhost:3020/d/b1c2d3e4-1a2b-43c4-95d6-e7f801020310?viewPanel=1
+[live-inter-2]: http://localhost:3020/d/b1c2d3e4-1a2b-43c4-95d6-e7f801020310?viewPanel=2
+[live-inter-3]: http://localhost:3020/d/b1c2d3e4-1a2b-43c4-95d6-e7f801020310?viewPanel=3
 [db-funnel]: ../../../provisioning/dashboards/part-to-whole/funnel.json
-[live-funnel-5]: http://localhost:3001/d/f1a2b3c4-0819-42a3-b4c5-d6e7f0020304?viewPanel=5
+[live-funnel-5]: http://localhost:3020/d/f1a2b3c4-0819-42a3-b4c5-d6e7f0020304?viewPanel=5
 [db-legvis]: ../../../provisioning/dashboards/legend-visibility-color.json
-[live-legvis-2]: http://localhost:3001/d/c3d4e5f6-a7b8-4c9d-8e0f-2a3b4c5d6e7f?viewPanel=2
+[live-legvis-2]: http://localhost:3020/d/c3d4e5f6-a7b8-4c9d-8e0f-2a3b4c5d6e7f?viewPanel=2
 [db-tip]: ../../../provisioning/dashboards/tooltip-showcase.json
-[live-tip-17]: http://localhost:3001/d/echarts-tooltip-showcase?viewPanel=17
+[live-tip-17]: http://localhost:3020/d/echarts-tooltip-showcase?viewPanel=17
