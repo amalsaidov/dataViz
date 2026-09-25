@@ -12,6 +12,11 @@ on:
 
 permissions: {}
 
+concurrency:
+  # A long run must not overlap the next night's, since both mutate labels.
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   # actions/stale has no author- or org-based exemption input, so PRs opened by
   # grafana org members are exempted by labeling them before the stale job runs.
@@ -22,9 +27,10 @@ jobs:
   # `pull_request_target` would need a write-scoped token on a dangerous trigger,
   # which the org's zizmor policy rejects.
   exempt-members:
+    name: Exempt org members' PRs
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write
+      pull-requests: write # read open PRs' author_association, add the exemption label
     steps:
       - name: Label org members' open PRs as exempt
         env:
@@ -43,11 +49,12 @@ jobs:
             done
 
   stale:
+    name: Mark and close stale issues and PRs
     runs-on: ubuntu-latest
     needs: exempt-members
     permissions:
-      issues: write
-      pull-requests: write
+      issues: write # label and close stale issues
+      pull-requests: write # label and close stale PRs
     steps:
       - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
         with:
