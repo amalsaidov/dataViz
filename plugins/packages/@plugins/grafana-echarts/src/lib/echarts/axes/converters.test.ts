@@ -71,6 +71,11 @@ describe('panelTypeToAxis', () => {
     expect(panelTypeToAxis(makeContext('themeRiver'), false)).toBe('time');
   });
 
+  it('keeps the timeline family on a time axis, with or without a time field', () => {
+    expect(panelTypeToAxis(makeContext('custom'))).toBe('time');
+    expect(panelTypeToAxis(makeContext('custom'), false)).toBe('time');
+  });
+
   it('routes multi-value types by axis support: candlestick needs a time field, boxplot falls back to category', () => {
     expect(panelTypeToAxis(makeContext('candlestick'))).toBe('time');
     expect(panelTypeToAxis(makeContext('boxplot'))).toBe('time');

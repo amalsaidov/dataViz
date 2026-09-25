@@ -55,6 +55,11 @@ export type FunnelSeriesType = Extract<SeriesType, 'funnel'>;
  */
 export type StreamSeriesType = Extract<SeriesType, 'themeRiver'>;
 /**
+ * Timeline charts (state timeline): bars of states over time, drawn as a `custom`
+ * series (the ECharts Gantt pattern). See `data-plane/timeline.md`.
+ */
+export type TimelineSeriesType = Extract<SeriesType, 'custom'>;
+/**
  * Render variants of the part-to-whole family, selected per panel via the
  * panel-level `seriesType`: `pie` (radial) and `funnel` (stacked trapezoids).
  * Both are built from the same categorical slice model (see resolvePieSlices);
@@ -285,3 +290,10 @@ export interface EChartsFieldConfig extends HideableFieldConfig {
   axisPlacement?: AxisPlacement;
 }
 export interface EChartsGraphFieldConfig extends GraphFieldConfig, EChartsFieldConfig {}
+/** Field config of the timeline family: core's state timeline `custom.*` keys. */
+export interface EChartsTimelineFieldConfig extends EChartsFieldConfig {
+  /** Bar border width, in pixels. */
+  lineWidth?: number;
+  /** Bar fill opacity, 0 to 100. */
+  fillOpacity?: number;
+}

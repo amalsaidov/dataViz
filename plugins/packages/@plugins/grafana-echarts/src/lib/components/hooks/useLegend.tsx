@@ -105,11 +105,12 @@ export function useLegend({
             sortDesc={resolvedLegend.sortDesc}
             isSortable={true}
             limit={resolvedLegend.limit}
+            readonly={chartModule.legendReadonly}
           />
         </PanelContextProvider>
       </VizLayout.Legend>
     ),
-    [legendContextValue, items, resolvedLegend, seriesVisibilityChangeBehavior]
+    [legendContextValue, items, resolvedLegend, seriesVisibilityChangeBehavior, chartModule.legendReadonly]
   );
 
   return { items, renderLegend };

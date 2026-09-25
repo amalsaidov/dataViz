@@ -160,11 +160,11 @@ export function encodeBinnedHeatmapData(cells: BinnedHeatmapCell[]): Array<Array
 
 /**
  * Intersect two rectangles, returning undefined when they don't overlap.
- * Ported from ECharts' `graphic.clipRectByRect` so the heatmap option code has
+ * Ported from ECharts' `graphic.clipRectByRect` so the option code (heatmap, timeline) has
  * no ECharts runtime import (letting ECharts load as a shared async chunk).
  * https://github.com/apache/echarts/blob/master/src/util/graphic.ts
  */
-function clipRectByRect(target: ZRRectLike, clip: ZRRectLike): ZRRectLike | undefined {
+export function clipRectByRect(target: ZRRectLike, clip: ZRRectLike): ZRRectLike | undefined {
   const x = Math.max(target.x, clip.x);
   const x2 = Math.min(target.x + target.width, clip.x + clip.width);
   const y = Math.max(target.y, clip.y);

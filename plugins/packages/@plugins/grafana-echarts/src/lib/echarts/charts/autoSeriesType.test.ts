@@ -94,6 +94,11 @@ describe('resolveAutoSeriesType', () => {
       expect(resolveAutoSeriesType('stream', [timeNumberFrame()])).toBe('themeRiver');
       expect(resolveAutoSeriesType('stream', [])).toBe('themeRiver');
     });
+
+    it('timeline stays custom', () => {
+      expect(resolveAutoSeriesType('timeline', [timeNumberFrame()])).toBe('custom');
+      expect(resolveAutoSeriesType('timeline', [])).toBe('custom');
+    });
   });
 });
 

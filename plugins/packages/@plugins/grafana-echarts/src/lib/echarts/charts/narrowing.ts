@@ -8,6 +8,7 @@ import {
 } from 'editor/constants';
 import { multivariateSeriesTypes } from 'editor/radar';
 import { streamSeriesTypes } from 'editor/stream';
+import { timelineSeriesTypes } from 'editor/timeline';
 import {
   type CartesianSingleValueSeriesType,
   type CategoricalAxisSeriesType,
@@ -19,6 +20,7 @@ import {
   type SeriesType,
   type SeriesTypeOption,
   type StreamSeriesType,
+  type TimelineSeriesType,
   type TimeAxisSupportsSeriesType,
 } from 'editor/types';
 import { relationsSeriesTypes } from 'editor/relations/constants';
@@ -75,4 +77,10 @@ export function isRelationsSeriesType(type: SeriesType): type is RelationsSeries
 // system rather than a cartesian grid.
 export function isStreamSeriesType(type: SeriesType): type is StreamSeriesType {
   return streamSeriesTypes.some((t) => t === type);
+}
+
+// Timeline charts (state timeline) draw bars of states over time with a `custom`
+// series on a time x axis.
+export function isTimelineSeriesType(type: SeriesType): type is TimelineSeriesType {
+  return timelineSeriesTypes.some((t) => t === type);
 }

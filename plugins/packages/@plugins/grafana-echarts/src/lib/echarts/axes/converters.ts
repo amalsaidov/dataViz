@@ -6,6 +6,7 @@ import {
   isMultivariateSeriesType,
   isRelationsSeriesType,
   isStreamSeriesType,
+  isTimelineSeriesType,
   isTimeAxisSupportedForSeriesType,
 } from 'lib/echarts/charts/narrowing';
 import { supportedChartSeriesTypes } from 'lib/echarts/charts/registry';
@@ -75,6 +76,12 @@ export const panelTypeToAxis = (ctx: ChartContext, hasTimeField = true): ECharts
   // Checked before the generic time-axis branch below, which would throw for this
   // type when a frame happens to carry no time field.
   if (isStreamSeriesType(seriesType)) {
+    return 'time';
+  }
+
+  // The timeline family always draws on a time x axis; a response with no time
+  // field is a data issue (`getDataIssue`), not a category fallback.
+  if (isTimelineSeriesType(seriesType)) {
     return 'time';
   }
 

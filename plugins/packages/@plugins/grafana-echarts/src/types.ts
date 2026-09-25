@@ -4,6 +4,8 @@ import {
   type OptionsWithLegend,
   type OptionsWithTooltip,
   type SortOrder,
+  type TimelineValueAlignment,
+  type VisibilityMode,
   type VizLegendOptions,
 } from '@grafana/schema';
 import { type editorModePath, type seriesTypePath } from 'editor/constants';
@@ -104,6 +106,23 @@ export interface CoreHeatmapOptions {
 }
 
 /**
+ * The subset of core Grafana state timeline panel options that the timeline family
+ * reads. The paths are core's own, so a panel switched from the core state timeline
+ * keeps its settings.
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/state-timeline/
+ */
+export interface CoreTimelineOptions {
+  /** Show the value text on the bars. */
+  showValue?: VisibilityMode;
+  /** Lane height as a part of the space for one lane, 0 to 1. */
+  rowHeight?: number;
+  /** Merge equal consecutive values into one bar. */
+  mergeValues?: boolean;
+  /** Position of the value text on a bar. */
+  alignValue?: TimelineValueAlignment;
+}
+
+/**
  * `OptionsWithLegend` contributes the standard Core Grafana `legend`
  * (VizLegendOptions) config, registered via `commonOptionsBuilder.addLegendOptions`.
  *
@@ -159,6 +178,12 @@ export interface PanelOptions
   rowsFrame?: CoreHeatmapOptions['rowsFrame'];
   cellGap?: CoreHeatmapOptions['cellGap'];
   filterValues?: CoreHeatmapOptions['filterValues'];
+
+  /** Timeline: core's state timeline options (`CoreTimelineOptions`). */
+  showValue?: CoreTimelineOptions['showValue'];
+  rowHeight?: CoreTimelineOptions['rowHeight'];
+  mergeValues?: CoreTimelineOptions['mergeValues'];
+  alignValue?: CoreTimelineOptions['alignValue'];
 
   /**
    * Bar series stacking

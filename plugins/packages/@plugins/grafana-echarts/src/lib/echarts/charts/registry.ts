@@ -3,6 +3,7 @@ import { heatmapSeriesTypes, hierarchySeriesTypes } from 'editor/constants';
 import { partToWholeSeriesTypes } from 'editor/pie';
 import { multivariateSeriesTypes } from 'editor/radar';
 import { streamSeriesTypes } from 'editor/stream';
+import { timelineSeriesTypes } from 'editor/timeline';
 import { type SeriesType } from 'editor/types';
 import {
   isCartesianSingleValueSeriesType,
@@ -11,6 +12,7 @@ import {
   isMultivariateSeriesType,
   isRelationsSeriesType,
   isStreamSeriesType,
+  isTimelineSeriesType,
 } from './narrowing';
 import { cartesianChartModule } from './cartesian';
 import { heatmapChartModule } from './heatmap';
@@ -19,6 +21,7 @@ import { multivariateChartModule, radarChartModule } from './multivariate';
 import { partToWholeChartModule, pieChartModule } from './pie';
 import { relationsChartModule } from 'lib/echarts/relations/chartModule';
 import { streamChartModule } from './stream';
+import { timelineChartModule } from './timeline';
 import { type ChartModule } from './types';
 
 import { relationsSeriesTypes } from 'editor/relations/constants';
@@ -34,6 +37,7 @@ export const supportedChartSeriesTypes: SeriesType[] = [
   ...hierarchySeriesTypes,
   ...relationsSeriesTypes,
   ...streamSeriesTypes,
+  ...timelineSeriesTypes,
 ];
 
 /**
@@ -77,6 +81,10 @@ export function resolveChartModule(seriesType: SeriesType): ChartModule {
   if (isStreamSeriesType(seriesType)) {
     return streamChartModule;
   }
+  // The state timeline draws its bars with a `custom` series (the ECharts Gantt pattern).
+  if (isTimelineSeriesType(seriesType)) {
+    return timelineChartModule;
+  }
   throw new Error(`Cannot resolve chart module, invalid ${seriesType}!`);
 }
 
@@ -90,4 +98,5 @@ export {
   radarChartModule,
   relationsChartModule,
   streamChartModule,
+  timelineChartModule,
 };

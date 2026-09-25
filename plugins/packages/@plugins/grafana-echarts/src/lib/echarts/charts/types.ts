@@ -30,6 +30,7 @@ import {
   type SunburstSeriesOption,
   type ThemeRiverSeriesOption,
   type TitleComponentOption,
+  type TooltipComponentOption,
   type TreemapSeriesOption,
   type VisualMapComponentOption,
 } from 'echarts';
@@ -154,6 +155,11 @@ export type EChartBinnedHeatmapOption = ComposeOption<
 export type EChartMatrixHeatmapOption = ComposeOption<
   HeatmapSeriesOption | GridComponentOption | VisualMapComponentOption
 >;
+/**
+ * The option the timeline family builds: one `custom` series of state bars on a time
+ * x axis and a lane y axis, in a `grid`.
+ */
+export type EChartTimelineOption = ComposeOption<CustomSeriesOption | GridComponentOption | TooltipComponentOption>;
 export type EChartBarSeriesOption = ComposeOption<BarSeriesOption>;
 export type EChartLineSeriesOption = ComposeOption<LineSeriesOption>;
 export type EChartScatterSeriesOption = ComposeOption<ScatterSeriesOption>;
@@ -241,6 +247,7 @@ export type EChartBuildOption =
   | EChartSankeySeriesOption
   | EChartChordSeriesOption
   | EChartStreamSeriesOption
+  | EChartTimelineOption
   | EChartCandlestickSeriesOption
   | EChartBoxPlotSeriesOption
   | EChartEffectScatterSeriesOption
@@ -428,6 +435,11 @@ export interface ChartModule {
    * never resolves to a time range.
    */
   disableTimeBrush?: boolean;
+  /**
+   * The legend lists states, not series, so a click must not hide anything. The
+   * panel renders `VizLegend` as `readonly`, as core's state timeline does.
+   */
+  legendReadonly?: boolean;
 }
 
 export type CartesianOption = ComposeOption<

@@ -6,6 +6,7 @@ import { hierarchySuggestionsSupplier } from 'modules/hierarchy/suggestions';
 import { multivariateSuggestionsSupplier } from 'modules/multivariate/suggestions';
 import { partToWholeSuggestionsSupplier } from 'modules/part-to-whole/suggestions';
 import { relationsSuggestionsSupplier } from 'modules/relations/suggestions';
+import { stateTimelineSuggestionsSupplier } from 'modules/state-timeline/suggestions';
 import { streamSuggestionsSupplier } from 'modules/stream/suggestions';
 
 /**
@@ -26,6 +27,7 @@ const SUPPLIERS = [
   partToWholeSuggestionsSupplier,
   relationsSuggestionsSupplier,
   streamSuggestionsSupplier,
+  stateTimelineSuggestionsSupplier,
 ];
 
 /**
@@ -132,7 +134,7 @@ const FIXTURES: Record<string, DataFrame[]> = {
   ],
 };
 
-/** Every card the seven suppliers emit across every fixture. */
+/** Every card the eight suppliers emit across every fixture. */
 const allSuggestions = () =>
   Object.values(FIXTURES).flatMap((frames) => {
     const summary = getPanelDataSummary(frames);

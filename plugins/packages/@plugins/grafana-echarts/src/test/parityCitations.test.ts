@@ -39,6 +39,13 @@ const PARITY_DOCS: ParityDocPolicy[] = [
     minimumDashboardSources: 11,
   },
   {
+    doc: 'src/modules/state-timeline/parity.md',
+    minimumCitations: 15,
+    minimumTestTargets: 5,
+    minimumDashboardCitations: 16,
+    minimumDashboardSources: 1,
+  },
+  {
     doc: 'src/modules/part-to-whole/parity.md',
     minimumCitations: 1,
     minimumTestTargets: 1,

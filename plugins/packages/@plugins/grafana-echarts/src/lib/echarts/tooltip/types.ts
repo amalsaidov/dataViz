@@ -270,3 +270,10 @@ export interface BinnedHeatmapTooltipContext {
   /** Receives the hovered cell's content model; rendered by the React overlay. */
   tooltipSink?: TooltipSink;
 }
+
+/** What the timeline bar tooltip needs besides the hovered item. */
+export interface TimelineTooltipContext {
+  timeZone: string;
+  /** Receives the hovered bar's content model; rendered by the React overlay. */
+  tooltipSink?: TooltipSink;
+}

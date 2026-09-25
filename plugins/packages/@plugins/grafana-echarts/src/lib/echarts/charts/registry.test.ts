@@ -8,6 +8,7 @@ import {
   resolveChartModule,
   streamChartModule,
   supportedChartSeriesTypes,
+  timelineChartModule,
 } from 'lib/echarts/charts/registry';
 
 describe('resolveChartModule', () => {
@@ -50,6 +51,10 @@ describe('resolveChartModule', () => {
     expect(resolveChartModule('themeRiver')).toBe(streamChartModule);
   });
 
+  it('routes custom to the timeline module', () => {
+    expect(resolveChartModule('custom')).toBe(timelineChartModule);
+  });
+
   it('throws for unsupported concrete types', () => {
     // gauge is a planned part-to-whole variant, not yet registered.
     expect(() => resolveChartModule('gauge')).toThrow();
@@ -72,6 +77,7 @@ describe('resolveChartModule', () => {
         'parallel',
         'graph',
         'themeRiver',
+        'custom',
       ])
     );
   });
