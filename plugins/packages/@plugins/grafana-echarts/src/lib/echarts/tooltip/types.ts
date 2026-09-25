@@ -1,6 +1,7 @@
 import { type Field, type GrafanaTheme2, type ValueFormatter } from '@grafana/data';
 import { type VizTooltipOptions } from '@grafana/schema';
 import { type TooltipOption } from 'echarts/types/dist/shared';
+import { type TimelineMode } from 'lib/grafana/timeline/types';
 
 /**
  * ECharts tooltip trigger: cartesian time series share an x axis; pie/radar hover per item.
@@ -274,6 +275,8 @@ export interface BinnedHeatmapTooltipContext {
 /** What the timeline bar tooltip needs besides the hovered item. */
 export interface TimelineTooltipContext {
   timeZone: string;
+  /** `samples` (status history) shows the sample time only, with no duration. */
+  mode?: TimelineMode;
   /** Receives the hovered bar's content model; rendered by the React overlay. */
   tooltipSink?: TooltipSink;
 }

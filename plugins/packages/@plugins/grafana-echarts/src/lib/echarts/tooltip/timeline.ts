@@ -14,7 +14,8 @@ export interface TimelineItem {
 /**
  * Per-bar tooltip for the timeline custom series, composed like core's
  * `StateTimelineTooltip` in Single mode: the start–end times in the header, the lane
- * row with the value and its colour swatch, then a "Duration" row.
+ * row with the value and its colour swatch, then a "Duration" row. Status history
+ * (`samples` mode) shows the sample time and the lane row only (`withDuration` false).
  * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/state-timeline/StateTimelineTooltip.tsx
  *
  * ECharts hands back the hovered item's `dataIndex` (item trigger), which indexes
@@ -35,14 +36,16 @@ export function buildTimelineTooltipModel(
     }
     const { lane, segment } = item;
     const source = { field: lane.field, rowIndex: segment.rowIndex };
+    const valueRow = { color: segment.color, label: lane.name, value: segment.text, source };
+
+    if (ctx.mode === 'samples') {
+      return { header: { label: '', value: formatTime(segment.start) }, rows: [valueRow], source };
+    }
 
     return {
       // Core puts a line break after the dash.
       header: { label: '', value: `${formatTime(segment.start)} - \n${formatTime(segment.end)}` },
-      rows: [
-        { color: segment.color, label: lane.name, value: segment.text, source },
-        { label: 'Duration', value: fmtDuration(segment.end - segment.start) },
-      ],
+      rows: [valueRow, { label: 'Duration', value: fmtDuration(segment.end - segment.start) }],
       source,
     };
   };

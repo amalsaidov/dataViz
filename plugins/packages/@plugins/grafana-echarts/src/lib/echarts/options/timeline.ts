@@ -53,12 +53,15 @@ export function getTimelineItems(model: TimelineModel): TimelineItem[] {
 /**
  * Encode bars as `[start, end, laneTop, laneBottom]` tuples: x spans dims 0..1 (time),
  * y spans dims 2..3 (lane band). `renderItem` reads both corners.
+ *
+ * With `cellWidth` (status history), each bar is a cell of that width in milliseconds,
+ * centred on its sample time, as core's Samples mode draws it.
  * https://echarts.apache.org/en/option.html#series-custom.data
  */
-export function encodeTimelineData(items: TimelineItem[], bands: TimelineLaneBand[]): number[][] {
+export function encodeTimelineData(items: TimelineItem[], bands: TimelineLaneBand[], cellWidth?: number): number[][] {
   return items.map(({ segment, laneIndex }) => [
-    segment.start,
-    segment.end,
+    cellWidth == null ? segment.start : segment.start - cellWidth / 2,
+    cellWidth == null ? segment.end : segment.start + cellWidth / 2,
     bands[laneIndex].top,
     bands[laneIndex].bottom,
   ]);
@@ -133,12 +136,16 @@ export function getTimelineText(
 /**
  * The `renderItem` for the timeline: a rect per bar with the value colour at
  * `fillOpacity`, a border of `lineWidth` in the full value colour drawn inside the
- * bar, and the value text. Pixel positions are rounded, as core does.
+ * bar, and the value text. Pixel positions are rounded, as core does. Changes mode
+ * rounds both edges. Samples mode (`cells`) rounds the width once, less the line
+ * width, and centres the cell on its sample, so every cell has the same width, as in
+ * core's `round(colWid * colWidth - strokeWidth)`.
  * https://echarts.apache.org/en/option.html#series-custom.renderItem
  */
 export function makeTimelineRenderItem(
   items: TimelineItem[],
-  textOptions: TimelineTextOptions
+  textOptions: TimelineTextOptions,
+  cells = false
 ): CustomSeriesRenderItem {
   const pxPerChar = getPxPerChar(textOptions.font);
 
@@ -151,20 +158,22 @@ export function makeTimelineRenderItem(
     const grid = params.coordSys;
     const [x0, y0] = api.coord([api.value(0), api.value(2)]);
     const [x1, y1] = api.coord([api.value(1), api.value(3)]);
-    const left = Math.round(x0);
+    const { segment, lane } = item;
     const top = Math.round(y0);
+    // Core keeps bars at least 1px wide, so short states stay visible. A Samples cell is
+    // `colWidth` of the interval less the line width, and the border sits inside it.
+    const cellWidth = Math.max(1, Math.round(x1 - x0 - (cells ? lane.lineWidth : 0)));
+    const left = cells ? Math.round((x0 + x1) / 2 - cellWidth / 2) : Math.round(x0);
     const box: ZRRectLike = {
       x: left,
       y: top,
-      // Core keeps bars at least 1px wide, so short states stay visible.
-      width: Math.max(1, Math.round(x1) - left),
+      width: cells ? cellWidth : Math.max(1, Math.round(x1) - left),
       height: Math.round(y1 - y0),
     };
     if (!clipRectByRect(box, grid)) {
       return;
     }
 
-    const { segment, lane } = item;
     const lineWidth = lane.lineWidth;
     const inset = lineWidth / 2;
     const children: NonNullable<Extract<ReturnType<CustomSeriesRenderItem>, { type: 'group' }>['children']> = [
@@ -246,7 +255,7 @@ export function getTimelineYAxis(
 /**
  * The timeline custom series. `zlevel` places the bars on the series canvas layer, as
  * for the other families. `clip` cuts bars and text at the grid edge, as core's canvas
- * clip does.
+ * clip does. `cellWidth` draws status history cells (see `encodeTimelineData`).
  * https://echarts.apache.org/en/option.html#series-custom
  */
 export function getTimelineSeries(
@@ -254,7 +263,8 @@ export function getTimelineSeries(
   bands: TimelineLaneBand[],
   textOptions: TimelineTextOptions,
   tooltipCtx: TimelineTooltipContext,
-  zlevel?: number
+  zlevel?: number,
+  cellWidth?: number
 ): CustomSeriesOption {
   const items = getTimelineItems(model);
   return {
@@ -263,10 +273,10 @@ export function getTimelineSeries(
     coordinateSystem: 'cartesian2d',
     zlevel,
     clip: true,
-    renderItem: makeTimelineRenderItem(items, textOptions),
+    renderItem: makeTimelineRenderItem(items, textOptions, cellWidth != null),
     // https://echarts.apache.org/en/option.html#series-custom.encode
     encode: { x: [0, 1], y: [2, 3] },
-    data: encodeTimelineData(items, bands),
+    data: encodeTimelineData(items, bands, cellWidth),
     legendHoverLink: false,
     tooltip: seriesTooltip(buildTimelineTooltipModel(items, tooltipCtx), tooltipCtx.tooltipSink),
   };

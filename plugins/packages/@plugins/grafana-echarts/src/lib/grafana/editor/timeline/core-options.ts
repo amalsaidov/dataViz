@@ -1,5 +1,6 @@
 import { type FieldConfigEditorBuilder, type PanelOptionsEditorBuilder } from '@grafana/data';
 import {
+  STATUS_HISTORY_COL_WIDTH_DEFAULT,
   TIMELINE_ALIGN_VALUE_DEFAULT,
   TIMELINE_FILL_OPACITY_DEFAULT,
   TIMELINE_LINE_WIDTH_DEFAULT,
@@ -59,6 +60,17 @@ export function addRowHeightOption(builder: Builder, category: string[], default
     category,
     settings: { min: 0, max: 1, step: 0.01 },
     defaultValue,
+  });
+}
+
+/** Status history `colWidth`: the cell width as a part of the time between samples. */
+export function addColWidthOption(builder: Builder, category: string[]) {
+  builder.addSliderInput({
+    path: 'colWidth',
+    name: 'Column width',
+    category,
+    settings: { min: 0, max: 1, step: 0.01 },
+    defaultValue: STATUS_HISTORY_COL_WIDTH_DEFAULT,
   });
 }
 

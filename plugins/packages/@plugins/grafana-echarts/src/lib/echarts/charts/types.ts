@@ -53,6 +53,7 @@ import {
   type TooltipSink,
   type TooltipValueFormatterResolver,
 } from 'lib/echarts/tooltip/types';
+import { type ChartFamily } from 'lib/echarts/charts/autoSeriesType';
 import { type EChartsValueType, type FieldTypedDataFrame } from 'lib/grafana/types';
 import { type PanelOptions } from 'types';
 
@@ -71,6 +72,11 @@ export interface ChartContext<T = SeriesType, C = EChartsFieldConfig, V = EChart
    */
   selectedTime?: number | null;
   seriesType: T;
+  /**
+   * The nested plugin's family. Fixed by the plugin's identity, never a saved option.
+   * The timeline chart module reads it to pick status history's Samples mode.
+   */
+  family?: ChartFamily;
   formatValue: ValueFormatter;
   // The panel's field config (defaults + overrides). Row/series families
   // (pie slices, candlestick/boxplot) read legend color/visibility overrides

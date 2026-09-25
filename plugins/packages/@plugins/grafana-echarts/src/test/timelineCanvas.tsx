@@ -177,3 +177,40 @@ export const shortStateFrame = () =>
       { name: 'server A', type: FieldType.string, values: ['OK', 'ERROR', 'OK'], config: stateConfig() },
     ],
   });
+
+/** Render the status history panel (the `status-history` family: core's Samples mode). */
+export const renderStatusHistory = async (frames: DataFrame[], options: Partial<PanelOptions> = {}) => {
+  const { container } = render(
+    getComponent(frames, 'custom', timelineCanvasOptions(options), undefined, undefined, 'status-history')
+  );
+  return getAxisCanvasEvents(container);
+};
+
+/** A status grid: three number lanes in threshold colours, as core's `timeline-modes.json`. */
+export const statusGridFrame = () => {
+  const lane = (name: string, values: number[]) => ({
+    name,
+    type: FieldType.number,
+    values,
+    config: {
+      color: { mode: FieldColorModeId.Thresholds },
+      thresholds: {
+        mode: ThresholdsMode.Absolute,
+        steps: [
+          { value: -Infinity, color: 'green' },
+          { value: 60, color: 'orange' },
+          { value: 80, color: 'red' },
+        ],
+      },
+      custom: { fillOpacity: 70, lineWidth: 1 },
+    },
+  });
+  return toDataFrame({
+    fields: [
+      { name: 'time', type: FieldType.time, values: times },
+      lane('api', [10, 20, 65, 70, 90, 40, 30, 20, 85]),
+      lane('db', [50, 55, 60, 85, 95, 90, 70, 40, 10]),
+      lane('cache', [5, 5, 5, 5, 62, 5, 5, 81, 5]),
+    ],
+  });
+};

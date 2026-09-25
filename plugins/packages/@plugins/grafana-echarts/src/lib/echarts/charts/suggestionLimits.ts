@@ -130,3 +130,16 @@ export const HEATMAP_MATRIX_MAX_COLUMNS = 50;
  * ceiling because row labels stack vertically, where there is more room.
  */
 export const HEATMAP_MATRIX_MAX_ROWS = 100;
+
+/**
+ * Number fields at which a timeline (state timeline, status history) is withheld:
+ * each field is one lane, and past this the lanes do not fit on the Y axis.
+ * Core's value (`fieldCountByType(FieldType.number) >= 30`, `state-timeline/module.tsx`).
+ */
+export const TIMELINE_NUMBER_FIELDS_LIMIT = 30;
+
+/**
+ * Most rows per frame a status history accepts. It draws one cell per row, so
+ * past this the cells are too narrow to read. Core's value (`status-history/module.tsx`).
+ */
+export const STATUS_HISTORY_MAX_ROWS = 100;

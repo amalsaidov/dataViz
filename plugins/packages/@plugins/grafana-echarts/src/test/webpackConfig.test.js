@@ -52,6 +52,7 @@ describe('webpack configuration', () => {
       'modules/part-to-whole/module',
       'modules/relations/module',
       'modules/state-timeline/module',
+      'modules/status-history/module',
       'modules/stream/module',
     ]);
     expect(defaultConfig.output).toEqual(

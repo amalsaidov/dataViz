@@ -1,5 +1,6 @@
 import { createDataFrame, FieldType, getPanelDataSummary, VisualizationSuggestionScore } from '@grafana/data';
-import { stateTimelineSuggestionsSupplier, TIMELINE_MAX_NUMBER_FIELDS } from './suggestions';
+import { TIMELINE_NUMBER_FIELDS_LIMIT } from 'lib/echarts/charts/suggestionLimits';
+import { stateTimelineSuggestionsSupplier } from './suggestions';
 
 const timeFrame = (fields: Array<{ name: string; type: FieldType; values: unknown[] }>) =>
   createDataFrame({ fields: [{ name: 'time', type: FieldType.time, values: [1000, 2000, 3000] }, ...fields] });
@@ -29,8 +30,8 @@ describe('stateTimelineSuggestionsSupplier', () => {
     expect(stateTimelineSuggestionsSupplier(getPanelDataSummary([frame]))).toBeUndefined();
   });
 
-  it(`withholds at ${TIMELINE_MAX_NUMBER_FIELDS} number fields, which do not fit on the Y axis`, () => {
-    const summary = getPanelDataSummary([timeFrame(numbers(TIMELINE_MAX_NUMBER_FIELDS))]);
+  it(`withholds at ${TIMELINE_NUMBER_FIELDS_LIMIT} number fields, which do not fit on the Y axis`, () => {
+    const summary = getPanelDataSummary([timeFrame(numbers(TIMELINE_NUMBER_FIELDS_LIMIT))]);
     expect(stateTimelineSuggestionsSupplier(summary)).toBeUndefined();
   });
 

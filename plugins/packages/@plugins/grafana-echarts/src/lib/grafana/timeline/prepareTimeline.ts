@@ -22,7 +22,13 @@ import {
 } from '@grafana/data';
 import { MappingType } from '@grafana/schema';
 import { getThresholdItems, getTimelineLegendItems } from './legend';
-import { type TimelineIssue, type TimelineLane, type TimelinePrepareResult, type TimelineSegment } from './types';
+import {
+  type TimelineIssue,
+  type TimelineLane,
+  type TimelineMode,
+  type TimelinePrepareResult,
+  type TimelineSegment,
+} from './types';
 
 /**
  * Grafana side of the timeline family: frames in, `TimelineModel` out. A slim port of
@@ -43,8 +49,10 @@ import { type TimelineIssue, type TimelineLane, type TimelinePrepareResult, type
 const NULL_RETAIN = 1;
 
 export interface PrepareTimelineOptions {
-  /** Core's "Merge equal consecutive values". */
+  /** Core's "Merge equal consecutive values". `samples` mode never merges. */
   mergeValues: boolean;
+  /** `changes` (state timeline) when unset. */
+  mode?: TimelineMode;
   timeRange: TimeRange;
   theme: GrafanaTheme2;
 }
@@ -262,11 +270,14 @@ function getFillColor(color: string, fillOpacity: number | undefined): string {
   return colorManipulator.alpha(color, (fillOpacity ?? 100) / 100);
 }
 
-/** The bars of one lane: core's Changes-mode walk over the joined values. */
+/**
+ * The bars of one lane: core's walk over the joined values. `changes` mode runs each
+ * state to the next one, `samples` mode gives each drawable sample its own cell.
+ */
 function buildSegments(
   field: Field,
   times: number[],
-  { mergeValues, timeRange, theme }: PrepareTimelineOptions
+  { mergeValues, mode, timeRange, theme }: PrepareTimelineOptions
 ): TimelineSegment[] {
   const discrete = !field.config.color?.mode?.startsWith('continuous-');
   const mappedNull =
@@ -287,9 +298,13 @@ function buildSegments(
     }
 
     // A state runs over rows that are `undefined` (not in this lane's frame) and, when
-    // merging, over rows with the same value.
-    let next = ix;
-    while (++next < values.length && (values[next] === undefined || (mergeValues && values[next] === value))) {}
+    // merging, over rows with the same value. A sample is one row.
+    let next = ix + 1;
+    if (mode !== 'samples') {
+      while (next < values.length && (values[next] === undefined || (mergeValues && values[next] === value))) {
+        next++;
+      }
+    }
 
     const display = field.display?.(value);
     const color = display?.color ?? FALLBACK_COLOR;
@@ -297,7 +312,7 @@ function buildSegments(
     const start = times[ix];
     segments.push({
       start,
-      end: next === values.length ? Math.max(rangeEnd, start) : times[next],
+      end: mode === 'samples' ? start : next === values.length ? Math.max(rangeEnd, start) : times[next],
       text: display ? formattedValueToString(display) : String(value),
       color,
       fillColor,
@@ -313,7 +328,9 @@ function buildSegments(
  * Build the timeline model: one lane per value field over all frames, joined on time.
  * Returns an issue with core's message when the data cannot be drawn.
  */
-export function prepareTimeline(series: DataFrame[], opts: PrepareTimelineOptions): TimelinePrepareResult {
+export function prepareTimeline(series: DataFrame[], options: PrepareTimelineOptions): TimelinePrepareResult {
+  // Core's status history passes `mergeValues: false` (`StatusHistoryPanel.tsx`).
+  const opts = options.mode === 'samples' ? { ...options, mergeValues: false } : options;
   if (series.length === 0) {
     return { model: { lanes: [], legendItems: [] } };
   }
@@ -330,6 +347,10 @@ export function prepareTimeline(series: DataFrame[], opts: PrepareTimelineOption
   const timeField = joined.fields.find((field) => field.type === FieldType.time);
   const timeValues: unknown[] = timeField?.values ?? [];
   const times = timeValues.map(Number);
+  // Core sizes status history cells from the first interval of the joined times. With one
+  // sample there is no interval, and core draws no cell.
+  const sampleInterval = opts.mode === 'samples' && times.length > 1 ? times[1] - times[0] : undefined;
+  const drawsSegments = opts.mode !== 'samples' || sampleInterval != null;
 
   const lanes: TimelineLane[] = joined.fields
     .filter((field) => field.type !== FieldType.time)
@@ -339,9 +360,10 @@ export function prepareTimeline(series: DataFrame[], opts: PrepareTimelineOption
       name: getFieldDisplayName(field, joined),
       field,
       lineWidth: customNumber(field, 'lineWidth') ?? 0,
-      segments: buildSegments(field, times, opts),
+      segments: drawsSegments ? buildSegments(field, times, opts) : [],
     }));
 
   const valueFields = frames.flatMap((frame) => frame.fields.filter((field) => field.type !== FieldType.time));
-  return { model: { lanes, legendItems: getTimelineLegendItems(valueFields, opts.theme) } };
+  const legendItems = getTimelineLegendItems(valueFields, opts.theme);
+  return { model: { lanes, legendItems, sampleInterval } };
 }

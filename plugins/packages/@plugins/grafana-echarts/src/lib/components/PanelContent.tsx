@@ -67,11 +67,12 @@ export const PanelContent: React.FC<Props> = ({
       timeRange,
       options,
       seriesType,
+      family,
       formatValue,
       fieldConfig,
       replaceVariables,
     }),
-    [data.series, theme, timeZone, timeRange, options, seriesType, formatValue, fieldConfig, replaceVariables]
+    [data.series, theme, timeZone, timeRange, options, seriesType, family, formatValue, fieldConfig, replaceVariables]
   );
 
   // The stops this render can be stepped through, or `null` for no slider. Relations can

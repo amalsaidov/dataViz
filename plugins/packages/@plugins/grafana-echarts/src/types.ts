@@ -106,10 +106,10 @@ export interface CoreHeatmapOptions {
 }
 
 /**
- * The subset of core Grafana state timeline panel options that the timeline family
- * reads. The paths are core's own, so a panel switched from the core state timeline
- * keeps its settings.
+ * The subset of core Grafana state timeline and status history panel options that the
+ * timeline family reads. The paths are core's own.
  * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/state-timeline/
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/status-history/
  */
 export interface CoreTimelineOptions {
   /** Show the value text on the bars. */
@@ -120,6 +120,8 @@ export interface CoreTimelineOptions {
   mergeValues?: boolean;
   /** Position of the value text on a bar. */
   alignValue?: TimelineValueAlignment;
+  /** Status history: cell width as a part of the time between samples, 0 to 1. */
+  colWidth?: number;
 }
 
 /**
@@ -184,6 +186,7 @@ export interface PanelOptions
   rowHeight?: CoreTimelineOptions['rowHeight'];
   mergeValues?: CoreTimelineOptions['mergeValues'];
   alignValue?: CoreTimelineOptions['alignValue'];
+  colWidth?: CoreTimelineOptions['colWidth'];
 
   /**
    * Bar series stacking

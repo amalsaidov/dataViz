@@ -7,6 +7,7 @@ import { multivariateSuggestionsSupplier } from 'modules/multivariate/suggestion
 import { partToWholeSuggestionsSupplier } from 'modules/part-to-whole/suggestions';
 import { relationsSuggestionsSupplier } from 'modules/relations/suggestions';
 import { stateTimelineSuggestionsSupplier } from 'modules/state-timeline/suggestions';
+import { statusHistorySuggestionsSupplier } from 'modules/status-history/suggestions';
 import { streamSuggestionsSupplier } from 'modules/stream/suggestions';
 
 /**
@@ -28,6 +29,7 @@ const SUPPLIERS = [
   relationsSuggestionsSupplier,
   streamSuggestionsSupplier,
   stateTimelineSuggestionsSupplier,
+  statusHistorySuggestionsSupplier,
 ];
 
 /**

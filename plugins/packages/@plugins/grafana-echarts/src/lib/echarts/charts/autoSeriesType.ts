@@ -7,7 +7,15 @@ import { resolveMultiValueSeriesType } from 'lib/echarts/converters/multiValueCa
  * by the plugin's identity (see each `modules/<family>/module.tsx`).
  */
 export type ChartFamily =
-  'cartesian' | 'heatmap' | 'part-to-whole' | 'multivariate' | 'hierarchy' | 'relations' | 'stream' | 'timeline';
+  | 'cartesian'
+  | 'heatmap'
+  | 'part-to-whole'
+  | 'multivariate'
+  | 'hierarchy'
+  | 'relations'
+  | 'stream'
+  | 'timeline'
+  | 'status-history';
 
 /**
  * Resolve `'Auto'` (or an unset series type) to a concrete `SeriesType`, scoped
@@ -40,7 +48,10 @@ export function resolveAutoSeriesType(family: ChartFamily, frames: DataFrame[]):
       return 'graph';
     case 'stream':
       return 'themeRiver';
+    // Two families, one chart module: the family selects the timeline mode
+    // (`timelineMode` in `charts/timeline.ts`), so `custom` routes the same for both.
     case 'timeline':
+    case 'status-history':
       return 'custom';
   }
 }

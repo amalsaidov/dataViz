@@ -52,6 +52,18 @@ describe('encodeTimelineData', () => {
       [5, 20, 0.5, 1],
     ]);
   });
+
+  it('centres a cell of cellWidth on each sample time (status history)', () => {
+    const samples: TimelineModel = {
+      lanes: [{ name: 'A', field, lineWidth: 1, segments: [segment(10, 10, 'OK'), segment(20, 20, 'ERROR')] }],
+      legendItems: [],
+      sampleInterval: 10,
+    };
+    expect(encodeTimelineData(getTimelineItems(samples), getTimelineLaneBands(1, 0.9), 9)).toEqual([
+      [5.5, 14.5, 0, 1],
+      [15.5, 24.5, 0, 1],
+    ]);
+  });
 });
 
 describe('getTimelineYAxis', () => {

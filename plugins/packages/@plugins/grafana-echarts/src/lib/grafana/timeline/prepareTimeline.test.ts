@@ -278,6 +278,124 @@ describe('prepareTimeline segments', () => {
   });
 });
 
+describe('prepareTimeline samples mode', () => {
+  const timeRange = range(1, 10);
+  const samples = (options: Partial<PrepareTimelineOptions> = {}): PrepareTimelineOptions => ({
+    ...opts(timeRange),
+    mode: 'samples',
+    ...options,
+  });
+
+  it('draws one cell per sample, never merged, even with mergeValues on', () => {
+    const frames = [
+      toDataFrame({
+        fields: [
+          { name: 'a', type: FieldType.time, values: [1, 3, 5, 7] },
+          { name: 'b', type: FieldType.string, values: ['x', 'x', 'x', 'y'] },
+        ],
+      }),
+    ];
+    // Each cell is a point in time: `start` equals `end`.
+    expect(spans(frames, samples({ mergeValues: true }))).toEqual([
+      [
+        [1, 1, 'x'],
+        [3, 3, 'x'],
+        [5, 5, 'x'],
+        [7, 7, 'y'],
+      ],
+    ]);
+  });
+
+  it('draws no cell for undefined, null or NaN', () => {
+    const frames = [
+      toDataFrame({
+        fields: [
+          { name: 'a', type: FieldType.time, values: [1, 2, 3, 4, 5] },
+          { name: 'b', type: FieldType.number, values: [1, undefined, null, NaN, 2] },
+        ],
+      }),
+    ];
+    expect(spans(frames, samples())).toEqual([
+      [
+        [1, 1, '1'],
+        [5, 5, '2'],
+      ],
+    ]);
+  });
+
+  it('does not merge threshold steps', () => {
+    const frames = [
+      toDataFrame({
+        fields: [
+          { name: 'a', type: FieldType.time, values: [1, 2, 3] },
+          {
+            name: 'b',
+            type: FieldType.number,
+            values: [5, 6, 20],
+            config: {
+              color: { mode: FieldColorModeId.Thresholds },
+              thresholds: {
+                mode: ThresholdsMode.Absolute,
+                steps: [
+                  { value: -Infinity, color: 'green' },
+                  { value: 10, color: 'red' },
+                ],
+              },
+            },
+          },
+        ],
+      }),
+    ];
+    // The cells show the numbers, not the step labels that the merge writes.
+    expect(spans(frames, samples())).toEqual([
+      [
+        [1, 1, '5'],
+        [2, 2, '6'],
+        [3, 3, '20'],
+      ],
+    ]);
+  });
+
+  it('gives the first interval of the joined times as sampleInterval', () => {
+    const frames = [
+      toDataFrame({
+        fields: [
+          { name: 'a', type: FieldType.time, values: [2, 5, 9] },
+          { name: 'b', type: FieldType.string, values: ['x', 'y', 'z'] },
+        ],
+      }),
+    ];
+    expect(prepareTimeline(withDisplay(frames), samples()).model?.sampleInterval).toBe(3);
+  });
+
+  it('has no sampleInterval in changes mode or with one sample', () => {
+    const one = () => [
+      toDataFrame({
+        fields: [
+          { name: 'a', type: FieldType.time, values: [2] },
+          { name: 'b', type: FieldType.string, values: ['x'] },
+        ],
+      }),
+    ];
+    expect(prepareTimeline(withDisplay(one()), samples()).model?.sampleInterval).toBeUndefined();
+    expect(prepareTimeline(withDisplay(one()), opts(timeRange)).model?.sampleInterval).toBeUndefined();
+  });
+
+  it('draws no cell with one sample, as core has no interval to size it', () => {
+    const frames = [
+      toDataFrame({
+        fields: [
+          { name: 'a', type: FieldType.time, values: [2] },
+          { name: 'b', type: FieldType.string, values: ['x'] },
+        ],
+      }),
+    ];
+    expect(spans(frames, samples())).toEqual([[]]);
+    // The state timeline still draws the one state to the end of the range.
+    expect(spans(frames, opts(timeRange))).toEqual([[[2, 10, 'x']]]);
+  });
+});
+
 describe('prepareTimeline lane names', () => {
   it('numbers lanes with the same display name, as core does', () => {
     const frame = (values: string[]) =>

@@ -16,19 +16,25 @@ import {
   timelineValueFont,
 } from 'lib/echarts/options/timeline';
 import { prepareTimeline } from 'lib/grafana/timeline/prepareTimeline';
-import { type TimelinePrepareResult } from 'lib/grafana/timeline/types';
+import { type TimelineMode, type TimelineModel, type TimelinePrepareResult } from 'lib/grafana/timeline/types';
 import { getTimeAxisLabelFormatter } from 'lib/grafana/timeAxisFormat';
 import { type ChartContext, type ChartModule, type EChartTimelineOption } from './types';
 
 /**
- * Timeline chart family (state timeline): one lane per value field, one bar per state,
- * drawn with an ECharts `custom` series. Data prep is the Grafana side
+ * Timeline chart family (state timeline and status history): one lane per value field,
+ * one bar per state or one cell per sample, drawn with an ECharts `custom` series. Data prep is the Grafana side
  * (`lib/grafana/timeline`), the series is the ECharts side (`options/timeline.ts`).
- * See `data-plane/timeline.md` and `modules/state-timeline/parity.md`.
+ * See `data-plane/timeline.md`, `modules/state-timeline/parity.md` and
+ * `modules/status-history/parity.md`.
  */
+
+/** The status history family draws core's Samples mode; every other caller Changes. */
+export const timelineMode = (ctx: Pick<ChartContext, 'family'>): TimelineMode =>
+  ctx.family === 'status-history' ? 'samples' : 'changes';
 
 interface PrepareInput {
   mergeValues: boolean;
+  mode: TimelineMode;
   timeRange: TimeRange;
   theme: GrafanaTheme2;
 }
@@ -47,6 +53,7 @@ const prepareCache = new WeakMap<DataFrame[], PrepareCacheEntry>();
 function prepare(ctx: ChartContext): TimelinePrepareResult {
   const input: PrepareInput = {
     mergeValues: resolveTimelineOptions(ctx.options).mergeValues,
+    mode: timelineMode(ctx),
     timeRange: ctx.timeRange,
     theme: ctx.theme,
   };
@@ -54,6 +61,7 @@ function prepare(ctx: ChartContext): TimelinePrepareResult {
   if (
     cached &&
     cached.input.mergeValues === input.mergeValues &&
+    cached.input.mode === input.mode &&
     cached.input.timeRange === input.timeRange &&
     cached.input.theme === input.theme
   ) {
@@ -62,6 +70,38 @@ function prepare(ctx: ChartContext): TimelinePrepareResult {
   const result = prepareTimeline(ctx.frames, input);
   prepareCache.set(ctx.frames, { input, result });
   return result;
+}
+
+/**
+ * Status history cell width in milliseconds: `colWidth` of the first sample interval,
+ * as core's Samples mode. With one sample there is no interval and no cell.
+ */
+function getSampleCellWidth(model: TimelineModel, colWidth: number): number {
+  return (model.sampleInterval ?? 0) * colWidth;
+}
+
+/**
+ * Status history X range: the time range, padded by half an interval at an edge that
+ * the samples reach, so the edge cells show in full. Core's Samples `xRange`.
+ */
+function getSampleAxisBounds(model: TimelineModel, timeRange: TimeRange): { min: number; max: number } {
+  const bounds = getTimeAxisBounds(timeRange);
+  let first = Infinity;
+  let last = -Infinity;
+  for (const lane of model.lanes) {
+    for (const { start } of lane.segments) {
+      first = Math.min(first, start);
+      last = Math.max(last, start);
+    }
+  }
+  if (model.sampleInterval == null || first > last) {
+    return bounds;
+  }
+  const pad = model.sampleInterval / 2;
+  return {
+    min: bounds.min <= first ? first - pad : bounds.min,
+    max: bounds.max >= last ? last + pad : bounds.max,
+  };
 }
 
 export const timelineChartModule: ChartModule = {
@@ -83,12 +123,14 @@ export const timelineChartModule: ChartModule = {
       return null;
     }
     const { theme, timeRange, timeZone, options } = ctx;
-    const { rowHeight, showValue, alignValue } = resolveTimelineOptions(options);
+    const { rowHeight, showValue, alignValue, colWidth } = resolveTimelineOptions(options);
+    const mode = timelineMode(ctx);
+    const cellWidth = mode === 'samples' ? getSampleCellWidth(model, colWidth) : undefined;
     const bands = getTimelineLaneBands(model.lanes.length, rowHeight);
     const axisStyle = getCartesianAxisStyle(theme);
 
     const xAxis = mergeAxisStyle<XAXisOption>(cartesianTimeDefaultOptions.xAxis, axisStyle, {
-      ...getTimeAxisBounds(timeRange),
+      ...(mode === 'samples' ? getSampleAxisBounds(model, timeRange) : getTimeAxisBounds(timeRange)),
       axisLabel: { formatter: getTimeAxisLabelFormatter(timeRange, timeZone) },
       zlevel: options.zLevel?.axis,
     });
@@ -103,9 +145,15 @@ export const timelineChartModule: ChartModule = {
         getTimelineSeries(
           model,
           bands,
-          { showValue, alignValue, font: timelineValueFont(theme.typography.fontFamily) },
-          { timeZone, tooltipSink: ctx.tooltipSink },
-          options.zLevel?.series
+          // Core centres the text of status history cells.
+          {
+            showValue,
+            alignValue: mode === 'samples' ? 'center' : alignValue,
+            font: timelineValueFont(theme.typography.fontFamily),
+          },
+          { timeZone, tooltipSink: ctx.tooltipSink, mode },
+          options.zLevel?.series,
+          cellWidth
         ),
       ],
     };

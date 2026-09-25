@@ -29,4 +29,12 @@ describe('buildTimelineTooltipModel', () => {
     ]);
     expect(model.source).toEqual({ field, rowIndex: 3 });
   });
+
+  it('shows the sample time and the lane value only in samples mode', () => {
+    const model = buildTimelineTooltipModel(items, { timeZone: 'utc', mode: 'samples' })({
+      dataIndex: 0,
+    } as TopLevelFormatterParams);
+    expect(model.header).toEqual({ label: '', value: '2026-01-01 10:00:00' });
+    expect(model.rows).toEqual([{ color: 'green', label: 'server A', value: 'OK', source: { field, rowIndex: 3 } }]);
+  });
 });
