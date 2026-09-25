@@ -24,13 +24,19 @@ import React, { lazy, Suspense } from 'react';
 import { type PanelOptions } from 'types';
 
 // `.then` re-maps the named `Panel` export to the `default` that React.lazy expects.
-const Panel = lazy(() => import('lib/components/Panel').then((m) => ({ default: m.Panel })));
+const loadPanel = () => import('lib/components/Panel').then((m) => ({ default: m.Panel }));
+const Panel = lazy(loadPanel);
 
-/** Build the lazy panel entry for a nested plugin, binding its chart `family`. */
-export const makeLazyPanel = (family: ChartFamily) => {
+/**
+ * Build the lazy panel entry for a nested plugin, binding its chart `family`.
+ * `preload` runs in parallel with the chunk load and delays the first render
+ * until it settles. It must not reject.
+ */
+export const makeLazyPanel = (family: ChartFamily, preload?: () => Promise<void>) => {
+  const Loaded = preload ? lazy(() => Promise.all([loadPanel(), preload()]).then(([m]) => m)) : Panel;
   const LazyPanel = (props: PanelProps<PanelOptions>) => (
     <Suspense fallback={<LoadingPlaceholder text="" />}>
-      <Panel {...props} family={family} />
+      <Loaded {...props} family={family} />
     </Suspense>
   );
   return LazyPanel;

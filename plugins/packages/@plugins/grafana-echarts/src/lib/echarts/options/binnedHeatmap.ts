@@ -1,4 +1,4 @@
-import { type DisplayProcessor, type GrafanaTheme2 } from '@grafana/data';
+import { type DisplayProcessor, formattedValueToString, getValueFormat, type GrafanaTheme2 } from '@grafana/data';
 import { type CustomSeriesOption, type CustomSeriesRenderItem } from 'echarts';
 import { type ContinuousVisualMapOption } from 'echarts/types/dist/shared';
 import type { TimeAxisBaseOption } from 'echarts/types/src/coord/axisCommonTypes';
@@ -16,6 +16,7 @@ import { type HeatmapColorScalePlacement, type HeatmapColorScheme } from 'lib/ec
 import { buildBinnedHeatmapTooltipModel } from 'lib/echarts/tooltip/binnedHeatmap';
 import { seriesTooltip } from 'lib/echarts/tooltip/option';
 import { type BinnedHeatmapTooltipContext } from 'lib/echarts/tooltip/types';
+import { type CoreHeatmapOptions } from 'types';
 
 /**
  * Custom tick/label/grid-line placement for the heatmap bucket (Y) axis so the
@@ -30,7 +31,10 @@ import { type BinnedHeatmapTooltipContext } from 'lib/echarts/tooltip/types';
  * Uses ECharts `customValues` (value-axis support added in 5.5), so it requires
  * ECharts >= 5.5 (the plugin ships 6.x).
  */
-export function getBinnedHeatmapBucketAxis(data: BinnedHeatmapData): CartesianAxisOption | TimeAxisBaseOption {
+export function getBinnedHeatmapBucketAxis(
+  data: BinnedHeatmapData,
+  formatLabel: (label: string) => string = (label) => label
+): CartesianAxisOption | TimeAxisBaseOption {
   const rawBuckets = data.yBuckets;
   if (rawBuckets.length === 0) {
     return {};
@@ -51,12 +55,96 @@ export function getBinnedHeatmapBucketAxis(data: BinnedHeatmapData): CartesianAx
   }
 
   const labelValues = Array.from(labelByValue.keys()).sort((a, b) => a - b);
+  const labels = labelValues.map((value) => formatLabel(labelByValue.get(value) ?? ''));
+  const widest = labels.reduce((a, b) => (b.length > a.length ? b : a), '');
 
   return {
-    axisLabel: { customValues: labelValues, formatter: (value: number) => labelByValue.get(Number(value)) ?? '' },
+    axisLabel: {
+      customValues: labelValues,
+      // Only `customValues` are drawn. `grid.containLabel` measures the axis
+      // with its default ticks instead, so those get the widest label to
+      // reserve enough room.
+      formatter: (value: number) => {
+        const label = labelByValue.get(Number(value));
+        return label == null ? widest : formatLabel(label);
+      },
+    },
     axisTick: { customValues: labelValues },
     breaks: rawBuckets,
   };
+}
+
+/** Parse a core axis bound, which dashboards store as a number or a string. */
+function parseBound(value: number | string | undefined): number | undefined {
+  if (value == null || value === '') {
+    return undefined;
+  }
+  const num = Number(value);
+  return Number.isFinite(num) ? num : undefined;
+}
+
+/**
+ * The Y axis of the cell layer, from the data's Y scale and core's `yAxis`
+ * options (unit, decimals, min, max, reverse).
+ *
+ * - `buckets`: one label per bucket bound (see {@link getBinnedHeatmapBucketAxis}).
+ *   Numeric labels take the unit.
+ * - `linear` / `log`: a plain value or log axis with auto ticks, as for the
+ *   many uniform buckets of a calculated heatmap.
+ *
+ * See https://echarts.apache.org/en/option.html#yAxis.type and
+ * https://echarts.apache.org/en/option.html#yAxis.inverse
+ */
+export function getBinnedHeatmapYAxis(
+  data: BinnedHeatmapData,
+  yAxis: CoreHeatmapOptions['yAxis']
+): CartesianAxisOption | TimeAxisBaseOption {
+  const unit = yAxis?.unit;
+  const decimals = yAxis?.decimals;
+  const format = getValueFormat(unit || 'short');
+  const formatNumber = (value: number) => formattedValueToString(format(value, decimals));
+  const inverse = yAxis?.reverse === true;
+  // Only set bounds replace the data range.
+  const explicit: { min?: number; max?: number } = {};
+  const min = parseBound(yAxis?.min);
+  const max = parseBound(yAxis?.max);
+  if (min != null) {
+    explicit.min = min;
+  }
+  if (max != null) {
+    explicit.max = max;
+  }
+  const axisLabel = { formatter: (value: number) => formatNumber(value) };
+
+  // A linear scale takes ECharts' auto range unless set, like core's uPlot
+  // scale; `undefined` replaces the data range the caller sets. A log range
+  // snaps out to whole magnitudes of the set or data range, as in core.
+  const scale = data.yScale;
+  if (scale?.type === 'log') {
+    const log = (value: number) => Math.log(value) / Math.log(scale.log);
+    const lo = explicit.min ?? data.yMin;
+    const hi = explicit.max ?? data.yMax;
+    return {
+      type: 'log',
+      logBase: scale.log,
+      inverse,
+      axisLabel,
+      min: lo > 0 ? scale.log ** Math.floor(log(lo)) : undefined,
+      max: hi > 0 ? scale.log ** Math.ceil(log(hi)) : undefined,
+    };
+  }
+  if (scale?.type === 'linear') {
+    return { type: 'value', inverse, axisLabel, min: explicit.min, max: explicit.max };
+  }
+
+  const formatLabel =
+    unit || decimals != null
+      ? (label: string) => {
+          const num = Number(label);
+          return label !== '' && Number.isFinite(num) ? formatNumber(num) : label;
+        }
+      : undefined;
+  return { ...getBinnedHeatmapBucketAxis(data, formatLabel), inverse, ...explicit };
 }
 
 /**
@@ -122,17 +210,22 @@ export function getBinnedHeatmapCellEmphasisShadow(theme: GrafanaTheme2): Binned
  * (`hoverLink`) or an individual cell lifts the matching cells.
  * See https://echarts.apache.org/en/option.html#series-custom.renderItem
  */
-export function makeBinnedHeatmapRenderItem(emphasisShadow: BinnedHeatmapCellShadow): CustomSeriesRenderItem {
+export function makeBinnedHeatmapRenderItem(
+  emphasisShadow: BinnedHeatmapCellShadow,
+  cellGap = 0
+): CustomSeriesRenderItem {
   return (params, api) => {
     const start = api.coord([api.value(0), api.value(1)]);
     const end = api.coord([api.value(2), api.value(3)]);
 
+    // With no gap, +0.5 closes sub-pixel seams between adjacent cells. A gap
+    // shrinks each cell from its far edges; cells stay at least 1px.
+    const pad = cellGap > 0 ? -cellGap : 0.5;
     const rect: ZRRectLike = {
       x: Math.min(start[0], end[0]),
       y: Math.min(start[1], end[1]),
-      // +0.5 closes sub-pixel seams between adjacent cells.
-      width: Math.abs(end[0] - start[0]) + 0.5,
-      height: Math.abs(end[1] - start[1]) + 0.5,
+      width: Math.max(1, Math.abs(end[0] - start[0]) + pad),
+      height: Math.max(1, Math.abs(end[1] - start[1]) + pad),
     };
 
     // ECharts types `coordSys` only as `{ type }`, but on cartesian2d it also
@@ -167,7 +260,8 @@ export function getBinnedHeatmapSeries(
   data: BinnedHeatmapData,
   tooltipCtx: BinnedHeatmapTooltipContext,
   yAxisIndex = 0,
-  zlevel?: number
+  zlevel?: number,
+  { cellGap }: { cellGap?: number } = {}
 ): CustomSeriesOption {
   return {
     name: 'Heatmap',
@@ -175,7 +269,7 @@ export function getBinnedHeatmapSeries(
     coordinateSystem: 'cartesian2d',
     yAxisIndex,
     zlevel,
-    renderItem: makeBinnedHeatmapRenderItem(getBinnedHeatmapCellEmphasisShadow(tooltipCtx.theme)),
+    renderItem: makeBinnedHeatmapRenderItem(getBinnedHeatmapCellEmphasisShadow(tooltipCtx.theme), cellGap),
     // Map tuple dims to axes: x spans dims [0, 2] (xStart..xEnd), y spans [1, 3]
     // (yStart..yEnd), and the tooltip reads the value dim.
     // See https://echarts.apache.org/en/option.html#series-custom.encode
@@ -203,12 +297,14 @@ export function getBinnedHeatmapVisualMap({
   seriesIndex,
   placement = 'right',
   scheme,
+  color,
   formatDisplayValue,
 }: {
   data: BinnedHeatmapData;
   theme: GrafanaTheme2;
   seriesIndex: number;
   scheme?: HeatmapColorScheme;
+  color?: CoreHeatmapOptions['color'];
   placement: HeatmapColorScalePlacement;
   formatDisplayValue: DisplayProcessor;
 }): ContinuousVisualMapOption {
@@ -220,6 +316,7 @@ export function getBinnedHeatmapVisualMap({
     seriesIndex,
     scheme,
     placement,
+    color,
     formatDisplayValue,
   });
 }

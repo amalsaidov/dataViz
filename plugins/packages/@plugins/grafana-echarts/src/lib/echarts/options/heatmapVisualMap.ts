@@ -1,8 +1,9 @@
-import { type DisplayProcessor, formattedValueToString, type GrafanaTheme2 } from '@grafana/data';
+import { colorManipulator, type DisplayProcessor, formattedValueToString, type GrafanaTheme2 } from '@grafana/data';
 import { type ContinuousVisualMapOption } from 'echarts/types/dist/shared';
 import { getThemeTextStyle } from 'lib/echarts/options/base';
 import { getHeatmapColors } from 'lib/echarts/options/constants';
 import { type HeatmapColorScalePlacement, type HeatmapColorScheme } from 'lib/echarts/options/types';
+import { type CoreHeatmapOptions } from 'types';
 
 /** Bar thickness (px), shared by both orientations (ECharts `itemWidth`). */
 const VISUALMAP_ITEM_THICKNESS = 12;
@@ -21,7 +22,26 @@ export interface HeatmapVisualMapParams {
   seriesIndex: number;
   scheme?: HeatmapColorScheme;
   placement?: HeatmapColorScalePlacement;
+  /** Core heatmap color options: opacity mode and a fixed value range. */
+  color?: CoreHeatmapOptions['color'];
   formatDisplayValue: DisplayProcessor;
+}
+
+/** Color stops for opacity mode. Enough stops to follow the exponential curve. */
+const OPACITY_STOPS = 16;
+
+/**
+ * Opacity mode, like core Grafana: `fill` fades from clear to solid. With the
+ * exponential scale the alpha is `t ^ exponent`, so low values stay visible.
+ * ECharts interpolates linearly between the stops of `inRange.color`.
+ * See https://echarts.apache.org/en/option.html#visualMap-continuous.inRange
+ */
+export function getOpacityColorStops(color: NonNullable<CoreHeatmapOptions['color']>, theme: GrafanaTheme2): string[] {
+  const fill = theme.visualization.getColorByName(color.fill ?? 'dark-orange');
+  const exponent = color.scale === 'exponential' ? (color.exponent ?? 0.5) : 1;
+  return Array.from({ length: OPACITY_STOPS + 1 }, (_, i) =>
+    colorManipulator.alpha(fill, (i / OPACITY_STOPS) ** exponent)
+  );
 }
 
 /**
@@ -43,8 +63,12 @@ export function getHeatmapVisualMap({
   seriesIndex,
   scheme,
   placement = 'right',
+  color,
   formatDisplayValue,
 }: HeatmapVisualMapParams): ContinuousVisualMapOption {
+  // A fixed color range (core's "Start/End color from value") overrides the data range.
+  const min = color?.min ?? valueMin;
+  const max = color?.max ?? valueMax;
   // Position/size the bar per placement. ECharts positions accept a number (px)
   // or a percent/keyword string, so plain px numbers are used here.
   const orientation: Pick<
@@ -73,16 +97,16 @@ export function getHeatmapVisualMap({
     // so the heatmap stays colored without the scale taking up panel space.
     // https://echarts.apache.org/en/option.html#visualMap-continuous.show
     show: placement !== 'none',
-    min: valueMin,
+    min,
     // Widen a degenerate single-value range so the scale still renders.
-    max: valueMax === valueMin ? valueMin + 1 : valueMax,
+    max: max === min ? min + 1 : max,
     dimension,
     seriesIndex,
     calculable: true,
     hoverLink: true,
     ...orientation,
     formatter: (value) => formattedValueToString(formatDisplayValue(Number(value))),
-    inRange: { color: getHeatmapColors(scheme) },
+    inRange: { color: color?.mode === 'opacity' ? getOpacityColorStops(color, theme) : getHeatmapColors(scheme) },
     textStyle: getThemeTextStyle(theme),
   };
 }

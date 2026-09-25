@@ -217,9 +217,9 @@ describe('heatmapChartModule.buildOption', () => {
   it('bounds the bucket (Y) axis to the heatmap bucket range', () => {
     const option = buildHeatmapOption(makeContext([heatmapFrame()]), { isGrafanaLegend: true });
     const yAxis = single(option?.yAxis);
-    // Buckets 0..10 and 10..20 give a 0..20 bucket range.
+    // The two `le` buckets are ordinal rows 0..1 and 1..2 (core's "Auto" scale).
     expect(yAxis?.min).toBe(0);
-    expect(yAxis?.max).toBe(20);
+    expect(yAxis?.max).toBe(2);
   });
 
   it('emits a single bucket y-axis (object, not array) for a pure heatmap', () => {
@@ -237,7 +237,7 @@ describe('heatmapChartModule.buildOption', () => {
     expect(yAxes).toHaveLength(2);
     // Bucket axis (index 0) stays pinned to the bucket range.
     expect(yAxes[0]?.min).toBe(0);
-    expect(yAxes[0]?.max).toBe(20);
+    expect(yAxes[0]?.max).toBe(2);
     // Overlay axis (index 1) auto-fits its own values instead of the bucket scale.
     // `scale` lives on the value-axis variant of the YAXisOption union.
     const overlayAxis = yAxes[1] as { type?: string; scale?: boolean };
@@ -260,7 +260,7 @@ describe('heatmapChartModule.buildOption', () => {
     // Bucket axis (0) plus one axis per overlay unit (1: bytes, 2: percent).
     expect(yAxes).toHaveLength(3);
     expect(yAxes[0]?.min).toBe(0);
-    expect(yAxes[0]?.max).toBe(20);
+    expect(yAxes[0]?.max).toBe(2);
     expect(yAxes[1]?.position).toBe('right');
     expect(yAxes[2]?.position).toBe('right');
     // Stacked on the right with increasing offsets so labels don't overlap.

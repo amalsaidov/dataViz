@@ -60,6 +60,13 @@ export interface BinnedHeatmapData {
   /** The distinct Y buckets (rows), ordered by their lower bound. */
   yBuckets: BinnedHeatmapBucket[];
   /**
+   * How to draw the Y axis. `buckets` pins one label per bucket bound (source
+   * buckets). `linear` and `log` use a plain numeric scale with auto ticks,
+   * which suits the many uniform buckets of a calculated heatmap. Unset means
+   * `buckets`.
+   */
+  yScale?: BinnedHeatmapYScale;
+  /**
    * How to place the Y bucket labels. `bound` labels each bucket at its upper
    * edge (Prometheus `le` histograms / numeric cell bounds); `center` labels
    * each bucket at its midpoint (ordinal rows labelled by field name).
@@ -73,10 +80,38 @@ export interface BinnedHeatmapData {
   valueField: Field<number>;
 }
 
+/** Y axis scale of the cell layer. `log` carries its base. */
+export type BinnedHeatmapYScale = { type: 'buckets' } | { type: 'linear' } | { type: 'log'; log: number };
+
+/**
+ * Cells to leave out, like core Grafana's "Hide cells with values" options: a
+ * cell is drawn only when `le < value < ge`. Null values are never drawn when
+ * a filter is set.
+ */
+export interface BinnedHeatmapCellFilter {
+  le?: number;
+  ge?: number;
+}
+
+/**
+ * How to place `le` buckets on the Y axis, like core Grafana's "Y bucket
+ * scale" for heatmap-rows. `auto` (the default) gives every bucket the same
+ * height, which keeps exponential Prometheus buckets readable. `linear` and
+ * `log` place buckets at their numeric bounds.
+ */
+export type BinnedHeatmapRowsScale = { type: 'auto' } | { type: 'linear' } | { type: 'log'; log: number };
+
+export interface BinnedHeatmapOptions {
+  filter?: BinnedHeatmapCellFilter;
+  rowsScale?: BinnedHeatmapRowsScale;
+}
+
 /** Cells plus the bucket metadata derived from a single heatmap frame. */
 interface FrameHeatmap {
   cells: BinnedHeatmapCell[];
   buckets: BinnedHeatmapBucket[];
+  /** Numeric Y scale of a dense heatmap-cells frame. Unset for source buckets. */
+  yScale?: BinnedHeatmapYScale;
   /** True for numeric/`le` bounds, false for ordinal (field-name) rows. */
   labelsAtBounds: boolean;
   /** The frame's value field, used to derive the cell value display (unit, decimals). */
@@ -146,7 +181,12 @@ function frameXIsTime(frame: DataFrame): boolean {
  * X cells span `[x, x + step)` where `step` is the smallest gap between X values
  * (the last column reuses the prior step).
  */
-function rowsToCells(frame: FieldTypedDataFrame<number, EChartsFieldConfig>, series: DataFrame[]): FrameHeatmap {
+function rowsToCells(
+  frame: FieldTypedDataFrame<number, EChartsFieldConfig>,
+  series: DataFrame[],
+  keep: (value: number | null) => boolean,
+  rowsScale: BinnedHeatmapRowsScale = { type: 'auto' }
+): FrameHeatmap {
   const xField = frame.fields[0];
   if (!xField || (xField.type !== FieldType.time && xField.type !== FieldType.number)) {
     return EMPTY_FRAME_HEATMAP;
@@ -182,47 +222,123 @@ function rowsToCells(frame: FieldTypedDataFrame<number, EChartsFieldConfig>, ser
   }));
   rows.sort((a, b) => a.upper - b.upper);
 
+  // `le` buckets on the `auto` scale are ordinal: bucket r spans [r, r + 1),
+  // labelled with its `le` bound. See `BinnedHeatmapRowsScale`.
+  // A log scale cannot show a `le="0"` (or negative) bound, so such a frame
+  // falls back to ordinal rows.
+  const logFits = rows.every((row) => !Number.isFinite(row.upper) || row.upper > 0);
+  const logBase = hasLe && rowsScale.type === 'log' && logFits ? rowsScale.log : undefined;
+  const ordinal = hasLe && (rowsScale.type === 'auto' || (rowsScale.type === 'log' && !logBase));
+
   const cells: BinnedHeatmapCell[] = [];
   const buckets: BinnedHeatmapBucket[] = [];
   for (let r = 0; r < rows.length; r++) {
     const { field, upper } = rows[r];
-    const yStart = r === 0 ? 0 : rows[r - 1].upper;
-    // An open-ended (+Inf) top bucket reuses the previous bucket's height so it
-    // stays visible rather than spanning to infinity.
-    const prevHeight = r === 0 ? 1 : rows[r - 1].upper - (r === 1 ? 0 : rows[r - 2].upper);
-    const yEnd = Number.isFinite(upper) ? upper : yStart + prevHeight;
+    let yStart: number;
+    let yEnd: number;
+    if (ordinal) {
+      yStart = r;
+      yEnd = r + 1;
+    } else if (logBase) {
+      // A log scale has no 0: the first bucket starts one ratio below its
+      // bound, and an open (+Inf) top bucket ends one ratio above its start.
+      const next = rows[r + 1]?.upper;
+      const ratio = r > 0 ? upper / rows[r - 1].upper : Number.isFinite(next) && next > upper ? next / upper : logBase;
+      yStart = r === 0 ? upper / ratio : rows[r - 1].upper;
+      const prevRatio = r > 1 ? rows[r - 1].upper / rows[r - 2].upper : logBase;
+      yEnd = Number.isFinite(upper) ? upper : yStart * prevRatio;
+    } else {
+      yStart = r === 0 ? 0 : rows[r - 1].upper;
+      // An open-ended (+Inf) top bucket reuses the previous bucket's height so it
+      // stays visible rather than spanning to infinity.
+      const prevHeight = r === 0 ? 1 : rows[r - 1].upper - (r === 1 ? 0 : rows[r - 2].upper);
+      yEnd = Number.isFinite(upper) ? upper : yStart + prevHeight;
+    }
 
     // With `le` labels the bucket label is the upper bound (the original `le`
     // string preserves "+Inf"); otherwise it is the field display name.
     buckets.push({ start: yStart, end: yEnd, label: hasLe ? (rows[r].le ?? formatBucketBound(upper)) : rows[r].name });
 
     for (let i = 0; i < xs.length; i++) {
-      const value = field.values[i];
-      cells.push({
-        xStart: xs[i],
-        xEnd: xs[i] + xStep,
-        yStart,
-        yEnd,
-        value: typeof value === 'number' ? value : null,
-        field,
-        rowIndex: i,
-      });
+      const raw = field.values[i];
+      const value = typeof raw === 'number' ? raw : null;
+      if (!keep(value)) {
+        continue;
+      }
+      cells.push({ xStart: xs[i], xEnd: xs[i] + xStep, yStart, yEnd, value, field, rowIndex: i });
     }
   }
 
-  return { cells, buckets, labelsAtBounds: hasLe, valueField: rows[0]?.field };
+  // Numeric `le` rows on a log scale get a log axis; other rows keep one label per bound.
+  const yScale: BinnedHeatmapYScale | undefined = logBase ? { type: 'log', log: logBase } : undefined;
+  return { cells, buckets, labelsAtBounds: hasLe, valueField: rows[0]?.field, yScale };
 }
 
 /**
- * Heatmap-cells: one row per cell. X bounds come from `xMin`/`xMax` when present
- * (sparse layout) or from the center `x`/time field +/- half the inferred step.
- * Y bounds come from `yMin`/`yMax` or the center `y` field +/- half its step.
- * The first value field that isn't an axis-bound field is the displayed value.
+ * The log base of a Y field, read from the `scaleDistribution` that core
+ * Grafana's heatmap calculation writes to the `yMin` field config.
+ * See https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/heatmap/#y-bucket-scale
  */
-function cellsToCells(frame: NumericFrame): FrameHeatmap {
+function fieldLogBase(field: Field | undefined): number | undefined {
+  const custom: unknown = field?.config.custom;
+  const distribution: unknown =
+    typeof custom === 'object' && custom !== null && 'scaleDistribution' in custom
+      ? custom.scaleDistribution
+      : undefined;
+  if (typeof distribution !== 'object' || distribution === null || !('type' in distribution)) {
+    return undefined;
+  }
+  if (distribution.type !== 'log') {
+    return undefined;
+  }
+  return 'log' in distribution && typeof distribution.log === 'number' ? distribution.log : 2;
+}
+
+/**
+ * Bounds for the buckets of a dense frame, which has only one Y bound per cell
+ * (`yMin` or `yMax`). The missing bound is the adjacent bucket's bound. The
+ * outermost bucket reuses the last step: a ratio on a log scale, a difference
+ * on a linear scale. This matches core Grafana, which sizes dense cells from
+ * the bucket increment.
+ */
+function denseBucketBounds(values: number[], edge: 'min' | 'max', logBase?: number): Map<number, [number, number]> {
+  const sorted = Array.from(new Set(values.filter((value) => Number.isFinite(value)))).sort((a, b) => a - b);
+  const bounds = new Map<number, [number, number]>();
+  if (sorted.length === 0) {
+    return bounds;
+  }
+  const n = sorted.length;
+  const step = (a: number, b: number) => (logBase ? b / a : b - a);
+  const apply = (value: number, by: number, dir: 1 | -1) => (logBase ? value * by ** dir : value + by * dir);
+
+  if (edge === 'min') {
+    const lastStep = n > 1 ? step(sorted[n - 2], sorted[n - 1]) : (logBase ?? 1);
+    sorted.forEach((value, i) => bounds.set(value, [value, i < n - 1 ? sorted[i + 1] : apply(value, lastStep, 1)]));
+  } else {
+    const firstStep = n > 1 ? step(sorted[0], sorted[1]) : (logBase ?? 1);
+    sorted.forEach((value, i) => bounds.set(value, [i > 0 ? sorted[i - 1] : apply(value, firstStep, -1), value]));
+  }
+  return bounds;
+}
+
+/**
+ * Heatmap-cells: one row per cell.
+ *
+ * - Sparse frames have both bounds per axis (`xMin`/`xMax`, `yMin`/`yMax`).
+ * - Dense frames have one bound per axis. `xMin`/`yMin` is the lower edge and
+ *   `xMax`/`yMax` the upper edge (core's `ge`/`le` layouts); the other edge is
+ *   inferred from the bucket size. A center `x`/`y` spans +/- half a step.
+ *
+ * A dense `yMin`/`yMax` frame (for example the output of core's heatmap
+ * calculation) gets a numeric Y scale, log when the field config says so.
+ * The first value field that isn't an axis-bound field is the displayed value.
+ * See https://grafana.com/developers/dataplane/heatmap#heatmap-cells
+ */
+function cellsToCells(frame: NumericFrame, keep: (value: number | null) => boolean): FrameHeatmap {
   const xMin = fieldByName(frame, 'xMin');
   const xMax = fieldByName(frame, 'xMax');
-  const xCenter = fieldByName(frame, 'x') ?? frame.fields.find((field) => field.type === FieldType.time);
+  const xCenter =
+    fieldByName(frame, 'x') ?? (xMin || xMax ? undefined : frame.fields.find((field) => field.type === FieldType.time));
 
   const yMin = fieldByName(frame, 'yMin');
   const yMax = fieldByName(frame, 'yMax');
@@ -238,37 +354,79 @@ function cellsToCells(frame: NumericFrame): FrameHeatmap {
   }
 
   const rowCount = frame.length;
-  const xStep = xCenter ? minPositiveStep(xCenter.values) : 1;
+  const xEdge = xMin ?? xMax;
+  const xStep = xCenter ? minPositiveStep(xCenter.values) : xEdge ? minPositiveStep(xEdge.values) : 1;
   const yStep = yCenter ? minPositiveStep(yCenter.values) : 1;
+
+  // Dense Y: exactly one of yMin / yMax.
+  const yEdgeField = yMin && !yMax ? yMin : yMax && !yMin ? yMax : undefined;
+  const yLog = fieldLogBase(yEdgeField);
+  const denseY = yEdgeField
+    ? denseBucketBounds(yEdgeField.values, yEdgeField === yMin ? 'min' : 'max', yLog)
+    : undefined;
 
   const cells: BinnedHeatmapCell[] = [];
   // Distinct Y bucket bounds (cells repeat the same row across X), keyed to
   // dedupe so the bucket axis gets one label per row.
   const bucketByKey = new Map<string, BinnedHeatmapBucket>();
   for (let i = 0; i < rowCount; i++) {
-    const xs = xMin ? Number(xMin.values[i]) : xCenter ? Number(xCenter.values[i]) - xStep / 2 : i;
-    const xe = xMax ? Number(xMax.values[i]) : xCenter ? Number(xCenter.values[i]) + xStep / 2 : i + 1;
-    const ys = yMin ? Number(yMin.values[i]) : yCenter ? Number(yCenter.values[i]) - yStep / 2 : i;
-    const ye = yMax ? Number(yMax.values[i]) : yCenter ? Number(yCenter.values[i]) + yStep / 2 : i + 1;
-    const value = valueField.values[i];
+    let xs: number;
+    let xe: number;
+    if (xMin && xMax) {
+      xs = Number(xMin.values[i]);
+      xe = Number(xMax.values[i]);
+    } else if (xMin) {
+      xs = Number(xMin.values[i]);
+      xe = xs + xStep;
+    } else if (xMax) {
+      xe = Number(xMax.values[i]);
+      xs = xe - xStep;
+    } else if (xCenter) {
+      xs = Number(xCenter.values[i]) - xStep / 2;
+      xe = Number(xCenter.values[i]) + xStep / 2;
+    } else {
+      xs = i;
+      xe = i + 1;
+    }
 
-    cells.push({
-      xStart: xs,
-      xEnd: xe,
-      yStart: ys,
-      yEnd: ye,
-      value: typeof value === 'number' ? value : null,
-      field: valueField,
-      rowIndex: i,
-    });
+    let ys: number;
+    let ye: number;
+    if (denseY && yEdgeField) {
+      [ys, ye] = denseY.get(Number(yEdgeField.values[i])) ?? [NaN, NaN];
+    } else {
+      ys = yMin ? Number(yMin.values[i]) : yCenter ? Number(yCenter.values[i]) - yStep / 2 : i;
+      ye = yMax ? Number(yMax.values[i]) : yCenter ? Number(yCenter.values[i]) + yStep / 2 : i + 1;
+    }
+    const raw = valueField.values[i];
+    const value = typeof raw === 'number' ? raw : null;
 
     const key = `${ys}:${ye}`;
     if (!bucketByKey.has(key)) {
       bucketByKey.set(key, { start: ys, end: ye, label: formatBucketBound(ye) });
     }
+
+    if (!keep(value)) {
+      continue;
+    }
+    cells.push({ xStart: xs, xEnd: xe, yStart: ys, yEnd: ye, value, field: valueField, rowIndex: i });
   }
 
-  return { cells, buckets: Array.from(bucketByKey.values()), labelsAtBounds: true, valueField };
+  const yScale: BinnedHeatmapYScale | undefined = denseY
+    ? yLog
+      ? { type: 'log', log: yLog }
+      : { type: 'linear' }
+    : undefined;
+
+  return { cells, buckets: Array.from(bucketByKey.values()), labelsAtBounds: true, valueField, yScale };
+}
+
+/** Build the keep-predicate for a cell filter. No filter keeps every cell. */
+function cellFilterPredicate(filter?: BinnedHeatmapCellFilter): (value: number | null) => boolean {
+  if (filter?.le == null && filter?.ge == null) {
+    return () => true;
+  }
+  const { le = -Infinity, ge = Infinity } = filter;
+  return (value) => value != null && value > le && value < ge;
 }
 
 /**
@@ -276,10 +434,18 @@ function cellsToCells(frame: NumericFrame): FrameHeatmap {
  * common binned cell model plus the value and bucket ranges. Multiple heatmap
  * frames are merged into a single cell set.
  *
+ * `filter` leaves out cells by value; the value range comes from the kept
+ * cells only. `rowsScale` places `le` buckets (see `BinnedHeatmapRowsScale`).
+ *
  * Returns `null` when no usable cells can be derived, so the caller can skip the
  * heatmap layer.
  */
-export function frameToBinnedHeatmap(frames: DataFrame[], series: DataFrame[] = frames): BinnedHeatmapData | null {
+export function frameToBinnedHeatmap(
+  frames: DataFrame[],
+  series: DataFrame[] = frames,
+  { filter, rowsScale }: BinnedHeatmapOptions = {}
+): BinnedHeatmapData | null {
+  const keep = cellFilterPredicate(filter);
   const cells: BinnedHeatmapCell[] = [];
   const bucketByKey = new Map<string, BinnedHeatmapBucket>();
   // X axis is time only when every frame that actually contributes cells uses a
@@ -290,18 +456,21 @@ export function frameToBinnedHeatmap(frames: DataFrame[], series: DataFrame[] = 
   let labelsAtBounds = true;
   // The value field of the first frame that contributes cells
   let valueField: Field<number> | undefined;
+  // Numeric Y scale of the first dense frame; source buckets otherwise.
+  let yScale: BinnedHeatmapYScale | undefined;
 
   for (const frame of frames) {
     const frameHeatmap =
       frame.meta?.type === 'heatmap-cells'
-        ? cellsToCells(frame)
+        ? cellsToCells(frame, keep)
         : // heatmap-rows (and timeseries-wide reused as rows).
-          rowsToCells(frame, series);
+          rowsToCells(frame, series, keep, rowsScale);
 
     if (frameHeatmap.cells.length === 0) {
       continue;
     }
 
+    yScale ??= frameHeatmap.yScale;
     cells.push(...frameHeatmap.cells);
     valueField ??= frameHeatmap.valueField;
     xIsTime = xIsTime && frameXIsTime(frame);
@@ -330,11 +499,15 @@ export function frameToBinnedHeatmap(frames: DataFrame[], series: DataFrame[] = 
       valueMin = Math.min(valueMin, cell.value);
       valueMax = Math.max(valueMax, cell.value);
     }
-    if (Number.isFinite(cell.yStart)) {
-      yMin = Math.min(yMin, cell.yStart);
+  }
+  // The Y range spans every bucket, including buckets whose cells the filter
+  // left out, so hiding empty cells does not crop the axis.
+  for (const bucket of yBuckets) {
+    if (Number.isFinite(bucket.start)) {
+      yMin = Math.min(yMin, bucket.start);
     }
-    if (Number.isFinite(cell.yEnd)) {
-      yMax = Math.max(yMax, cell.yEnd);
+    if (Number.isFinite(bucket.end)) {
+      yMax = Math.max(yMax, bucket.end);
     }
   }
 
@@ -356,6 +529,7 @@ export function frameToBinnedHeatmap(frames: DataFrame[], series: DataFrame[] = 
     xIsTime,
     yBuckets,
     yLabelPlacement: labelsAtBounds ? 'bound' : 'center',
+    yScale,
     valueField,
   };
 }

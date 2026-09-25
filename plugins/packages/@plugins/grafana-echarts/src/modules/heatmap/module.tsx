@@ -7,6 +7,8 @@ import { type EChartsFieldConfig } from 'editor/types';
 import { makeLazyPanel } from 'lib/components/LazyPanel';
 import { STANDARD_FIELD_OPTIONS } from 'lib/grafana/editor/common/fieldConfig';
 import { addCommonLegendAndTooltip } from 'lib/grafana/editor/common/legend-and-tooltip';
+import { addCoreHeatmapOptions } from 'lib/grafana/editor/heatmap/core-options';
+import { preloadHeatmapCalculator } from 'lib/grafana/heatmap/calculate';
 import { heatmapColorSchemeDefault, heatmapLayoutDefault } from 'lib/echarts/options/constants';
 import { heatmapColorSchemeOptions, heatmapLayoutOptions } from 'modules/heatmap/constants';
 import { type PanelOptions } from 'types';
@@ -27,7 +29,10 @@ initPluginTranslations(__PLUGIN_ID__);
 // is allowed: a numeric frame whose field is overridden to a cartesian type
 // (line/bar/scatter) via the per-field override below is drawn as a cartesian
 // overlay on top of the heatmap cells (see `frameHasCartesianOverride`).
-export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(makeLazyPanel('heatmap'))
+export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(
+  // Load core's heatmap transformer with the panel chunk, for "Calculate from data".
+  makeLazyPanel('heatmap', preloadHeatmapCalculator)
+)
   .useFieldConfig({
     standardOptions: STANDARD_FIELD_OPTIONS,
     // Per-field series type override, scoped to cartesian types. Overriding a
@@ -77,7 +82,11 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(makeLazy
         options: heatmapColorSchemeOptions,
       },
       category: [seriesCategoryName],
+      // Opacity mode colors cells from a single fill instead.
+      showIf: (options) => options.color?.mode !== 'opacity',
     });
+
+    addCoreHeatmapOptions(builder);
 
     // Placement of the ECharts visualMap (the heatmap cell color scale). Grouped
     // separately from the Grafana DOM "Legend" (which governs overlay series).

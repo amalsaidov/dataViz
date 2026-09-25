@@ -1,5 +1,6 @@
 import { type ReduceDataOptions, type StandardOptionConfig } from '@grafana/data';
 import {
+  type HeatmapCalculationOptions,
   type OptionsWithLegend,
   type OptionsWithTooltip,
   type SortOrder,
@@ -62,6 +63,46 @@ export interface PieChartLegendOptions extends VizLegendOptions {
   values?: PieLegendValue[];
 }
 
+/** Core's "Y bucket scale" (a `ScaleDistributionConfig`). Unset means "Auto": ordinal rows. */
+export interface HeatmapYBucketScale {
+  type?: 'linear' | 'log';
+  log?: number;
+}
+
+/**
+ * The subset of core Grafana heatmap panel options that the heatmap family
+ * reads. The paths are core's own, so a panel switched from the core heatmap
+ * keeps its settings.
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/heatmap/
+ */
+export interface CoreHeatmapOptions {
+  calculate?: boolean;
+  calculation?: HeatmapCalculationOptions;
+  yAxis?: {
+    unit?: string;
+    decimals?: number;
+    min?: number | string;
+    max?: number | string;
+    reverse?: boolean;
+  };
+  color?: {
+    /** `scheme` uses `heatmapColorScheme`; `opacity` fades `fill` from clear to solid. */
+    mode?: 'scheme' | 'opacity';
+    fill?: string;
+    /** `exponential` maps `value ^ exponent`, so low counts stay visible. */
+    scale?: 'linear' | 'exponential';
+    exponent?: number;
+    min?: number;
+    max?: number;
+  };
+  /** Heatmap-rows input. `yBucketScale` unset is core's "Auto" (ordinal rows). */
+  rowsFrame?: { layout?: string; yBucketScale?: HeatmapYBucketScale };
+  /** Gap between cells, in pixels. */
+  cellGap?: number;
+  /** Hide cells with values `<= le` or `>= ge`. */
+  filterValues?: { le?: number; ge?: number };
+}
+
 /**
  * `OptionsWithLegend` contributes the standard Core Grafana `legend`
  * (VizLegendOptions) config, registered via `commonOptionsBuilder.addLegendOptions`.
@@ -109,6 +150,15 @@ export interface PanelOptions
 
   /** Placement of the heatmap color scale (ECharts `visualMap`). */
   heatmapColorScale?: { placement: HeatmapColorScalePlacement };
+
+  /** Heatmap: bin raw time series into buckets (core's "Calculate from data"). */
+  calculate?: CoreHeatmapOptions['calculate'];
+  calculation?: CoreHeatmapOptions['calculation'];
+  yAxis?: CoreHeatmapOptions['yAxis'];
+  color?: CoreHeatmapOptions['color'];
+  rowsFrame?: CoreHeatmapOptions['rowsFrame'];
+  cellGap?: CoreHeatmapOptions['cellGap'];
+  filterValues?: CoreHeatmapOptions['filterValues'];
 
   /**
    * Bar series stacking
