@@ -26,10 +26,7 @@ on:
       - 'plugins/pnpm-workspace.yaml'
       - '.github/workflows/echarts-bundle-stats.yml'
 
-permissions:
-  contents: read
-  pull-requests: write
-  actions: read
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -44,7 +41,16 @@ env:
 
 jobs:
   compare:
+    name: Compare bundle size against main
     runs-on: ubuntu-latest
+    # pull-requests: write is only needed by the final report step. This is a
+    # `pull_request` trigger, so on fork PRs the token is read-only regardless
+    # and that step fails rather than posting -- deliberate, versus taking a
+    # write token onto `pull_request_target`.
+    permissions:
+      contents: read # checkout, plus grafana/plugin-actions for the report script
+      pull-requests: write # comment the size delta on the PR
+      actions: read # look up the latest main-branch stats.json artifact
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:

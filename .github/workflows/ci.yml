@@ -8,13 +8,20 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Superseded PR pushes are cancelled, but main is not: cancelling there would
+  # leave the merged commit without a completed check.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
     name: Format, lint, type-check, test, build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout only; nothing here writes back to the repo
     defaults:
       run:
         working-directory: plugins
