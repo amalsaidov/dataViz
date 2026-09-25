@@ -10,13 +10,44 @@ on:
   schedule:
     - cron: '30 4 * * *'
 
-permissions:
-  issues: write
-  pull-requests: write
+permissions: {}
 
 jobs:
+  # actions/stale has no author- or org-based exemption input, so PRs opened by
+  # grafana org members are exempted by labeling them before the stale job runs.
+  # `author_association` is computed by GitHub and needs no scopes beyond the
+  # default token -- unlike the org membership API, which requires read:org.
+  #
+  # This deliberately runs on the same schedule rather than per-PR: labeling on
+  # `pull_request_target` would need a write-scoped token on a dangerous trigger,
+  # which the org's zizmor policy rejects.
+  exempt-members:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Label org members' open PRs as exempt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/${REPO}/pulls?state=open&per_page=100" \
+            --jq '.[]
+                  | select(.author_association == "MEMBER" or .author_association == "OWNER")
+                  | select([.labels[].name] | index("no stalebot") | not)
+                  | .number' \
+          | while read -r pr; do
+              echo "Exempting #${pr}"
+              gh pr edit "${pr}" --repo "${REPO}" --add-label 'no stalebot'
+            done
+
   stale:
     runs-on: ubuntu-latest
+    needs: exempt-members
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
         with:
