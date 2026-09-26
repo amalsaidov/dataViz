@@ -235,6 +235,151 @@
       ],
       "title": "Label position: Inside",
       "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Stacked bars (stackSeries) with Show values = Always. Each segment label uses the field unit and decimals (currencyUSD, 1 decimal), the same text as the core Bar chart twin on the right.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "currencyUSD",
+          "decimals": 1,
+          "custom": {
+            "stackSeries": true
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "bar",
+        "showValues": "always"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "category,Budget,Actual\nSales,43.25,50\nAdmin,30,24.5\nIT,55,48\nOps,22,28.75"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "fields": {},
+            "conversions": [
+              {
+                "targetField": "Budget",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "Actual",
+                "destinationType": "number"
+              }
+            ]
+          }
+        }
+      ],
+      "title": "Stacked, unit and decimals",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Core Grafana Bar chart parity twin of the panel on the left: stacking normal, Show values = Always, currencyUSD with 1 decimal.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "currencyUSD",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "orientation": "auto",
+        "showValue": "always",
+        "stacking": "normal",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "groupWidth": 0.7,
+        "barWidth": 0.97
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "category,Budget,Actual\nSales,43.25,50\nAdmin,30,24.5\nIT,55,48\nOps,22,28.75"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "fields": {},
+            "conversions": [
+              {
+                "targetField": "Budget",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "Actual",
+                "destinationType": "number"
+              }
+            ]
+          }
+        }
+      ],
+      "title": "Core Bar chart: stacked, unit and decimals",
+      "type": "barchart"
     }
   ]
 }

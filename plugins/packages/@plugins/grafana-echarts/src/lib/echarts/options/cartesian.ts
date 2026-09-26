@@ -5,7 +5,7 @@ import {
   type LineSeriesOption,
   type ScatterSeriesOption,
 } from 'echarts';
-import { type ECBasicOption } from 'echarts/types/dist/shared';
+import { type CallbackDataParams, type ECBasicOption } from 'echarts/types/dist/shared';
 import { type AxisLabelValueFormatter, type TimeAxisBaseOption } from 'echarts/types/src/coord/axisCommonTypes';
 import {
   type CartesianAxisOption,
@@ -31,6 +31,7 @@ import { AXIS_FONT_SIZE, createBaseOptions, getUPlotGridColor } from 'lib/echart
 import { applyAdvancedDefaults } from 'lib/echarts/options/editorMode';
 import { getThemedLabelStyle } from 'lib/echarts/options/labels';
 import { type PerfSeriesOptions } from 'lib/echarts/performance/types';
+import { formatEChartsValue } from 'lib/echarts/style';
 import { type PanelOptions } from 'types';
 
 /**
@@ -148,13 +149,17 @@ export const cartesianCategoryDefaultOptions: ECBasicOption & { xAxis: XAXisOpti
  * draws labels; `auto` / `never` / unset return `undefined` so no label key is
  * written and the chart renders as before (existing panels have no value labels).
  * `position` places them (default `top`); the style is themed via the shared
- * `getThemedLabelStyle` so labels match Grafana.
+ * `getThemedLabelStyle` so labels match Grafana. `formatValue` is the field's
+ * Grafana value formatter (unit, decimals, value mappings), as core Bar chart uses
+ * for its labels; without it ECharts prints the raw number.
  * https://echarts.apache.org/en/option.html#series-bar.label
+ * https://echarts.apache.org/en/option.html#series-bar.label.formatter
  */
 export function getCartesianValueLabel(
   showValues: CartesianShowValues | undefined,
   position: CartesianValueLabelPosition | undefined,
-  theme: GrafanaTheme2
+  theme: GrafanaTheme2,
+  formatValue?: ValueFormatter
 ) {
   if (showValues !== 'always') {
     return undefined;
@@ -167,6 +172,9 @@ export function getCartesianValueLabel(
     ...getThemedLabelStyle(theme),
     show: true,
     position: position ?? CARTESIAN_VALUE_LABEL_POSITION_DEFAULT,
+    ...(formatValue
+      ? { formatter: (params: CallbackDataParams) => formatEChartsValue(params.value, formatValue) }
+      : {}),
   };
 }
 
@@ -275,8 +283,9 @@ export function isSymbolSeriesType(type: string | undefined): type is 'line' | '
 
 /**
  * The data-independent inputs a converter supplies for one cartesian series: its
- * name, positional `data`, resolved color, canvas `zlevel`, and (bar-only) stack
- * group. `buildCartesianSeries` composes these with the Advanced options.
+ * name, positional `data`, resolved color, canvas `zlevel`, (bar-only) stack
+ * group and value formatter. `buildCartesianSeries` composes these with the
+ * Advanced options.
  */
 export interface CartesianSeriesInput {
   name: string;
@@ -284,6 +293,8 @@ export interface CartesianSeriesInput {
   color: string | undefined;
   zlevel: number | undefined;
   stack?: string;
+  /** The source field's Grafana value formatter, used by the "Show values" labels. */
+  formatValue?: ValueFormatter;
   /**
    * Density-resolved fast-path props from `getSeriesPerfOptions` (symbols off /
    * LTTB for dense lines; `large` for dense scatter/bar). Already narrowed to the
@@ -341,8 +352,8 @@ export function buildCartesianSeries(
   options: PanelOptions,
   theme: GrafanaTheme2
 ): CartesianSeriesEntry {
-  const { name, data, color, zlevel, stack, perf, hover } = input;
-  const label = getCartesianValueLabel(options.showValues, options.valueLabelPosition, theme);
+  const { name, data, color, zlevel, stack, formatValue, perf, hover } = input;
+  const label = getCartesianValueLabel(options.showValues, options.valueLabelPosition, theme, formatValue);
   const symbol = resolveCartesianSymbol(options.pointSize, perf);
   // Common (non-discriminating) props every branch shares. `perf` is already
   // narrowed to this series' render type by `getSeriesPerfOptions`, so spreading

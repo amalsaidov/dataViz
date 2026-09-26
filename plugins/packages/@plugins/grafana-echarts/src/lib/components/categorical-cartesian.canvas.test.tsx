@@ -115,6 +115,24 @@ describe('categorical cartesian per-field overrides', () => {
     expect(normalizeCanvasEvents(seriesEvents)).toMatchCanvasSnapshot(defaultEvents, { width, height });
   });
 
+  // "Show values" on stacked bars: each segment label is the field's formatted
+  // value (unit + decimals), as core Bar chart draws it. The text claim itself is in
+  // `cartesian-value-labels.integration.test.tsx`.
+  it('labels stacked bar segments with the field unit', async () => {
+    const config = { unit: 'percent', decimals: 1, custom: { stackSeries: true } };
+    const frame = toDataFrame({
+      fields: [
+        { name: 'category', type: FieldType.string, values: CATEGORIES },
+        { name: 'Q1', type: FieldType.number, values: [20, 14.25, 25, 11], config },
+        { name: 'Q2', type: FieldType.number, values: [23, 10, 30.5, 11], config },
+      ],
+    });
+
+    const { defaultEvents, seriesEvents } = await renderSeriesLayer([frame], 'bar', { showValues: 'always' });
+
+    expect(normalizeCanvasEvents(seriesEvents)).toMatchCanvasSnapshot(defaultEvents, { width, height });
+  });
+
   // Frames listing categories in a different order and covering a different
   // subset. The join is by label, so the overlay lands on the right ticks and the
   // categories it has no row for leave gaps.

@@ -7,6 +7,7 @@ import { resolveFieldSeriesType, resolveFieldStack } from 'lib/echarts/converter
 import { type CategoryCartesianData } from 'lib/echarts/converters/types';
 import { buildCartesianSeries } from 'lib/echarts/options/cartesian';
 import { getDensityFromSeriesValues, getSeriesPerfOptions } from 'lib/echarts/performance/resolvers';
+import { getValueFormatter } from 'lib/echarts/style';
 
 /**
  * Convert Grafana Numeric frames into an ECharts category-axis cartesian chart.
@@ -25,7 +26,7 @@ import { getDensityFromSeriesValues, getSeriesPerfOptions } from 'lib/echarts/pe
 export function categoryCartesianToEChartsOption(
   ctx: ChartContext<CartesianSingleValueSeriesType>
 ): CategoryCartesianData {
-  const { frames, theme, seriesType, options } = ctx;
+  const { frames, theme, seriesType, options, timeZone } = ctx;
   const model = framesToCategoryCartesian(frames, theme);
 
   if (!model) {
@@ -58,6 +59,7 @@ export function categoryCartesianToEChartsOption(
         data: values,
         color,
         zlevel: options.zLevel?.series,
+        formatValue: getValueFormatter(field, theme, timeZone),
         // Keyed off the resolved type: line and bar/scatter arm different levers
         // (LTTB sampling vs `large`), so passing the panel type would put an
         // overridden field on the wrong fast path.

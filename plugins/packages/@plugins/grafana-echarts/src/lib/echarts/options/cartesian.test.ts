@@ -4,11 +4,13 @@ import {
   FieldType,
   formattedValueToString,
   getDefaultTimeRange,
+  getDisplayProcessor,
   ThresholdsMode,
   toDataFrame,
   type ValueFormatter,
 } from '@grafana/data';
 import { GraphThresholdsStyleMode } from '@grafana/schema';
+import { type CallbackDataParams } from 'echarts/types/dist/shared';
 import { seriesTypePath } from 'editor/constants';
 import { type CartesianSingleValueSeriesType } from 'editor/types';
 import { cartesianChartModule } from 'lib/echarts/charts/cartesian';
@@ -233,6 +235,18 @@ describe('getCartesianValueLabel', () => {
   it('threads the configured position through', () => {
     expect(getCartesianValueLabel('always', 'inside', theme)).toMatchObject({ show: true, position: 'inside' });
   });
+
+  it('formats the label with the Grafana value formatter, reading the value of a [time, value] item', () => {
+    const display = getDisplayProcessor({ field: { type: FieldType.number, config: { unit: 'ms' } }, theme });
+    const label = getCartesianValueLabel('always', undefined, theme, display);
+    const format = label?.formatter as (params: Partial<CallbackDataParams>) => string;
+    expect(format({ value: 1500 })).toBe('1.50 s');
+    expect(format({ value: [1783137094497, 1500] })).toBe('1.50 s');
+  });
+
+  it('writes no formatter without a value formatter', () => {
+    expect(getCartesianValueLabel('always', undefined, theme)).not.toHaveProperty('formatter');
+  });
 });
 
 describe('getBarWidth', () => {
@@ -321,6 +335,17 @@ describe('getXTickRotate', () => {
 describe('buildCartesianSeries', () => {
   const theme = createTheme();
   const input: CartesianSeriesInput = { name: 'A', data: [1, 2, 3], color: '#111111', zlevel: 3 };
+
+  it('passes the input value formatter to the value label', () => {
+    const series = buildCartesianSeries(
+      { ...input, formatValue: (value) => ({ text: `${value}`, suffix: ' ms' }) },
+      'bar',
+      { showValues: 'always' } as PanelOptions,
+      theme
+    );
+    const format = (series.label as { formatter: (params: Partial<CallbackDataParams>) => string }).formatter;
+    expect(format({ value: 3 })).toBe('3 ms');
+  });
 
   it('applies bar-only geometry (width/radius), not line/symbol keys', () => {
     const series = buildCartesianSeries(

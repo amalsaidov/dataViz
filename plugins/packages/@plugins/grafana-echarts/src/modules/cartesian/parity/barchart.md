@@ -22,7 +22,7 @@ editor tier (plus a Default-tier "Show values"); orientation, group width, and
 | X Axis field picker                           | none (x derived from time/first field)                                                                                        | Not supported |
 | Orientation (auto/horizontal/vertical)        | none (vertical)                                                                                                               | Not supported |
 | Rotate x tick labels, max length, min spacing | `xAxis.axisLabel.rotate` (`xTickRotate`, Advanced)                                                                            | Partial       |
-| Show values (auto/always/never)               | `series.label` (`showValues` Default + position Advanced)                                                                     | Supported     |
+| Show values (auto/always/never)               | `series.label` (`showValues` Default + position Advanced); text from the field display (unit, decimals, mappings)             | Supported     |
 | Stacking (none/normal/percent)                | per-field `stackSeries` (boolean)                                                                                             | Partial       |
 | Group width, bar width, bar radius            | `barWidth` / `itemStyle.borderRadius` (Advanced)                                                                              | Partial       |
 | Highlight full area on hover                  | none                                                                                                                          | Not supported |

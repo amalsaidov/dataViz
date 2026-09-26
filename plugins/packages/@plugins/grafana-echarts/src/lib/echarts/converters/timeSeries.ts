@@ -6,7 +6,7 @@ import { resolveFieldSeriesType, resolveFieldStack } from 'lib/echarts/converter
 import { forEachTimeSeriesField } from 'lib/echarts/converters/frames';
 import { buildCartesianSeries } from 'lib/echarts/options/cartesian';
 import { getSeriesDensity, getSeriesPerfOptions } from 'lib/echarts/performance/resolvers';
-import { getSeriesColor } from 'lib/echarts/style';
+import { getSeriesColor, getValueFormatter } from 'lib/echarts/style';
 
 /**
  * Convert Grafana time series DataFrames into ECharts series data.
@@ -19,7 +19,7 @@ import { getSeriesColor } from 'lib/echarts/style';
  * fast path consistently.
  */
 export function timeSeriesToEChartsOption(ctx: CartesianContextWithOverlay): EChartSingleValueCartesianSeries[] | null {
-  const { frames, theme, options, seriesType } = ctx;
+  const { frames, theme, options, seriesType, timeZone } = ctx;
 
   const echartsSeries: EChartSingleValueCartesianSeries[] = [];
 
@@ -61,9 +61,10 @@ export function timeSeriesToEChartsOption(ctx: CartesianContextWithOverlay): ECh
     // supports stacking. `hover` arms the tooltip seam — `triggerEvent` plus, on
     // symbol types, the scaled emphasis marker the `highlight` dispatch drives.
     const stacked = resolvedType === 'bar' && resolveFieldStack(field, options.stackSeries);
+    const formatValue = getValueFormatter(field, theme, timeZone);
     echartsSeries.push(
       buildCartesianSeries(
-        { name, data, color, zlevel, perf, hover: true, ...(stacked ? { stack: STACK_GROUP_ID } : {}) },
+        { name, data, color, zlevel, formatValue, perf, hover: true, ...(stacked ? { stack: STACK_GROUP_ID } : {}) },
         resolvedType,
         options,
         theme
