@@ -1,7 +1,7 @@
 import { type Field, getFieldDisplayName, type GrafanaTheme2 } from '@grafana/data';
 import { debug, LOG_LEVELS } from 'development';
 import { findCategoryField, resolveCategoriesFromFrame } from 'lib/echarts/converters/frames';
-import { getSeriesColor } from 'lib/echarts/style';
+import { getCartesianSeriesColor } from 'lib/echarts/style';
 import { isNumberField } from 'lib/grafana/narrowing';
 import { type EChartsFrame } from 'lib/grafana/types';
 
@@ -30,6 +30,10 @@ export interface CategoryCartesianSeries {
    * a gap rather than a zero.
    */
   values: Array<number | null>;
+  /** Frame row behind each category, or `null` for a gap. Reads sibling fields of the same row. */
+  rows: Array<number | null>;
+  /** The frame of the field, where the sibling fields are. */
+  frame: EChartsFrame;
 }
 
 export interface CategoryCartesianModel {
@@ -42,7 +46,7 @@ function frameValueFields(frame: EChartsFrame, frames: EChartsFrame[], theme: Gr
   return frame.fields.filter(isNumberField).map((field) => ({
     field,
     name: getFieldDisplayName(field, frame, frames),
-    color: getSeriesColor(field, theme),
+    color: getCartesianSeriesColor(field, frames, theme),
   }));
 }
 
@@ -117,6 +121,8 @@ export function framesToCategoryCartesian(frames: EChartsFrame[], theme: Grafana
         name,
         color,
         values: Array.from(field.values),
+        rows: Array.from(field.values, (_, row) => row),
+        frame,
       })),
     };
   }
@@ -142,12 +148,10 @@ export function framesToCategoryCartesian(frames: EChartsFrame[], theme: Grafana
     // keys are those indices and the lookup stays positional.
     const rows = rowIndexByCategory(frameLabels[frameIndex], frame.name ?? frame.refId ?? `frame ${frameIndex}`);
 
+    const seriesRows = categories.map((category) => rows.get(category) ?? null);
     for (const { field, name, color } of frameValueFields(frame, frames, theme)) {
-      const values: Array<number | null> = categories.map((category) => {
-        const row = rows.get(category);
-        return row == null ? null : (field.values[row] ?? null);
-      });
-      series.push({ field, name, color, values });
+      const values = seriesRows.map((row) => (row == null ? null : (field.values[row] ?? null)));
+      series.push({ field, name, color, values, rows: seriesRows, frame });
     }
   });
 

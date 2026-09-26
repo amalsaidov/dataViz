@@ -434,6 +434,12 @@ export interface ChartModule {
    */
   singleTooltipOnly?: boolean;
   /**
+   * The category axis is a cartesian grid axis with the series side by side (the
+   * cartesian family). Then the "All" tooltip lists every series at the hovered
+   * category, as core Bar chart, instead of the one hovered item.
+   */
+  sharedCategoryAxis?: boolean;
+  /**
    * The family renders on a time axis but cannot host the drag-to-zoom brush, so
    * `buildPanelChartOption` omits the `brush` component even though the axis type
    * is `time`. Set by the stream family: `BrushComponent` attaches to a cartesian

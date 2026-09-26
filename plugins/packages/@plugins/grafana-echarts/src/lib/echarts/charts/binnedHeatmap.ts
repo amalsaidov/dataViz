@@ -9,7 +9,8 @@ import {
 } from 'echarts/types/src/coord/cartesian/AxisModel';
 import { frameHasCartesianOverride } from 'editor/series';
 import { type HeatmapSeriesType } from 'editor/types';
-import { buildCartesianYAxes, type CartesianYAxes, getAxisGridSpacing } from 'lib/echarts/axes/yAxes';
+import { type CartesianYAxes } from 'lib/echarts/axes/types';
+import { buildCartesianYAxes, getAxisGridSpacing } from 'lib/echarts/axes/yAxes';
 import {
   type BinnedHeatmapData,
   type BinnedHeatmapRowsScale,

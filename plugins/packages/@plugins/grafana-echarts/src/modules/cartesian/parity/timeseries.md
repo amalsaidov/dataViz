@@ -31,17 +31,17 @@ styling defaults, exposing only a small set of per-field overrides.
 
 ## Graph styles (core custom field config)
 
-| Core Grafana option                                    | ECharts equivalent                                                                 | Status        |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------- | ------------- |
-| Style (lines/bars/points), line interpolation          | `seriesType` (line/bar/scatter)                                                    | Partial       |
-| Line width, fill opacity, gradient mode, line style    | none (ECharts defaults)                                                            | Not supported |
-| Connect null values, disconnect values                 | none                                                                               | Not supported |
-| Show points, point size                                | `performance.showPoints` (Advanced) -> `series.showSymbol`; point size not exposed | Partial       |
-| Stack series                                           | per-field `stackSeries` (bar only)                                                 | Partial       |
-| Axis placement                                         | per-field `axisPlacement`                                                          | Supported     |
-| Axis: label, width, soft min/max, scale, centered zero | none                                                                               | Not supported |
-| Show thresholds (thresholds style)                     | per-field `thresholdsStyle.mode`                                                   | Supported     |
-| Hide in area (viz/legend/tooltip)                      | `custom.hideFrom` (via `addHideFrom`)                                              | Partial       |
+| Core Grafana option                                    | ECharts equivalent                                                                      | Status        |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------- | ------------- |
+| Style (lines/bars/points), line interpolation          | `seriesType` (line/bar/scatter)                                                         | Partial       |
+| Line width, fill opacity, gradient mode, line style    | none (ECharts defaults)                                                                 | Not supported |
+| Connect null values, disconnect values                 | none                                                                                    | Not supported |
+| Show points, point size                                | `performance.showPoints` (Advanced) -> `series.showSymbol`; point size not exposed      | Partial       |
+| Stack series                                           | panel `stacking` (none/normal/percent) plus per-field `stackSeries` override (bar only) | Partial       |
+| Axis placement                                         | per-field `axisPlacement`                                                               | Supported     |
+| Axis: label, width, soft min/max, scale, centered zero | none                                                                                    | Not supported |
+| Show thresholds (thresholds style)                     | per-field `thresholdsStyle.mode`                                                        | Supported     |
+| Hide in area (viz/legend/tooltip)                      | `custom.hideFrom` (via `addHideFrom`)                                                   | Partial       |
 
 ## Standard (field-config) options
 

@@ -111,6 +111,12 @@ describe('buildTimeSeriesLegendItems', () => {
     expect(items[1].getDisplayValues?.()).toEqual([expect.objectContaining({ title: 'Mean', numeric: 50 })]);
   });
 
+  it('drops the item of a field with hideFrom.legend, as core', () => {
+    const frame = wideFrame();
+    frame.fields[2].config = { ...frame.fields[2].config, custom: { hideFrom: { legend: true } } };
+    expect(buildTimeSeriesLegendItems([frame], theme, [], fieldConfig).map((item) => item.label)).toEqual(['cpu']);
+  });
+
   it('skips frames that have no time field', () => {
     const noTime = toDataFrame({
       fields: [{ name: 'cpu', type: FieldType.number, values: [1, 2], config: { displayName: 'cpu' } }],

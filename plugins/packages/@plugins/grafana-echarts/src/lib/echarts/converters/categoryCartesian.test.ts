@@ -83,9 +83,10 @@ describe('categoryCartesianToEChartsOption', () => {
   it('resolves a color on itemStyle for each bar series', () => {
     const result = run([tableFrame()], 'bar');
 
-    // Bars render from itemStyle; they carry no lineStyle.
+    // Bars render from itemStyle; they carry no lineStyle. The fill is the
+    // color at the core default 80% opacity, the border the solid color.
     for (const s of result.series) {
-      expect(s.itemStyle?.color).toEqual('#808080');
+      expect(s.itemStyle).toMatchObject({ color: '#808080cc', borderColor: '#808080' });
     }
   });
 

@@ -1,6 +1,6 @@
 import { createTheme, type Field, FieldType, toDataFrame, type ValueFormatter } from '@grafana/data';
-import { AxisPlacement } from '@grafana/schema';
-import { AXIS_OFFSET_STEP, buildCartesianYAxes, getAxisGridSpacing } from 'lib/echarts/axes/yAxes';
+import { AxisColorMode, AxisPlacement, ScaleDistribution } from '@grafana/schema';
+import { AXIS_OFFSET_STEP, buildCartesianYAxes, getAxisGridSpacing, getAxisRange } from 'lib/echarts/axes/yAxes';
 import { getCartesianAxisStyle } from 'lib/echarts/options/cartesian';
 
 const theme = createTheme();
@@ -204,5 +204,100 @@ describe('getAxisGridSpacing', () => {
       left: AXIS_OFFSET_STEP,
       right: 2 * AXIS_OFFSET_STEP,
     });
+  });
+});
+
+describe('buildCartesianYAxes: core axis options', () => {
+  const withCustom = (name: string, custom: object, unit?: string): Field =>
+    toDataFrame({ fields: [{ name, type: FieldType.number, values: [1, 2], config: { unit, custom } }] }).fields[0];
+
+  it('includes zero on a bar axis, as core Bar chart, and fits a line axis', () => {
+    const bar = field('bar');
+    const line = field('line', 'ms');
+    const { yAxis } = buildCartesianYAxes({
+      fields: [bar, line],
+      baseYAxis,
+      axisStyle,
+      theme,
+      fallbackFormatter: fallback,
+      barFields: new Set([bar]),
+    });
+    expect(yAxis[0]).toMatchObject({ scale: false });
+    expect(yAxis[1]).toMatchObject({ scale: true });
+  });
+
+  it('puts percent-stacked bars on one 0% to 100% axis, whatever their units', () => {
+    const a = field('a', 'ms');
+    const b = field('b', 'bytes');
+    const { yAxis, seriesYAxisIndex } = buildCartesianYAxes({
+      fields: [a, b],
+      baseYAxis,
+      axisStyle,
+      theme,
+      fallbackFormatter: fallback,
+      percentFields: new Set([a, b]),
+    });
+    expect(yAxis).toHaveLength(1);
+    expect(seriesYAxisIndex).toEqual([0, 0]);
+    expect(yAxis[0]).toMatchObject({ min: 0, max: 1 });
+    const formatter = yAxis[0].axisLabel?.formatter as (value: number) => string;
+    expect(formatter(0.5)).toBe('50%');
+  });
+
+  it('draws the axis label, series color and border, and moves the axes to x for horizontal bars', () => {
+    const a = withCustom('a', { axisLabel: 'Spend', axisColorMode: AxisColorMode.Series, axisBorderShow: true });
+    const { yAxis, leftNameCount } = buildCartesianYAxes({
+      fields: [a],
+      baseYAxis,
+      axisStyle,
+      theme,
+      fallbackFormatter: fallback,
+      horizontal: true,
+      colorOf: () => '#ff0000',
+    });
+    expect(yAxis[0]).toMatchObject({
+      position: 'bottom',
+      name: 'Spend',
+      nameRotate: 0,
+      axisLabel: { color: '#ff0000' },
+      axisLine: { show: true, lineStyle: { color: '#ff0000' } },
+    });
+    expect(leftNameCount).toBe(1);
+    expect(getAxisGridSpacing({ leftAxisCount: 1, rightAxisCount: 0, leftNameCount: 1 }).left).toBeGreaterThan(0);
+  });
+
+  it('hides the grid lines with "Show grid lines: Off"', () => {
+    const { yAxis } = build([withCustom('a', { axisGridShow: false })]);
+    expect(yAxis[0].splitLine).toMatchObject({ show: false });
+  });
+});
+
+describe('getAxisRange', () => {
+  const extent = { min: 5, max: 50 };
+  const end = (value: unknown) => (typeof value === 'function' ? value(extent) : value);
+
+  it('extends the data range to the soft min and max', () => {
+    const range = getAxisRange({ custom: { axisSoftMin: 0, axisSoftMax: 100 }, includeZero: false, percent: false });
+    expect([end(range.min), end(range.max)]).toEqual([0, 100]);
+  });
+
+  it('lets explicit Min/Max win over soft limits', () => {
+    const range = getAxisRange({ min: 2, max: 9, custom: { axisSoftMax: 100 }, includeZero: true, percent: false });
+    expect([range.min, range.max]).toEqual([2, 9]);
+  });
+
+  it('centers zero', () => {
+    const range = getAxisRange({ custom: { axisCenteredZero: true }, includeZero: false, percent: false });
+    expect([end(range.min), end(range.max)]).toEqual([-50, 50]);
+  });
+
+  it('draws a log axis, which never includes zero', () => {
+    const range = getAxisRange({
+      custom: { scaleDistribution: { type: ScaleDistribution.Log, log: 10 } },
+      includeZero: true,
+      percent: false,
+    });
+    expect(range).toMatchObject({ type: 'log', logBase: 10 });
+    expect(range).not.toHaveProperty('scale');
   });
 });

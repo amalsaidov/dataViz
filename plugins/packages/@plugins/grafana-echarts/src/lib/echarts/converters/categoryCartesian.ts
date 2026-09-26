@@ -1,10 +1,13 @@
+import { StackingMode } from '@grafana/schema';
 import { debug, LOG_LEVELS } from 'development';
 import { STACK_GROUP_ID } from 'editor/cartesian';
 import { type CartesianSingleValueSeriesType } from 'editor/types';
 import { type CartesianOption, type ChartContext } from 'lib/echarts/charts/types';
 import { fallbackCategories, framesToCategoryCartesian } from 'lib/echarts/converters/categoryCartesianModel';
 import { resolveFieldSeriesType, resolveFieldStack } from 'lib/echarts/converters/fieldOverrides';
-import { type CategoryCartesianData } from 'lib/echarts/converters/types';
+import { findColorByField, resolveSeriesValues } from 'lib/echarts/converters/cartesianValues';
+import { type CartesianLayout, type CategoryCartesianData } from 'lib/echarts/converters/types';
+import { resolvePanelStacking } from 'lib/echarts/options/bars';
 import { buildCartesianSeries } from 'lib/echarts/options/cartesian';
 import { getDensityFromSeriesValues, getSeriesPerfOptions } from 'lib/echarts/performance/resolvers';
 import { getValueFormatter } from 'lib/echarts/style';
@@ -24,7 +27,8 @@ import { getValueFormatter } from 'lib/echarts/style';
  * panel-level series type.
  */
 export function categoryCartesianToEChartsOption(
-  ctx: ChartContext<CartesianSingleValueSeriesType>
+  ctx: ChartContext<CartesianSingleValueSeriesType>,
+  layout: CartesianLayout = { horizontal: false }
 ): CategoryCartesianData {
   const { frames, theme, seriesType, options, timeZone } = ctx;
   const model = framesToCategoryCartesian(frames, theme);
@@ -45,21 +49,42 @@ export function categoryCartesianToEChartsOption(
   // Density drives the same fast-path props as the time-axis converter, computed
   // once over every series so a dense chart never renders half on the fast path.
   const density = getDensityFromSeriesValues(model.series.map(({ values }) => values));
+  const stackAll = resolvePanelStacking(options) !== StackingMode.None;
 
-  const echartsSeries: CartesianOption['series'] = model.series.map(({ field, name, color, values }) => {
-    // Per-field override wins over the panel type; a non-single-value override
-    // (candlestick/boxplot/Auto) falls back to it. Only bar stacks, so the stack
-    // group is gated on the *resolved* type rather than the panel's.
+  // Per-field override wins over the panel type; a non-single-value override
+  // (candlestick/boxplot/Auto) falls back to it. Only bar stacks, so the stack
+  // group is gated on the *resolved* type rather than the panel's.
+  const sources = model.series.map(({ field, values, rows, frame, color }) => {
     const resolvedType = resolveFieldSeriesType<CartesianSingleValueSeriesType>(field, seriesType);
-    const stacked = resolvedType === 'bar' && resolveFieldStack(field, options.stackSeries);
+    const isBar = resolvedType === 'bar';
+    return {
+      field,
+      values,
+      rows,
+      color,
+      resolvedType,
+      isBar,
+      stacked: isBar && resolveFieldStack(field, stackAll),
+      formatValue: getValueFormatter(field, theme, timeZone),
+      colorField: findColorByField(frame, frames, options),
+    };
+  });
+  const resolved = resolveSeriesValues(
+    sources,
+    { horizontal: layout.horizontal, bandCount: model.categories.length, plotLength: layout.plotLength },
+    options,
+    theme
+  );
 
+  const echartsSeries: CartesianOption['series'] = model.series.map(({ name, color, values }, i) => {
+    const { resolvedType, stacked } = sources[i];
     return buildCartesianSeries(
       {
         name,
-        data: values,
         color,
         zlevel: options.zLevel?.series,
-        formatValue: getValueFormatter(field, theme, timeZone),
+        formatValue: sources[i].formatValue,
+        ...resolved[i],
         // Keyed off the resolved type: line and bar/scatter arm different levers
         // (LTTB sampling vs `large`), so passing the panel type would put an
         // overridden field on the wrong fast path.

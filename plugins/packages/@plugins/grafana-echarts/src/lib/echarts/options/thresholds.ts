@@ -31,20 +31,26 @@ const AREA_OPACITY = 0.1;
 /**
  * Build the `markLine`/`markArea` overlays for a series from resolved threshold
  * steps and the requested display. Returns an empty object when nothing renders.
+ * `horizontal` puts the value axis on x (horizontal bars), so the marks are
+ * vertical.
  */
-export function buildThresholdMarks(steps: ThresholdMark[], display: ThresholdDisplay): ThresholdMarks {
+export function buildThresholdMarks(
+  steps: ThresholdMark[],
+  display: ThresholdDisplay,
+  horizontal = false
+): ThresholdMarks {
   const marks: ThresholdMarks = {};
   if (display.line) {
-    marks.markLine = buildMarkLine(steps, display.dashed);
+    marks.markLine = buildMarkLine(steps, display.dashed, horizontal);
   }
   if (display.area) {
-    marks.markArea = buildMarkArea(steps);
+    marks.markArea = buildMarkArea(steps, horizontal);
   }
   return marks;
 }
 
-/** A horizontal line per finite step (the `-Infinity` base step has no line). */
-function buildMarkLine(steps: ThresholdMark[], dashed: boolean): MarkLineComponentOption {
+/** A line across the value axis per finite step (the `-Infinity` base step has no line). */
+function buildMarkLine(steps: ThresholdMark[], dashed: boolean, horizontal: boolean): MarkLineComponentOption {
   return {
     silent: true,
     symbol: 'none',
@@ -52,7 +58,7 @@ function buildMarkLine(steps: ThresholdMark[], dashed: boolean): MarkLineCompone
     data: steps
       .filter((step) => Number.isFinite(step.value))
       .map((step) => ({
-        yAxis: step.value,
+        ...(horizontal ? { xAxis: step.value } : { yAxis: step.value }),
         lineStyle: { color: step.color, type: dashed ? 'dashed' : 'solid' },
       })),
   };
@@ -61,15 +67,21 @@ function buildMarkLine(steps: ThresholdMark[], dashed: boolean): MarkLineCompone
 /**
  * Filled bands: each step colors the region from its own value up to the next
  * step's value. The open lower/upper ends are pinned to the grid edges with
- * coordinate-relative percentages (`y: '100%'` bottom, `y: '0%'` top) so the
- * `-Infinity` base and the open top never reach ECharts as coordinates.
+ * coordinate-relative percentages (`y: '100%'` bottom, `y: '0%'` top, or `x` on
+ * a horizontal value axis) so the `-Infinity` base and the open top never reach
+ * ECharts as coordinates.
  */
-function buildMarkArea(steps: ThresholdMark[]): MarkAreaComponentOption {
+function buildMarkArea(steps: ThresholdMark[], horizontal: boolean): MarkAreaComponentOption {
   const relativeTo: 'coordinate' = 'coordinate';
+  const at = (value: number) => (horizontal ? { xAxis: value } : { yAxis: value });
+  const edge = (end: 'start' | 'end') =>
+    horizontal
+      ? { x: end === 'start' ? '0%' : '100%', relativeTo }
+      : { y: end === 'start' ? '100%' : '0%', relativeTo };
   const data: MarkArea2DDataItemOption[] = steps.map((step, index) => {
     const next = steps[index + 1];
-    const lower = Number.isFinite(step.value) ? { yAxis: step.value } : { y: '100%', relativeTo };
-    const upper: MarkArea2DDataItemOption[1] = next ? { yAxis: next.value } : { y: '0%', relativeTo };
+    const lower = Number.isFinite(step.value) ? at(step.value) : edge('start');
+    const upper: MarkArea2DDataItemOption[1] = next ? at(next.value) : edge('end');
 
     return [{ ...lower, itemStyle: { color: step.color, opacity: AREA_OPACITY } }, upper];
   });

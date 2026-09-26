@@ -21,14 +21,16 @@ type CrossStyle = NonNullable<NonNullable<TooltipOption['axisPointer']>['crossSt
  */
 export function grafanaTooltipModeToEChartsTrigger(
   axisType: EChartsAxisType,
-  mode: TooltipDisplayMode
+  mode: TooltipDisplayMode,
+  sharedCategoryAxis = false
 ): EChartsTooltipTrigger {
   if (mode === TooltipDisplayMode.None) {
     return 'none';
   }
 
-  // Categorical axes have no shared axis, so only per-item hover works.
-  if (axisType === 'category') {
+  // Most categorical families (pie, radar, relations) have no shared axis, so
+  // only per-item hover works. A cartesian category axis is shared.
+  if (axisType === 'category' && !sharedCategoryAxis) {
     return 'item';
   }
 
@@ -71,6 +73,15 @@ export function getTooltipTrigger(option: ECBasicOption): EChartsTooltipTrigger 
  *  ECharts axisPointer styled to match Core Grafana's uPlot cursor crosshair.
  *  https://echarts.apache.org/en/option.html#tooltip.axisPointer
  */
+/**
+ * Axis pointer of the "All" tooltip on a cartesian category axis: a band over
+ * the hovered category, like the core Bar chart hover.
+ * https://echarts.apache.org/en/option.html#tooltip.axisPointer.type
+ */
+export function getCategoryAxisPointer(): TooltipOption['axisPointer'] {
+  return { show: true, type: 'shadow', label: { show: false }, triggerEmphasis: false };
+}
+
 export function getCrosshairAxisPointer(): TooltipOption['axisPointer'] {
   const lineStyle: CrossStyle = { color: CROSSHAIR_COLOR, width: 1, type: 'dashed' };
   return {
@@ -113,7 +124,8 @@ export function getSilentTooltipOption(
   trigger: EChartsTooltipTrigger,
   mode: TooltipDisplayMode,
   produce: (params: TopLevelFormatterParams) => TooltipModel,
-  sink: TooltipSink
+  sink: TooltipSink,
+  axisPointer: TooltipOption['axisPointer'] = getCrosshairAxisPointer()
 ): TooltipOption {
   if (mode === TooltipDisplayMode.None) {
     return { show: false };
@@ -123,7 +135,7 @@ export function getSilentTooltipOption(
   return {
     show: true,
     trigger,
-    axisPointer: getCrosshairAxisPointer(),
+    axisPointer,
     // Emit the hovered content to React and render nothing native. Returning an
     // empty string with transparent chrome makes the native box invisible.
     // https://echarts.apache.org/en/option.html#tooltip.formatter

@@ -1,12 +1,16 @@
 import { getFieldDisplayName } from '@grafana/data';
+import { StackingMode } from '@grafana/schema';
 import { STACK_GROUP_ID } from 'editor/cartesian';
 import { type CartesianSingleValueSeriesType, type HeatmapSeriesType } from 'editor/types';
 import { type CartesianContextWithOverlay, type EChartSingleValueCartesianSeries } from 'lib/echarts/charts/types';
 import { resolveFieldSeriesType, resolveFieldStack } from 'lib/echarts/converters/fieldOverrides';
-import { forEachTimeSeriesField } from 'lib/echarts/converters/frames';
+import { findColorByField, resolveSeriesValues } from 'lib/echarts/converters/cartesianValues';
+import { forEachTimeSeriesField, type TimeSeriesFieldRef } from 'lib/echarts/converters/frames';
+import { type CartesianLayout } from 'lib/echarts/converters/types';
+import { resolvePanelStacking } from 'lib/echarts/options/bars';
 import { buildCartesianSeries } from 'lib/echarts/options/cartesian';
 import { getSeriesDensity, getSeriesPerfOptions } from 'lib/echarts/performance/resolvers';
-import { getSeriesColor, getValueFormatter } from 'lib/echarts/style';
+import { getCartesianSeriesColor, getValueFormatter } from 'lib/echarts/style';
 
 /**
  * Convert Grafana time series DataFrames into ECharts series data.
@@ -18,63 +22,113 @@ import { getSeriesColor, getValueFormatter } from 'lib/echarts/style';
  * once from the whole frame set so a dense chart switches every series onto the
  * fast path consistently.
  */
-export function timeSeriesToEChartsOption(ctx: CartesianContextWithOverlay): EChartSingleValueCartesianSeries[] | null {
-  const { frames, theme, options, seriesType, timeZone } = ctx;
-
-  const echartsSeries: EChartSingleValueCartesianSeries[] = [];
+export function timeSeriesToEChartsOption(
+  ctx: CartesianContextWithOverlay,
+  layout: CartesianLayout = { horizontal: false }
+): EChartSingleValueCartesianSeries[] | null {
+  const { frames, theme, options, seriesType, timeZone, timeRange } = ctx;
 
   // Density (total points + densest series) drives the fast-path props; computed
   // once over the whole frame set so every series resolves against the same
   // numbers and a chart never renders half on the fast path.
   const density = getSeriesDensity(frames);
+  const stackAll = resolvePanelStacking(options) !== StackingMode.None;
 
-  forEachTimeSeriesField(frames, ({ frame, field, timeField }) => {
-    const color = getSeriesColor(field, theme);
-    const resolvedType = resolveFieldSeriesType<CartesianSingleValueSeriesType | HeatmapSeriesType>(field, seriesType);
+  const refs: Array<TimeSeriesFieldRef<unknown> & { type: CartesianSingleValueSeriesType | HeatmapSeriesType }> = [];
+  forEachTimeSeriesField(frames, (ref) => refs.push({ ...ref, type: resolveFieldSeriesType(ref.field, seriesType) }));
+  if (refs.length === 0) {
+    return null;
+  }
+
+  // Cartesian fields share the value, label and bar rules of the category
+  // converter; a heatmap-overlay field has no source.
+  const sources = refs.map(({ frame, field, timeField, type }) => {
+    const isBar = type === 'bar';
+    return {
+      field,
+      values: Array.from(field.values, (value) => value ?? null),
+      rows: Array.from(field.values, (_, row) => row),
+      color: getCartesianSeriesColor(field, frames, theme),
+      xs: timeField.values,
+      isBar,
+      // Only bar supports stacking.
+      stacked: isBar && resolveFieldStack(field, stackAll),
+      formatValue: getValueFormatter(field, theme, timeZone),
+      colorField: findColorByField(frame, frames, options),
+    };
+  });
+  const cartesian = sources.filter((_, i) => refs[i].type !== 'heatmap');
+  const bandCount = getTimeBandCount(
+    cartesian.filter((source) => source.isBar).map((source) => source.xs),
+    timeRange.to.valueOf() - timeRange.from.valueOf()
+  );
+  const resolved = resolveSeriesValues(
+    cartesian,
+    { horizontal: false, bandCount, plotLength: layout.plotLength },
+    options,
+    theme
+  );
+
+  let cartesianIndex = 0;
+  return refs.map(({ frame, field, timeField, type }, i) => {
+    const { color } = sources[i];
     const name = getFieldDisplayName(field, frame, frames);
-    const data = timeField.values.map((time, i) => [time, field.values[i] ?? null]);
     const zlevel = options.zLevel?.series;
-    // Type-aware fast-path props (symbols/sampling for line; large for
-    // scatter/bar). `values` lets the symbol decision spare a series that draws
-    // no line, which would otherwise render as nothing at all.
-    const perf = getSeriesPerfOptions({ type: resolvedType, density, options, values: field.values });
 
     // A heatmap-overlay field is not a cartesian series type (`series.type` is
     // omitted), so it keeps the minimal color-only style rather than the Advanced
     // cartesian options — and gets no fast-path props, which are all cartesian.
     // It still captures hover events so the tooltip can read it.
-    if (resolvedType === 'heatmap') {
-      echartsSeries.push({
+    if (type === 'heatmap') {
+      return {
         name,
         type: undefined,
-        data,
+        data: timeField.values.map((time, row) => [time, field.values[row] ?? null]),
         itemStyle: { color },
         lineStyle: { color },
         zlevel,
         triggerEvent: true,
-      });
-      return;
+      };
     }
 
-    // Cartesian series get the Advanced value-label / geometry / style options
-    // (each omitted at its default) composed with the fast-path props. Only bar
-    // supports stacking. `hover` arms the tooltip seam — `triggerEvent` plus, on
-    // symbol types, the scaled emphasis marker the `highlight` dispatch drives.
-    const stacked = resolvedType === 'bar' && resolveFieldStack(field, options.stackSeries);
-    const formatValue = getValueFormatter(field, theme, timeZone);
-    echartsSeries.push(
-      buildCartesianSeries(
-        { name, data, color, zlevel, formatValue, perf, hover: true, ...(stacked ? { stack: STACK_GROUP_ID } : {}) },
-        resolvedType,
-        options,
-        theme
-      )
+    // Type-aware fast-path props (symbols/sampling for line; large for
+    // scatter/bar). `values` lets the symbol decision spare a series that draws
+    // no line, which would otherwise render as nothing at all. `hover` arms the
+    // tooltip seam — `triggerEvent` plus, on symbol types, the scaled emphasis
+    // marker the `highlight` dispatch drives.
+    const perf = getSeriesPerfOptions({ type, density, options, values: field.values });
+    return buildCartesianSeries(
+      {
+        name,
+        color,
+        zlevel,
+        formatValue: sources[i].formatValue,
+        ...resolved[cartesianIndex++],
+        perf,
+        hover: true,
+        ...(sources[i].stacked ? { stack: STACK_GROUP_ID } : {}),
+      },
+      type,
+      options,
+      theme
     );
   });
+}
 
-  if (echartsSeries.length === 0) {
-    return null;
+/**
+ * Bar bands on a time axis: ECharts sizes a time-axis bar from the smallest gap
+ * between two points, so the axis span holds `span / gap` bands.
+ * https://echarts.apache.org/en/option.html#series-bar.barWidth
+ */
+export function getTimeBandCount(times: Array<ArrayLike<unknown>>, span: number): number {
+  let gap = Infinity;
+  for (const values of times) {
+    for (let i = 1; i < values.length; i++) {
+      const step = Number(values[i]) - Number(values[i - 1]);
+      if (step > 0 && step < gap) {
+        gap = step;
+      }
+    }
   }
-
-  return echartsSeries;
+  return Number.isFinite(gap) && span > 0 ? span / gap : 0;
 }

@@ -14,6 +14,7 @@ import {
 } from 'echarts/types/src/coord/cartesian/AxisModel';
 import {
   CARTESIAN_ANIMATION_ENABLED_DEFAULT,
+  CARTESIAN_BAR_FILL_OPACITY_DEFAULT,
   CARTESIAN_BAR_RADIUS_DEFAULT,
   CARTESIAN_BAR_WIDTH_DEFAULT,
   CARTESIAN_FILL_OPACITY_DEFAULT,
@@ -22,14 +23,12 @@ import {
   CARTESIAN_VALUE_LABEL_POSITION_DEFAULT,
   CARTESIAN_X_TICK_ROTATE_DEFAULT,
 } from 'editor/cartesian';
-import {
-  type CartesianShowValues,
-  type CartesianSingleValueSeriesType,
-  type CartesianValueLabelPosition,
-} from 'editor/types';
+import { type CartesianSingleValueSeriesType } from 'editor/types';
 import { AXIS_FONT_SIZE, createBaseOptions, getUPlotGridColor } from 'lib/echarts/options/base';
 import { applyAdvancedDefaults } from 'lib/echarts/options/editorMode';
+import { getBarItemStyle } from 'lib/echarts/options/bars';
 import { getThemedLabelStyle } from 'lib/echarts/options/labels';
+import { type CartesianSeriesInput, type CartesianValueLabelInput } from 'lib/echarts/options/types';
 import { type PerfSeriesOptions } from 'lib/echarts/performance/types';
 import { formatEChartsValue } from 'lib/echarts/style';
 import { type PanelOptions } from 'types';
@@ -145,36 +144,39 @@ export const cartesianCategoryDefaultOptions: ECBasicOption & { xAxis: XAXisOpti
  * as before, and only opted-in options add ECharts keys. */
 
 /**
- * ECharts series `label` for the cartesian "Show values" option. Only `always`
- * draws labels; `auto` / `never` / unset return `undefined` so no label key is
- * written and the chart renders as before (existing panels have no value labels).
- * `position` places them (default `top`); the style is themed via the shared
- * `getThemedLabelStyle` so labels match Grafana. `formatValue` is the field's
- * Grafana value formatter (unit, decimals, value mappings), as core Bar chart uses
- * for its labels; without it ECharts prints the raw number.
+ * ECharts series `label` for the cartesian "Show values" option, as core Bar
+ * chart. `always` labels every series. `auto` (the editor default) labels bar
+ * series only; the series adds `labelLayout.hideOverlap` so labels that overlap
+ * are hidden. `never` draws no labels, and nor does an unset option: the heatmap
+ * overlay reuses these series and has no "Show values" option.
+ *
+ * The text is the field value with its unit, decimals and value mappings (or the
+ * precomputed `texts`), not the raw number. `buildCartesianSeries` moves a bar
+ * label at `top` to the ECharts `outside` position, which is the same for a
+ * positive bar and flips below the end of a negative bar, as core does.
  * https://echarts.apache.org/en/option.html#series-bar.label
  * https://echarts.apache.org/en/option.html#series-bar.label.formatter
  */
-export function getCartesianValueLabel(
-  showValues: CartesianShowValues | undefined,
-  position: CartesianValueLabelPosition | undefined,
-  theme: GrafanaTheme2,
-  formatValue?: ValueFormatter
-) {
-  if (showValues !== 'always') {
+export function getCartesianValueLabel(input: CartesianValueLabelInput, theme: GrafanaTheme2) {
+  const { showValues, position, seriesType, texts, formatValue, fontSize } = input;
+  const isBar = seriesType === 'bar';
+  if (showValues == null || showValues === 'never' || (showValues === 'auto' && !isBar) || fontSize === null) {
     return undefined;
   }
+  const resolvedPosition = position ?? CARTESIAN_VALUE_LABEL_POSITION_DEFAULT;
+  const formatter = texts
+    ? (params: CallbackDataParams) => texts[params.dataIndex] ?? ''
+    : formatValue
+      ? (params: CallbackDataParams) => formatEChartsValue(params.value, formatValue)
+      : undefined;
   // Return the inferred structural label (not a series-specific `label` type):
-  // the `position` values are valid for every cartesian series, but the concrete
-  // per-series label types differ (bar carries a `positionExtra`), so a shared
-  // structural object assigns to bar and line alike.
+  // the concrete per-series label types differ (bar accepts `outside`), so a
+  // shared structural object assigns to bar and line alike.
   return {
-    ...getThemedLabelStyle(theme),
+    ...getThemedLabelStyle(theme, { fontSize: fontSize ?? undefined }),
     show: true,
-    position: position ?? CARTESIAN_VALUE_LABEL_POSITION_DEFAULT,
-    ...(formatValue
-      ? { formatter: (params: CallbackDataParams) => formatEChartsValue(params.value, formatValue) }
-      : {}),
+    position: resolvedPosition,
+    ...(formatter ? { formatter } : {}),
   };
 }
 
@@ -194,18 +196,6 @@ export function getBarWidth(barWidth: number | undefined): string | undefined {
  */
 export function getBarRadius(barRadius: number | undefined): number | undefined {
   return barRadius != null && barRadius > 0 ? barRadius : undefined;
-}
-
-/**
- * Per-series `itemStyle` composing the series color with the bar corner radius.
- * `borderRadius` is omitted at 0/unset so the default item style is unchanged.
- */
-export function getCartesianItemStyle(
-  color: string | undefined,
-  barRadius: number | undefined
-): BarSeriesOption['itemStyle'] {
-  const radius = getBarRadius(barRadius);
-  return { color, ...(radius != null ? { borderRadius: radius } : {}) };
 }
 
 /**
@@ -282,35 +272,6 @@ export function isSymbolSeriesType(type: string | undefined): type is 'line' | '
 }
 
 /**
- * The data-independent inputs a converter supplies for one cartesian series: its
- * name, positional `data`, resolved color, canvas `zlevel`, (bar-only) stack
- * group and value formatter. `buildCartesianSeries` composes these with the
- * Advanced options.
- */
-export interface CartesianSeriesInput {
-  name: string;
-  data: LineSeriesOption['data'];
-  color: string | undefined;
-  zlevel: number | undefined;
-  stack?: string;
-  /** The source field's Grafana value formatter, used by the "Show values" labels. */
-  formatValue?: ValueFormatter;
-  /**
-   * Density-resolved fast-path props from `getSeriesPerfOptions` (symbols off /
-   * LTTB for dense lines; `large` for dense scatter/bar). Already narrowed to the
-   * series' render type by the resolver, so it is spread as-is.
-   */
-  perf?: PerfSeriesOptions;
-  /**
-   * Whether this series participates in tooltip hover: emits `triggerEvent` and,
-   * for symbol types, the scaled `HOVER_POINT_EMPHASIS` marker. Set by the
-   * time-axis converter, whose tooltip dispatches `highlight` at the focused
-   * point. Category-axis charts do not opt in (see `categoryCartesianToEChartsOption`).
-   */
-  hover?: boolean;
-}
-
-/**
  * Compose the Advanced "Point size" symbol keys with the Performance layer's
  * density-resolved `showSymbol`.
  *
@@ -352,8 +313,18 @@ export function buildCartesianSeries(
   options: PanelOptions,
   theme: GrafanaTheme2
 ): CartesianSeriesEntry {
-  const { name, data, color, zlevel, stack, formatValue, perf, hover } = input;
-  const label = getCartesianValueLabel(options.showValues, options.valueLabelPosition, theme, formatValue);
+  const { name, data, color, zlevel, stack, formatValue, labelTexts, labelFontSize, barGaps, perf, hover } = input;
+  const label = getCartesianValueLabel(
+    {
+      showValues: options.showValues,
+      position: options.valueLabelPosition,
+      seriesType: resolvedType,
+      texts: labelTexts,
+      formatValue,
+      fontSize: labelFontSize,
+    },
+    theme
+  );
   const symbol = resolveCartesianSymbol(options.pointSize, perf);
   // Common (non-discriminating) props every branch shares. `perf` is already
   // narrowed to this series' render type by `getSeriesPerfOptions`, so spreading
@@ -374,12 +345,18 @@ export function buildCartesianSeries(
 
   switch (resolvedType) {
     case 'bar':
-      // Bars have no `lineStyle`; color rides on `itemStyle` (with corner radius).
+      // Bars have no `lineStyle`: the fill and border ride on `itemStyle`. The
+      // value-end corner radius and per-bar colors are set on each data item.
+      // "Show values: Auto" hides the labels that overlap, as core.
+      // https://echarts.apache.org/en/option.html#series-bar.labelLayout
       return {
         ...common,
         type: 'bar',
-        itemStyle: getCartesianItemStyle(color, options.barRadius),
+        itemStyle: getBarItemStyle(color, options),
+        ...(label?.position === 'top' ? { label: { ...label, position: 'outside' } } : {}),
+        ...barGaps,
         ...(barWidth ? { barWidth } : {}),
+        ...(label && options.showValues !== 'always' ? { labelLayout: { hideOverlap: true } } : {}),
       };
     case 'line': {
       const areaStyle = getCartesianAreaStyle(options.fillOpacity);
@@ -420,6 +397,7 @@ export const ADVANCED_CARTESIAN_DEFAULTS: Partial<PanelOptions> = {
   valueLabelPosition: CARTESIAN_VALUE_LABEL_POSITION_DEFAULT,
   barWidth: CARTESIAN_BAR_WIDTH_DEFAULT,
   barRadius: CARTESIAN_BAR_RADIUS_DEFAULT,
+  barFillOpacity: CARTESIAN_BAR_FILL_OPACITY_DEFAULT,
   lineWidth: CARTESIAN_LINE_WIDTH_DEFAULT,
   fillOpacity: CARTESIAN_FILL_OPACITY_DEFAULT,
   pointSize: CARTESIAN_POINT_SIZE_DEFAULT,

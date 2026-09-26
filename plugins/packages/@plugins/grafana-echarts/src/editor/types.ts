@@ -1,4 +1,9 @@
-import { type AxisPlacement, type GraphFieldConfig, type HideableFieldConfig } from '@grafana/schema';
+import {
+  type AxisPlacement,
+  type GraphFieldConfig,
+  type GraphTransform,
+  type HideableFieldConfig,
+} from '@grafana/schema';
 
 export type SeriesType =
   | 'line'
@@ -94,9 +99,9 @@ export type ParallelLayout = 'horizontal' | 'vertical';
 
 /**
  * Cartesian "Show values" mode (Bar-chart parity): whether per-point value labels
- * render. `always` draws them; `never` hides them; `auto` currently resolves to
- * hidden (reserved for a future fit-based heuristic). Unset panels render no
- * labels, so existing charts are unchanged. See `getCartesianValueLabel`.
+ * render. `always` draws them on every series; `never` hides them; `auto` draws
+ * them on bar series only and hides the labels that overlap, as core Bar chart
+ * does. See `getCartesianValueLabel`.
  */
 export type CartesianShowValues = 'auto' | 'always' | 'never';
 
@@ -288,6 +293,8 @@ export interface EChartsFieldConfig extends HideableFieldConfig {
   // unit; this controls which side that unit's axis renders on (or hides it).
   // Only `Left`, `Right`, `Hidden`, and `Auto` are meaningful for a y-axis.
   axisPlacement?: AxisPlacement;
+  // Core "Transform". The cartesian family draws a `negative-Y` field below zero.
+  transform?: GraphTransform;
 }
 export interface EChartsGraphFieldConfig extends GraphFieldConfig, EChartsFieldConfig {}
 /** Field config of the timeline family: core's state timeline `custom.*` keys. */

@@ -4,9 +4,12 @@ import {
   type OptionsWithLegend,
   type OptionsWithTooltip,
   type SortOrder,
+  type StackingMode,
   type TimelineValueAlignment,
   type VisibilityMode,
   type VizLegendOptions,
+  type VizOrientation,
+  type VizTextDisplayOptions,
 } from '@grafana/schema';
 import { type editorModePath, type seriesTypePath } from 'editor/constants';
 import { type RelationsPanelOptions } from 'editor/relations/options';
@@ -189,9 +192,40 @@ export interface PanelOptions
   colWidth?: CoreTimelineOptions['colWidth'];
 
   /**
-   * Bar series stacking
+   * Legacy bar stacking switch. `true` reads as `stacking: 'normal'` when
+   * `stacking` is unset. See `resolvePanelStacking`.
    */
   stackSeries?: boolean;
+
+  /**
+   * Cartesian bar stacking (core Bar chart `stacking`): `none`, `normal` or
+   * `percent`. See `resolvePanelStacking`.
+   */
+  stacking?: StackingMode;
+
+  /**
+   * Cartesian bar orientation (core Bar chart `orientation`). `auto` draws
+   * horizontal bars when the panel is taller than it is wide. Category x-axis only.
+   */
+  orientation?: VizOrientation;
+
+  /** Cartesian bar fill opacity, 0 to 100 (core Bar chart `fillOpacity`, default 80). */
+  barFillOpacity?: number;
+
+  /** Name of the field whose display color colors each bar (core Bar chart `colorByField`). */
+  colorByField?: string;
+
+  /** Highlight the full category on hover (core Bar chart `fullHighlight`). */
+  fullHighlight?: boolean;
+
+  /** Maximum length of an x tick label, in characters (core Bar chart `xTickLabelMaxLength`). */
+  xTickLabelMaxLength?: number;
+
+  /** Minimum space between x tick labels, in px (core Bar chart `xTickLabelSpacing`). */
+  xTickLabelSpacing?: number;
+
+  /** Text sizes (core `text`). The cartesian panel reads `valueSize` for value labels. */
+  text?: VizTextDisplayOptions;
 
   /**
    * Grafana's standard reduce options (added via `addStandardDataReduceOptions`)

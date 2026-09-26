@@ -1,6 +1,6 @@
 import { PanelPlugin, type SelectFieldConfigSettings } from '@grafana/data';
 import { initPluginTranslations } from '@grafana/i18n';
-import { GraphThresholdsStyleMode } from '@grafana/schema';
+import { GraphThresholdsStyleMode, GraphTransform } from '@grafana/schema';
 import { commonOptionsBuilder, getGraphFieldOptions } from '@grafana/ui';
 import {
   cartesianOverrideOptionsWithAuto,
@@ -16,12 +16,15 @@ import { seriesTypePath } from 'editor/constants';
 import { type EChartsGraphFieldConfig, type SeriesTypeOption } from 'editor/types';
 import { makeLazyPanel } from 'lib/components/LazyPanel';
 import { framesLookMultiValue } from 'lib/echarts/converters/multiValueCartesian';
+import { addCartesianBarChartOptions } from 'lib/grafana/editor/cartesian/bar-chart';
+import { addCartesianBarFillOpacityOptions } from 'lib/grafana/editor/cartesian/bar-fill-opacity';
 import { addCartesianBarRadiusOptions } from 'lib/grafana/editor/cartesian/bar-radius';
 import { addCartesianBarWidthOptions } from 'lib/grafana/editor/cartesian/bar-width';
 import { addCartesianFillOpacityOptions } from 'lib/grafana/editor/cartesian/fill-opacity';
 import { addCartesianLineWidthOptions } from 'lib/grafana/editor/cartesian/line-width';
 import { addCartesianPointSizeOptions } from 'lib/grafana/editor/cartesian/point-size';
 import { addCartesianValueLabelOptions } from 'lib/grafana/editor/cartesian/value-labels';
+import { addCartesianXTickLabelOptions } from 'lib/grafana/editor/cartesian/x-tick-labels';
 import { addCartesianXTickRotateOptions } from 'lib/grafana/editor/cartesian/x-tick-rotate';
 import { addEditorModeOption } from 'lib/grafana/editor/common/editor-mode';
 import { STANDARD_FIELD_OPTIONS } from 'lib/grafana/editor/common/fieldConfig';
@@ -75,22 +78,41 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
       // bar, so it is shown only when this field's Series type override is `bar`.
       // Grafana field-config `showIf` only sees this field's custom config, not
       // the panel-level series type.
+      // No default: Grafana writes a field default into every field, and this
+      // override would then always beat the panel-level Stacking option.
       builder.addBooleanSwitch({
         path: stackSeriesPath,
         name: stackSeriesName,
         category: ['Bar chart'],
         description: 'Stack this field with other stacked bar series.',
-        defaultValue: false,
         showIf: (config) => config.seriesType === 'bar',
       });
 
-      // Per-field y-axis placement (writes the standard `axisPlacement` field
-      // config; read back in `buildCartesianYAxes`). Fields are grouped onto one
-      // y-axis per distinct unit; this controls which side that unit's axis draws
-      // on, or hides it while still plotting the series. Core already offers
-      // exactly Auto/Left/Right/Hidden here, so no options filter is needed.
-      // https://grafana.com/developers/plugin-tools/
-      commonOptionsBuilder.addAxisPlacement(builder);
+      // The standard "Axis" field config of core Time series and Bar chart:
+      // placement, label, width, grid lines, color, border, scale, centered zero
+      // and soft min/max. Read back in `buildCartesianYAxes`. Fields are grouped
+      // onto one y-axis per distinct unit, so the first field of a unit sets it.
+      // https://grafana.com/developers/plugin-tools/how-to-guides/panel-plugins/custom-panel-option-editors
+      commonOptionsBuilder.addAxisConfig(builder, {});
+
+      // Core "Transform: Negative Y": the series draws below zero, and its
+      // tooltip and value labels keep the field value. See `isNegativeY`.
+      builder.addSelect({
+        path: 'transform',
+        name: 'Transform',
+        category: ['Graph styles'],
+        settings: {
+          options: [
+            {
+              value: GraphTransform.NegativeY,
+              label: 'Negative Y',
+              description: 'Flip the results to negative values on the y axis',
+            },
+          ],
+          isClearable: true,
+        },
+        hideFromDefaults: true,
+      });
 
       // Threshold display (writes the custom `thresholdsStyle.mode` field
       // config; read back in `cartesianThresholdMarks`). The standard Thresholds
@@ -151,6 +173,10 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
       },
     });
 
+    // Core Bar chart options: Stacking, Orientation, full-area hover highlight
+    // and "Color by field".
+    addCartesianBarChartOptions(builder);
+
     // Value labels — Default-tier "Show values" (Bar-chart parity) + Advanced
     // placement. Rendered by `getCartesianValueLabel`.
     addCartesianValueLabelOptions(builder);
@@ -160,14 +186,18 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
     // untouched panels render identically.
     addCartesianBarWidthOptions(builder); // series.barWidth (bar)
     addCartesianBarRadiusOptions(builder); // itemStyle.borderRadius (bar)
+    addCartesianBarFillOpacityOptions(builder); // itemStyle color alpha (bar)
     addCartesianLineWidthOptions(builder); // lineStyle.width (line)
     addCartesianFillOpacityOptions(builder); // areaStyle.opacity (line → area)
     addCartesianPointSizeOptions(builder); // symbolSize / showSymbol (line/scatter)
     addCartesianXTickRotateOptions(builder); // xAxis.axisLabel.rotate
+    addCartesianXTickLabelOptions(builder); // xAxis.axisLabel formatter / interval
 
     // Standard Core Grafana "Legend" (Visibility, Mode, Placement, Width, Limit,
     // Values) + "Tooltip" options, registered in their own categories.
     addCommonLegendAndTooltip(builder);
+    // "Text size > Value" sets the bar value label size; unset fits the bars.
+    commonOptionsBuilder.addTextSizeOptions(builder, { withTitle: false, withValue: true });
 
     // Advanced-gated performance overrides (Show points / Downsampling /
     // Animation). ECharts' big-data levers are auto-tuned above density

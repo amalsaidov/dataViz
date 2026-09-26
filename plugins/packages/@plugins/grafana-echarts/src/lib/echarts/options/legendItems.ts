@@ -21,8 +21,9 @@ import { findCategoricalFrame, forEachTimeSeriesField } from 'lib/echarts/conver
 import { multiValueCartesianToEChartsOption } from 'lib/echarts/converters/multiValueCartesian';
 import { formatPieShare, getPieSliceTotal, resolvePieSlices } from 'lib/echarts/converters/pie';
 import { type PieSliceModel } from 'lib/echarts/converters/types';
+import { getFieldConfigFromField } from 'lib/grafana/fields/fieldConfig';
 import { getHiddenSeriesNames } from 'lib/grafana/fields/seriesConfig';
-import { getSeriesColor } from 'lib/echarts/style';
+import { getCartesianSeriesColor, getSeriesColor } from 'lib/echarts/style';
 
 /**
  * Reduce a field down to per-series calc columns for the table legend.
@@ -59,16 +60,19 @@ export function buildTimeSeriesLegendItems(
     refs.map((ref) => ref.label)
   );
 
-  return refs.map(({ field, frameIndex, fieldIndex, label }) => ({
-    label,
-    fieldName: label,
-    color: getSeriesColor(field, theme),
-    yAxis: 1,
-    // Kept in the legend when hidden from the viz so it can be toggled back.
-    disabled: hidden.has(label),
-    getItemKey: () => `${frameIndex}-${fieldIndex}`,
-    getDisplayValues: () => getCalcDisplayValues(calcs, field, theme, timeZone),
-  }));
+  // `hideFrom.legend` drops the item; the series still draws (core parity).
+  return refs
+    .filter(({ field }) => !isHiddenFromLegend(field))
+    .map(({ field, frameIndex, fieldIndex, label }) => ({
+      label,
+      fieldName: label,
+      color: getCartesianSeriesColor(field, series, theme),
+      yAxis: 1,
+      // Kept in the legend when hidden from the viz so it can be toggled back.
+      disabled: hidden.has(label),
+      getItemKey: () => `${frameIndex}-${fieldIndex}`,
+      getDisplayValues: () => getCalcDisplayValues(calcs, field, theme, timeZone),
+    }));
 }
 
 /**
@@ -140,16 +144,28 @@ export function buildCategoryCartesianLegendItems(
     model.series.map(({ name }) => name)
   );
 
-  return model.series.map(({ field, name, color }, index) => ({
-    label: name,
-    fieldName: name,
-    color,
-    yAxis: 1,
-    // Kept in the legend when hidden from the viz so it can be toggled back.
-    disabled: hidden.has(name),
-    getItemKey: () => `series-${index}`,
-    getDisplayValues: () => getCalcDisplayValues(calcs, field, theme, timeZone),
-  }));
+  // `hideFrom.legend` drops the item; the key stays the series index of the chart.
+  return model.series.flatMap(({ field, name, color }, index) =>
+    isHiddenFromLegend(field)
+      ? []
+      : [
+          {
+            label: name,
+            fieldName: name,
+            color,
+            yAxis: 1,
+            // Kept in the legend when hidden from the viz so it can be toggled back.
+            disabled: hidden.has(name),
+            getItemKey: () => `series-${index}`,
+            getDisplayValues: () => getCalcDisplayValues(calcs, field, theme, timeZone),
+          },
+        ]
+  );
+}
+
+/** Core `custom.hideFrom.legend`: the series draws, but has no legend item. */
+function isHiddenFromLegend(field: Field): boolean {
+  return getFieldConfigFromField(field).custom?.hideFrom?.legend === true;
 }
 
 /**

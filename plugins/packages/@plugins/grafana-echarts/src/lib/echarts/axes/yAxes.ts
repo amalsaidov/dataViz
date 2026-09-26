@@ -1,33 +1,40 @@
 import { type Field, type GrafanaTheme2, type ValueFormatter } from '@grafana/data';
-import { AxisPlacement } from '@grafana/schema';
+import { AxisColorMode, AxisPlacement, type GraphFieldConfig, ScaleDistribution } from '@grafana/schema';
 import { type TimeAxisBaseOption } from 'echarts/types/src/coord/axisCommonTypes';
 import { type CartesianAxisOption, type YAXisOption } from 'echarts/types/src/coord/cartesian/AxisModel';
+import { AXIS_FONT_SIZE } from 'lib/echarts/options/base';
+import { type AxisRange, type CartesianYAxes } from 'lib/echarts/axes/types';
 import { mergeAxisStyle } from 'lib/echarts/options/cartesian';
 import { getValueFormatter } from 'lib/echarts/style';
 import { getFieldConfigFromField, getFieldMinMax } from 'lib/grafana/fields/fieldConfig';
 
 /** Horizontal gap (px) between stacked axes sharing a side. */
 export const AXIS_OFFSET_STEP = 50;
-
-export interface CartesianYAxes {
-  /** One value axis per distinct unit, in first-appearance order. */
-  yAxis: YAXisOption[];
-  /** Axis index for each input field, aligned to `fields` order. */
-  seriesYAxisIndex: number[];
-  /** Visible (non-hidden) axis counts per side, for reserving grid space. */
-  leftAxisCount: number;
-  rightAxisCount: number;
-}
+/** Space (px) an axis name ("Axis > Label") takes beside the tick labels. */
+export const AXIS_NAME_SPACE = 20;
+/** Unit group of the stacked bars in percent stacking: they share one 0% to 100% axis. */
+const PERCENT_GROUP = '\0percent';
 
 type Side = 'left' | 'right';
 
+/** Unit group of a field: its unit, or the shared percent group. */
+function unitGroupOf(field: Field, percentFields: Set<Field> | undefined): string {
+  if (percentFields?.has(field)) {
+    return PERCENT_GROUP;
+  }
+  // Undefined/empty units collapse into one default group.
+  return getFieldConfigFromField(field).unit ?? '';
+}
+
 /** Group fields by unit, preserving first-appearance order. */
-function groupFieldsByUnit(fields: Field[]): { units: string[]; byUnit: Map<string, Field[]> } {
+function groupFieldsByUnit(
+  fields: Field[],
+  percentFields: Set<Field> | undefined
+): { units: string[]; byUnit: Map<string, Field[]> } {
   const units: string[] = [];
   const byUnit = new Map<string, Field[]>();
   for (const field of fields) {
-    // Undefined/empty units collapse into one default group.
-    const unit = getFieldConfigFromField(field).unit ?? '';
+    const unit = unitGroupOf(field, percentFields);
     const group = byUnit.get(unit);
     if (group) {
       group.push(field);
@@ -89,6 +96,14 @@ export function buildCartesianYAxes(params: {
    */
   initialLeftCount?: number;
   initialRightCount?: number;
+  /** Fields drawn as bars. Their axis includes zero unless a min or max is set, as core Bar chart. */
+  barFields?: Set<Field>;
+  /** Stacked bar fields in percent stacking. They share one axis from 0% to 100%. */
+  percentFields?: Set<Field>;
+  /** Horizontal bars: the value axes lie along x, `left` draws at the bottom and `right` at the top. */
+  horizontal?: boolean;
+  /** Series color of each field, for "Axis > Color: Series". */
+  colorOf?: (field: Field) => string | undefined;
 }): CartesianYAxes {
   const {
     fields,
@@ -101,6 +116,10 @@ export function buildCartesianYAxes(params: {
     autoSide,
     initialLeftCount = 0,
     initialRightCount = 0,
+    barFields,
+    percentFields,
+    horizontal = false,
+    colorOf,
   } = params;
 
   if (fields.length === 0) {
@@ -108,11 +127,13 @@ export function buildCartesianYAxes(params: {
     return { yAxis: [yAxis], seriesYAxisIndex: [], leftAxisCount: 1, rightAxisCount: 0 };
   }
 
-  const { units, byUnit } = groupFieldsByUnit(fields);
+  const { units, byUnit } = groupFieldsByUnit(fields, percentFields);
   const unitAxisIndex = new Map(units.map((unit, index) => [unit, index]));
 
   let leftAxisCount = initialLeftCount;
   let rightAxisCount = initialRightCount;
+  let leftNameCount = 0;
+  let rightNameCount = 0;
   let splitLineAssigned = initialLeftCount > 0 || initialRightCount > 0;
 
   const yAxis = units.map((unit, groupIndex) => {
@@ -148,44 +169,128 @@ export function buildCartesianYAxes(params: {
       splitLineAssigned = true;
     }
 
-    const formatter = getValueFormatter(groupFields[0], theme, timeZone);
+    const representative = groupFields[0];
+    const percent = unit === PERCENT_GROUP;
+    const formatter = getValueFormatter(
+      percent
+        ? { ...representative, display: undefined, config: { ...representative.config, unit: 'percentunit' } }
+        : representative,
+      theme,
+      timeZone
+    );
     // Explicit standard-option Min/Max pin the axis; `scale: true` (from the base
     // axis) still auto-fits any side left unset. Read from the group's
     // representative field, as the formatter/placement above.
-    const { min, max } = getFieldMinMax(groupFields[0]);
+    const custom: GraphFieldConfig = getFieldConfigFromField(representative).custom ?? {};
+    const range = getAxisRange({
+      ...getFieldMinMax(representative),
+      custom,
+      includeZero: groupFields.some((field) => barFields?.has(field)),
+      percent,
+    });
+    const color = custom.axisColorMode === AxisColorMode.Series ? colorOf?.(representative) : undefined;
+    const name = !hidden && custom.axisLabel ? custom.axisLabel : undefined;
+    if (name) {
+      side === 'left' ? leftNameCount++ : rightNameCount++;
+    }
     const extras: CartesianAxisOption = {
-      position: side,
+      position: horizontal ? (side === 'left' ? 'bottom' : 'top') : side,
       offset,
       zlevel,
-      splitLine: { show: showSplitLine },
-      min,
-      max,
+      ...range,
+      splitLine: { show: custom.axisGridShow ?? showSplitLine },
+      // "Show border" draws the axis line, and its ticks, in the axis color (core `UPlotAxisBuilder`).
+      ...(custom.axisBorderShow
+        ? {
+            axisLine: { show: true, lineStyle: { color: color ?? theme.colors.text.primary } },
+            axisTick: { show: true, lineStyle: { color: color ?? theme.colors.text.primary } },
+          }
+        : {}),
+      ...(name
+        ? {
+            name,
+            nameLocation: 'middle',
+            nameGap: horizontal ? 25 : 45,
+            nameRotate: horizontal ? 0 : side === 'left' ? 90 : -90,
+            nameTextStyle: {
+              color: color ?? theme.colors.text.primary,
+              fontFamily: theme.typography.fontFamily,
+              fontSize: AXIS_FONT_SIZE,
+            },
+          }
+        : {}),
       ...(hidden
         ? {
             axisLabel: { show: false },
             axisTick: { show: false },
           }
-        : {}),
+        : {
+            axisLabel: {
+              ...(color ? { color } : {}),
+              ...(custom.axisWidth ? { width: custom.axisWidth, overflow: 'truncate' } : {}),
+            },
+          }),
     };
 
     return mergeAxisStyle<YAXisOption>(baseYAxis, axisStyle, extras, formatter);
   });
 
-  const seriesYAxisIndex = fields.map((field) => {
-    const unit = getFieldConfigFromField(field).unit ?? '';
-    return unitAxisIndex.get(unit) ?? 0;
-  });
+  const seriesYAxisIndex = fields.map((field) => unitAxisIndex.get(unitGroupOf(field, percentFields)) ?? 0);
 
-  return { yAxis, seriesYAxisIndex, leftAxisCount, rightAxisCount };
+  return { yAxis, seriesYAxisIndex, leftAxisCount, rightAxisCount, leftNameCount, rightNameCount };
+}
+
+/**
+ * Value axis range and scale from the core axis options, as core Bar chart and
+ * Time series. Explicit Min/Max pin the ends. "Soft min/max" extend the data
+ * range to include them. "Centered zero" makes the range symmetric around 0. A
+ * bar axis includes zero (core Bar chart sets a soft min and max of 0). Else
+ * ECharts fits the data (`scale: true` from the base axis). "Scale:
+ * Logarithmic" makes a log axis; symlog draws linear, ECharts has no symlog axis.
+ * https://echarts.apache.org/en/option.html#yAxis.min
+ * https://echarts.apache.org/en/option.html#yAxis.type
+ */
+export function getAxisRange(params: {
+  min?: number;
+  max?: number;
+  custom: GraphFieldConfig;
+  includeZero: boolean;
+  percent: boolean;
+}): AxisRange {
+  const { custom, includeZero, percent } = params;
+  const log = custom.scaleDistribution?.type === ScaleDistribution.Log;
+  const logScale = log ? { type: 'log' as const, logBase: custom.scaleDistribution?.log ?? 2 } : {};
+  if (percent) {
+    return { min: params.min ?? 0, max: params.max ?? 1, scale: false };
+  }
+  if (custom.axisCenteredZero && !log) {
+    const extent = (value: { min: number; max: number }) => Math.max(Math.abs(value.min), Math.abs(value.max));
+    return {
+      min: params.min ?? ((value) => -extent(value)),
+      max: params.max ?? ((value) => extent(value)),
+    };
+  }
+  const { axisSoftMin: softMin, axisSoftMax: softMax } = custom;
+  const min = params.min ?? (softMin != null ? (value: { min: number }) => Math.min(value.min, softMin) : undefined);
+  const max = params.max ?? (softMax != null ? (value: { max: number }) => Math.max(value.max, softMax) : undefined);
+  return {
+    ...logScale,
+    min,
+    max,
+    // `scale: false` makes ECharts include zero, with nice ticks.
+    ...(includeZero && !log ? { scale: false } : {}),
+  };
 }
 
 /** Extra grid padding (px) needed for offset axes beyond the first on each side. */
-export function getAxisGridSpacing(axes: Pick<CartesianYAxes, 'leftAxisCount' | 'rightAxisCount'>): {
+export function getAxisGridSpacing(
+  axes: Pick<CartesianYAxes, 'leftAxisCount' | 'rightAxisCount' | 'leftNameCount' | 'rightNameCount'>
+): {
   left: number;
   right: number;
 } {
   return {
-    left: Math.max(0, axes.leftAxisCount - 1) * AXIS_OFFSET_STEP,
-    right: Math.max(0, axes.rightAxisCount - 1) * AXIS_OFFSET_STEP,
+    left: Math.max(0, axes.leftAxisCount - 1) * AXIS_OFFSET_STEP + (axes.leftNameCount ?? 0) * AXIS_NAME_SPACE,
+    right: Math.max(0, axes.rightAxisCount - 1) * AXIS_OFFSET_STEP + (axes.rightNameCount ?? 0) * AXIS_NAME_SPACE,
   };
 }

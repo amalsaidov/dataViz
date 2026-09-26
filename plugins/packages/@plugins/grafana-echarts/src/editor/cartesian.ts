@@ -1,4 +1,5 @@
 import { type SelectableValue } from '@grafana/data';
+import { StackingMode, VizOrientation } from '@grafana/schema';
 import { ANIMATION_ENABLED_DEFAULT } from 'editor/constants';
 import {
   type CartesianShowValues,
@@ -140,9 +141,8 @@ export const showValuesOptions: Array<SelectableValue<CartesianShowValues>> = [
   { value: 'never', label: 'Never' },
 ];
 /**
- * Default "Show values" mode: `auto`, which currently resolves to hidden — so a
- * fresh panel (and every existing one) renders no value labels, unchanged. See
- * `getCartesianValueLabel`.
+ * Default "Show values" mode: `auto`, as in core Bar chart. It labels bar series
+ * and hides the labels that overlap. See `getCartesianValueLabel`.
  */
 export const CARTESIAN_SHOW_VALUES_DEFAULT: CartesianShowValues = 'auto';
 
@@ -210,6 +210,57 @@ export const CARTESIAN_POINT_SIZE_DEFAULT: number | undefined = undefined;
 export const xTickRotatePath = 'xTickRotate';
 /** Default x tick rotation: 0 (horizontal labels; omitted). */
 export const CARTESIAN_X_TICK_ROTATE_DEFAULT = 0;
+
+/* --- Core Bar chart parity: stacking, orientation, bar style and x ticks ----- */
+
+/** Panel option path for the bar stacking mode (core Bar chart `stacking`). */
+export const stackingPath = 'stacking';
+/** Stacking options, as core Bar chart. */
+export const stackingOptions: Array<SelectableValue<StackingMode>> = [
+  { value: StackingMode.None, label: 'Off' },
+  { value: StackingMode.Normal, label: 'Normal' },
+  { value: StackingMode.Percent, label: '100%' },
+];
+
+/** Panel option path for the bar orientation (core Bar chart `orientation`). */
+export const orientationPath = 'orientation';
+export const orientationOptions: Array<SelectableValue<VizOrientation>> = [
+  { value: VizOrientation.Auto, label: 'Auto' },
+  { value: VizOrientation.Horizontal, label: 'Horizontal' },
+  { value: VizOrientation.Vertical, label: 'Vertical' },
+];
+/** Default orientation: `auto`, as core Bar chart. */
+export const CARTESIAN_ORIENTATION_DEFAULT = VizOrientation.Auto;
+
+/** Panel option path for the bar fill opacity, 0 to 100. Advanced-only. */
+export const barFillOpacityPath = 'barFillOpacity';
+/** Default bar fill opacity: 80, the core Bar chart `fillOpacity` default. */
+export const CARTESIAN_BAR_FILL_OPACITY_DEFAULT = 80;
+/** Bar border width (px) when "Line width" is unset: 1, the core Bar chart `lineWidth` default. */
+export const CARTESIAN_BAR_BORDER_WIDTH_DEFAULT = 1;
+
+/** Share of a category that a group of bars fills: 0.7, the core Bar chart `groupWidth` default. */
+export const CARTESIAN_GROUP_WIDTH = 0.7;
+/** Share of its slot that one bar (or one stack) fills: 0.97, the core Bar chart `barWidth` default. */
+export const CARTESIAN_SLOT_WIDTH = 0.97;
+
+/** Panel option path for "Color by field" (core Bar chart `colorByField`). */
+export const colorByFieldPath = 'colorByField';
+
+/** Panel option path for "Highlight full area on hover" (core Bar chart `fullHighlight`). */
+export const fullHighlightPath = 'fullHighlight';
+
+/** Panel option path for the x tick label max length, in characters. */
+export const xTickLabelMaxLengthPath = 'xTickLabelMaxLength';
+/** Panel option path for the minimum space between x tick labels, in px. */
+export const xTickLabelSpacingPath = 'xTickLabelSpacing';
+/** Minimum label spacing options, as the core Bar chart `TickSpacingEditor`. */
+export const xTickLabelSpacingOptions: Array<SelectableValue<number>> = [
+  { value: 0, label: 'None' },
+  { value: 100, label: 'Small' },
+  { value: 200, label: 'Medium' },
+  { value: 300, label: 'Large' },
+];
 
 /**
  * Default animation: off, from the shared `ANIMATION_ENABLED_DEFAULT` — animation

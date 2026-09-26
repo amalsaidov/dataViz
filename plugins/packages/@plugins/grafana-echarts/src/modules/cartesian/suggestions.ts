@@ -1,4 +1,5 @@
 import { type VisualizationSuggestion, type VisualizationSuggestionsSupplier } from '@grafana/data';
+import { StackingMode } from '@grafana/schema';
 import { seriesTypePath } from 'editor/constants';
 import { type EChartsGraphFieldConfig } from 'editor/types';
 import {
@@ -54,7 +55,11 @@ export const cartesianSuggestionsSupplier: VisualizationSuggestionsSupplier<Pane
   if (categoryScore != null) {
     return [
       card({ name: 'Bar', score: categoryScore, options: { [seriesTypePath]: 'bar' } }),
-      card({ name: 'Bar stacked', score: categoryScore, options: { [seriesTypePath]: 'bar', stackSeries: true } }),
+      card({
+        name: 'Bar stacked',
+        score: categoryScore,
+        options: { [seriesTypePath]: 'bar', stacking: StackingMode.Normal },
+      }),
       card({ name: 'Scatter', score: categoryScore, options: { [seriesTypePath]: 'scatter' } }),
     ];
   }
