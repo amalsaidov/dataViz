@@ -68,7 +68,7 @@ so a panel switched from core keeps its settings.
   tasks against 272 ms for core, and a hover costs up to about 100 ms. Core draws one path per
   colour; this panel draws one element per bar.
 
-The open items are in [todo/timeline-core-parity.md](../../../todo/timeline-core-parity.md).
+The open items are in [#211](https://github.com/grafana-experimental/grafana-beyond/issues/211).
 
 [canvas]: ../../lib/components/timeline.canvas.test.tsx
 [integration]: ../../lib/components/timeline.integration.test.tsx

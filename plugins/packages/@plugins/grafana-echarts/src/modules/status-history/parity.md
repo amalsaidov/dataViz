@@ -62,7 +62,7 @@ option paths and defaults are core's.
 - The state timeline differences also apply: hover, data outside the time range and density. See
   [its parity doc](../state-timeline/parity.md#differences-from-core).
 
-The open items are in [todo/timeline-core-parity.md](../../../todo/timeline-core-parity.md).
+The open items are in [#211](https://github.com/grafana-experimental/grafana-beyond/issues/211).
 
 [canvas]: ../../lib/components/status-history.canvas.test.tsx
 [integration]: ../../lib/components/status-history.integration.test.tsx

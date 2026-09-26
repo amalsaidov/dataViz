@@ -317,7 +317,7 @@ describe('categoryCartesianToEChartsOption', () => {
     });
   });
 
-  // Contract A from todo/multiple-frames.md: one frame per series, categories
+  // Contract A of the multiple-frames note (#198, Source): one frame per series, categories
   // unioned by label. This is what a scatter-overlay-from-a-second-query panel
   // needs; before it, every frame after the first was silently dropped.
   describe('multiple value frames', () => {

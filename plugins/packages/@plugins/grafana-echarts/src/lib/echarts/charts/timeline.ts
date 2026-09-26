@@ -108,7 +108,7 @@ export const timelineChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
 
   // Multi ("All") needs a hit test per lane at the hovered time. See
-  // `todo/timeline-core-parity.md`.
+  // #76.
   singleTooltipOnly: true,
 
   legendReadonly: true,
