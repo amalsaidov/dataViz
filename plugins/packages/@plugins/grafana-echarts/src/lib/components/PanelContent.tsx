@@ -1,5 +1,4 @@
 import { LoadingState } from '@grafana/data';
-import { PanelDataErrorView } from '@grafana/runtime';
 import { useTheme2 } from '@grafana/ui';
 import { seriesTypePath } from 'editor/constants';
 import { resolveSeriesType } from 'lib/echarts/charts/autoSeriesType';
@@ -10,6 +9,7 @@ import { getRepresentativeFormatter } from 'lib/grafana/formatter';
 import React, { type MutableRefObject, useMemo, useState } from 'react';
 import { type InteractedRelationsView } from 'lib/echarts/relations/options/view';
 import { ChartContent } from './ChartContent';
+import { DataIssueView } from './DataIssueView';
 import { resolveTimelineIndex } from './ChartTimeSlider';
 import { type PanelComponentProps } from './types';
 
@@ -103,7 +103,7 @@ export const PanelContent: React.FC<Props> = ({
   }, [chartModule, chartContext, data.state, hasQueryError]);
 
   if (dataIssue != null) {
-    return <PanelDataErrorView data={data} panelId={id} fieldConfig={fieldConfig} message={dataIssue.message} />;
+    return <DataIssueView data={data} panelId={id} fieldConfig={fieldConfig} message={dataIssue.message} />;
   }
 
   return (
