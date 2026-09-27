@@ -71,6 +71,21 @@ global.ResizeObserver = class ResizeObserver {
 // https://github.com/hustcc/jest-canvas-mock
 require('jest-canvas-mock');
 
+// zrender paints an incremental layer (each cell of a matrix heatmap, and each element of a progressive
+// series) in slices of 15 ms on `platformApi.getTime()`, and paints the remaining elements
+// on the next animation frame. A slow CI runner can end a slice before the last element.
+// Then the capture misses elements, and that frame can run after the test disposes the
+// chart: `Cannot read properties of null (reading 'layerStack')` (#51). A clock that stays
+// at 0 puts each paint in one slice. ECharts runs progressive tasks on the same clock, and
+// they also finish in one frame. Animations and timers use a different clock.
+// https://echarts.apache.org/en/api.html#echarts.setPlatformAPI
+// https://github.com/ecomfe/zrender/blob/master/src/canvas/Painter.ts (_paintPerCursorInRect)
+// https://github.com/apache/echarts/blob/master/src/core/echarts.ts (progressive `remainTime`)
+const zrenderPlatform = require.resolve('zrender/lib/core/platform.js', {
+  paths: [require('path').dirname(require.resolve('echarts/package.json'))],
+});
+require(zrenderPlatform).setPlatformAPI({ getTime: () => 0 });
+
 // Register the `toMatchCanvasSnapshot` matcher for canvas style-regression tests.
 // https://github.com/grafana/jest-canvas-mock-compare
 const { matchers } = require('jest-canvas-mock-compare');
