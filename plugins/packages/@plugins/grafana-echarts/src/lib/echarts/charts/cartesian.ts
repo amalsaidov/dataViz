@@ -23,6 +23,7 @@ import {
 } from 'lib/echarts/converters/multiValueCartesian';
 import { timeSeriesToEChartsOption } from 'lib/echarts/converters/timeSeries';
 import { getCartesianGrid } from 'lib/echarts/grid/grid';
+import { buildAnnotationMarkerSeries } from 'lib/echarts/options/annotationMarkers';
 import { buildAnnotationSeries, buildCategoryAnnotationSeries } from 'lib/echarts/options/annotations';
 import { AXIS_FONT_SIZE } from 'lib/echarts/options/base';
 import { isHorizontalBars, resolvePanelStacking } from 'lib/echarts/options/bars';
@@ -42,6 +43,7 @@ import {
 } from 'lib/echarts/options/legendItems';
 import { buildThresholdMarks, type ThresholdMarks } from 'lib/echarts/options/thresholds';
 import { getCartesianSeriesColor, getFieldValueFormatters } from 'lib/echarts/style';
+import { buildAnnotationTooltipModel } from 'lib/echarts/tooltip/annotation';
 import { indexedFormatterResolver } from 'lib/echarts/tooltip/model';
 import { getFieldMinMax } from 'lib/grafana/fields/fieldConfig';
 import { getHiddenSeriesNames } from 'lib/grafana/fields/seriesConfig';
@@ -98,14 +100,19 @@ function buildTimeOption(
   });
   const indexedSeries = cartSeries.map((cartesian, i) => ({ ...cartesian, yAxisIndex: axes.seriesYAxisIndex[i] ?? 0 }));
   const thresholdSeries = attachThresholdMarks(indexedSeries, cartesianThresholdMarks(ctx, false));
-  // The annotation series goes last, so the index of each data series stays its field index
-  // (see `cartesianSeriesFields`).
-  const annotationSeries = buildAnnotationSeries(
-    readAnnotations(ctx.annotations, theme),
-    getTimeAxisBounds(ctx.timeRange),
-    options.zLevel?.series
-  );
-  const series = annotationSeries ? [...thresholdSeries, annotationSeries] : thresholdSeries;
+  // The annotation series go last, so the index of each data series stays its field index
+  // (see `cartesianSeriesFields`): the lines and bands, then the markers under the plot.
+  const annotations = readAnnotations(ctx.annotations, theme);
+  const annotationRange = getTimeAxisBounds(ctx.timeRange);
+  const annotationSeries = [
+    buildAnnotationSeries(annotations, annotationRange, options.zLevel?.series),
+    buildAnnotationMarkerSeries(annotations, annotationRange, {
+      tooltip: (index) => buildAnnotationTooltipModel(annotations[index], timeZone),
+      sink: ctx.tooltipSink,
+      zlevel: options.zLevel?.series,
+    }),
+  ].filter((entry) => entry != null);
+  const series = [...thresholdSeries, ...annotationSeries];
 
   // Pin the time axis to the dashboard range so gaps in this panel's data still
   // align with sibling panels sharing the same range. Labels are formatted via

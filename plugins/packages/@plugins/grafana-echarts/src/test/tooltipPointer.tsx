@@ -121,6 +121,8 @@ export interface TooltipPanelArgs {
    * asserting filters must supply one.
    */
   panelContext?: Partial<PanelContext>;
+  /** The annotation frames of the panel (`PanelData.annotations`). */
+  annotations?: DataFrame[];
 }
 
 /** The panel rendered and settled, with the chart instance the pointer helpers drive. */
@@ -131,8 +133,9 @@ export const renderTooltipPanel = async ({
   options,
   fieldConfig,
   panelContext,
+  annotations,
 }: TooltipPanelArgs): Promise<EChartsType> => {
-  const panel = getComponent(frames, seriesType, options, undefined, undefined, family, fieldConfig);
+  const panel = getComponent(frames, seriesType, options, { annotations }, undefined, family, fieldConfig);
   const { container } = render(
     panelContext ? <PanelContextProvider value={panelContext as PanelContext}>{panel}</PanelContextProvider> : panel
   );

@@ -79,6 +79,22 @@ export interface TooltipModel {
    * for the overlay to ask. See `markFilterable`.
    */
   filters?: TooltipFilters;
+  /**
+   * The hovered annotation marker. When set, the overlay shows the annotation (as core's
+   * `AnnotationTooltip`) under the header, in place of the rows. The header has the time.
+   */
+  annotation?: AnnotationTooltipContent;
+}
+
+/**
+ * What the tooltip of an annotation marker shows under the time, as core's `AnnotationTooltip`:
+ * the title and the text, and the tags. `title` and `text` are the raw strings of the event;
+ * the overlay sanitizes them as HTML.
+ */
+export interface AnnotationTooltipContent {
+  title?: string;
+  text?: string;
+  tags: string[];
 }
 
 /**

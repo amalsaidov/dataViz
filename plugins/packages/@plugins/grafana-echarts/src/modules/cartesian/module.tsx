@@ -210,4 +210,8 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
   })
   // Advertise fitness for the current data shape (opts in via
   // `"suggestions": true` in plugin.json).
-  .setSuggestionsSupplier(cartesianSuggestionsSupplier);
+  .setSuggestionsSupplier(cartesianSuggestionsSupplier)
+  // Receive the dashboard annotations in `data.annotations`. Without this, a Scenes dashboard
+  // removes them before the panel renders (`VizPanel` reads `plugin.dataSupport`).
+  // https://github.com/grafana/grafana/blob/main/packages/grafana-data/src/panel/PanelPlugin.ts
+  .setDataSupport({ annotations: true });

@@ -13,6 +13,10 @@ export interface ResolvedAnnotation {
   /** Set only for a region. */
   timeEnd?: number;
   color: string;
+  /** The tooltip content. `title` and `text` can contain HTML, which the tooltip sanitizes. */
+  title?: string;
+  text?: string;
+  tags?: string[];
 }
 
 /**
@@ -28,6 +32,9 @@ export function readAnnotations(frames: DataFrame[] | undefined, theme: GrafanaT
     const timeEnd = fieldByName(frame, 'timeEnd');
     const isRegion = fieldByName(frame, 'isRegion');
     const color = fieldByName(frame, 'color');
+    const title = fieldByName(frame, 'title');
+    const text = fieldByName(frame, 'text');
+    const tags = fieldByName(frame, 'tags');
     if (!time) {
       return [];
     }
@@ -47,6 +54,9 @@ export function readAnnotations(frames: DataFrame[] | undefined, theme: GrafanaT
         time: start,
         ...(isRegion?.values[i] === true && typeof end === 'number' ? { timeEnd: end } : {}),
         color: resolved,
+        title: asText(title?.values[i]),
+        text: asText(text?.values[i]),
+        tags: asTags(tags?.values[i]),
       });
     }
     return events;
@@ -61,6 +71,16 @@ function isTimeAnnotationFrame(frame: DataFrame): boolean {
     frame.length > 0 &&
     frame.fields.some((field) => field.type === FieldType.time)
   );
+}
+
+/** A non-empty string, else `undefined`. */
+function asText(value: unknown): string | undefined {
+  return typeof value === 'string' && value !== '' ? value : undefined;
+}
+
+/** The string tags of an event (core's `tags` field holds a string array for each event). */
+function asTags(value: unknown): string[] | undefined {
+  return Array.isArray(value) ? value.filter((tag): tag is string => typeof tag === 'string') : undefined;
 }
 
 function fieldByName(frame: DataFrame, name: string): Field | undefined {

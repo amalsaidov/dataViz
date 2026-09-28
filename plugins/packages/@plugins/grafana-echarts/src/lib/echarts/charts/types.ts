@@ -241,7 +241,13 @@ export type EChartMultiValueCartesianSeriesOption = ComposeOption<
   CandlestickSeriesOption | BoxplotSeriesOption | LineSeriesOption
 >;
 export type EChartCartesianSeriesOption = ComposeOption<
-  BarSeriesOption | LineSeriesOption | CandlestickSeriesOption | ScatterSeriesOption | EffectScatterSeriesOption
+  // The custom series is the annotation markers (lib/echarts/options/annotationMarkers.ts).
+  | BarSeriesOption
+  | LineSeriesOption
+  | CandlestickSeriesOption
+  | ScatterSeriesOption
+  | EffectScatterSeriesOption
+  | CustomSeriesOption
 >;
 
 // A single cartesian series entry narrowed to the single-series union so arrays assign to a `series` field.

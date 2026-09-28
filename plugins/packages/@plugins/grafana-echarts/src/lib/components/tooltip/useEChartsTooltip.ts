@@ -2,6 +2,7 @@ import { debug, LOG_LEVELS } from 'development';
 import { type ECElementEvent } from 'echarts/core';
 import { type EChartsType } from 'lib/echarts/echarts';
 
+import { ANNOTATION_MARKER_SERIES_ID } from 'lib/echarts/options/annotationMarkers';
 import { findHoveredPoint } from 'lib/echarts/tooltip/proximity';
 import { type EChartsTooltipTrigger, type TooltipModel, type TooltipSink } from 'lib/echarts/tooltip/types';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
@@ -25,6 +26,9 @@ const isSameTarget = (a: TooltipTarget | null, b: TooltipTarget | null): boolean
  * nodes. Edges are the case `showTip` cannot reach; see {@link replayTip}.
  */
 const isEdgeTarget = (target: TooltipTarget | null): boolean => target?.dataType === 'edge';
+
+/** Whether a chart event comes from the annotation markers (lib/echarts/options/annotationMarkers.ts). */
+const isAnnotationMarker = (params?: ECElementEvent): boolean => params?.seriesId === ANNOTATION_MARKER_SERIES_ID;
 
 /**
  * How long (ms) an item-triggered tooltip lingers after the cursor leaves its
@@ -525,6 +529,9 @@ export function useEChartsTooltip(
 
       if (hit == null) {
         focusPoint(null);
+        // An annotation marker is under the plot, so no point is hit there. Its item tooltip
+        // still shows: ECharts runs it after this handler (this hook binds before the first
+        // `setOption`), so its `sink` comes after the hide below.
         if (axisTriggered) {
           return;
         }
@@ -580,7 +587,7 @@ export function useEChartsTooltip(
      * hide for item-triggered tooltips. A no-op for axis tooltips and in proximity
      * mode, where `globalout` and `onMove` respectively own hiding instead.
      */
-    const onMouseOut = () => {
+    const onMouseOut = (params?: ECElementEvent) => {
       // Nothing is hovered *yet*; a move onto an adjacent mark reports its `mouseover`
       // in this same dispatch, and `settleFocus` reads the ref once both have run.
       hoveredRef.current = null;
@@ -588,6 +595,12 @@ export function useEChartsTooltip(
       if (latestRef.current.pinned) {
         // The pin owns the emphasis, and ECharts has just cleared it — see `settleFocus`.
         // Everything below is hide behaviour, which a pinned tooltip has none of.
+        return;
+      }
+      // A marker tooltip hides after the delay in each mode. A hover of a data point in
+      // the same dispatch shows its own tooltip and cancels the hide.
+      if (isAnnotationMarker(params)) {
+        scheduleHide();
         return;
       }
       // Without proximity, ECharts' own element hit-testing owns which item is
@@ -607,6 +620,10 @@ export function useEChartsTooltip(
       if (inProximityMode()) {
         return;
       }
+      scheduleHide();
+    };
+
+    const scheduleHide = () => {
       cancelHide();
       hideTimerRef.current = setTimeout(() => {
         hideTimerRef.current = null;

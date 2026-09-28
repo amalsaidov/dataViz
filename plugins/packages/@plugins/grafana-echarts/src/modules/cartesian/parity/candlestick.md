@@ -63,8 +63,8 @@ Color), matching core Candlestick which uses the timeseries graph field config.
   axis, which rounds a value to a category index. Thus each annotation time moves to
   the nearest candle. A region with both edges nearest to one candle is one line.
   Marks before the first candle or after the last candle do not draw, and regions are
-  clipped to the candles. Boxplot draws no annotations. The gaps of the time axis
-  (markers, tooltip, editor) also apply here. Tests:
+  clipped to the candles. Boxplot draws no annotations. The candlestick has no
+  annotation markers and no annotation tooltip, and the options editor is #262. Tests:
   [canvas baseline](../../../lib/components/annotations.canvas.test.tsx),
   [integration](../../../lib/components/annotations.integration.test.tsx). Dashboard:
   `provisioning/dashboards/cartesian/cartesian-annotations.json`.

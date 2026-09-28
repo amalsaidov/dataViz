@@ -25,7 +25,7 @@
         "target": {
           "refId": "Anno",
           "scenarioId": "csv_content",
-          "csvContent": "time,text\n2021-01-01T01:10:00Z,Deploy v1.2\n2021-01-01T03:40:00Z,Deploy v1.3\n2021-01-01T07:00:00Z,Deploy v1.4 (after the time range)"
+          "csvContent": "time,title,text,tags\n2021-01-01T01:10:00Z,Deploy,Version <b>1.2</b> to production,\"release,api\"\n2021-01-01T03:40:00Z,Deploy,Version <b>1.3</b> to production,release\n2021-01-01T07:00:00Z,Deploy,Version 1.4 (after the time range),release"
         }
       },
       {
@@ -40,7 +40,7 @@
         "target": {
           "refId": "Anno",
           "scenarioId": "csv_content",
-          "csvContent": "time,timeEnd,text\n2020-12-31T23:30:00Z,2021-01-01T00:45:00Z,Maintenance (starts before the time range)\n2021-01-01T02:15:00Z,2021-01-01T03:00:00Z,Incident\n2021-01-01T04:30:00Z,2021-01-01T05:30:00Z,Load test"
+          "csvContent": "time,timeEnd,title,text,tags\n2020-12-31T23:30:00Z,2021-01-01T00:45:00Z,Maintenance,Starts before the time range,ops\n2021-01-01T02:15:00Z,2021-01-01T03:00:00Z,Incident,Database failover,\"ops,incident\"\n2021-01-01T04:30:00Z,2021-01-01T05:30:00Z,Load test,Load test of the API,ops"
         }
       }
     ]
@@ -56,7 +56,7 @@
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"
       },
-      "description": "Dashboard annotations on the ECharts time axis. The 'Deploys' entry gives points: a dashed line at each time. The 'Maintenance' entry gives regions: a band with a dashed line at each edge. The first region starts before the time range, so it is clipped at the left edge and has no line there. The last deploy is after the time range and does not draw. Compare with the core Time series panel at the right.",
+      "description": "Dashboard annotations on the ECharts time axis. The 'Deploys' entry gives points: a dashed line at each time. The 'Maintenance' entry gives regions: a band with a dashed line at each edge. The first region starts before the time range, so it is clipped at the left edge and has no line there. The last deploy is after the time range and does not draw. Under the plot, a triangle marks each point and a bar marks each region. A hover on a marker shows the time, the title, the text and the tags. Compare with the core Time series panel at the right.",
       "fieldConfig": {
         "defaults": {
           "color": {

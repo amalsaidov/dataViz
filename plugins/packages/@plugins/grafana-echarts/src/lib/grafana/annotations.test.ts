@@ -61,3 +61,23 @@ describe('readAnnotations', () => {
     expect(readAnnotations(undefined, theme)).toEqual([]);
   });
 });
+
+describe('readAnnotations tooltip content', () => {
+  it('reads the title, the text and the string tags of each event', () => {
+    const annotations = readAnnotations(
+      [
+        frame([
+          { name: 'time', type: FieldType.time, values: [100, 200] },
+          { name: 'title', type: FieldType.string, values: ['Deploy', ''] },
+          { name: 'text', type: FieldType.string, values: ['<b>v1.2</b>', null] },
+          { name: 'tags', type: FieldType.other, values: [['release', 7, 'api'], []] },
+        ]),
+      ],
+      theme
+    );
+    expect(annotations).toEqual([
+      { time: 100, color: expect.any(String), title: 'Deploy', text: '<b>v1.2</b>', tags: ['release', 'api'] },
+      { time: 200, color: expect.any(String), tags: [] },
+    ]);
+  });
+});

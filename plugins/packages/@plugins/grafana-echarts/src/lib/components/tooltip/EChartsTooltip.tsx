@@ -26,6 +26,7 @@ import {
   type TooltipSource,
 } from 'lib/echarts/tooltip/types';
 import React, { useLayoutEffect, useRef } from 'react';
+import { AnnotationTooltipContent } from './AnnotationTooltipContent';
 import { TOOLTIP_MARKER_ATTR, TOOLTIP_OFFSET } from './constants';
 import { type EChartsTooltipState } from './types';
 
@@ -267,7 +268,8 @@ function cursorTransform(position: { x: number; y: number }, size: { width: numb
  *
  * When pinned, the tooltip is interactive, shows a close button, and a footer
  * with the focused field's data links and label-based ad-hoc filters.
- * Annotations are not wired yet — see the `@todo` below.
+ * A hovered annotation marker shows the annotation under the header ({@link AnnotationTooltipContent}).
+ * Adding and editing annotations is not wired yet — see the `@todo` below.
  */
 export const EChartsTooltip: React.FC<Props> = ({ state, dismiss, mode, maxWidth, maxHeight }) => {
   // Hooks must run before any early return (Rules of Hooks).
@@ -370,12 +372,16 @@ export const EChartsTooltip: React.FC<Props> = ({ state, dismiss, mode, maxWidth
         {pinned && <IconButton aria-label="Close" className={styles.closeButton} name="times" onClick={dismiss} />}
         <VizTooltipWrapper>
           <VizTooltipHeader item={model.header} isPinned={pinned} />
-          <VizTooltipContent
-            items={items}
-            isPinned={pinned}
-            scrollable={isTooltipScrollable({ mode, maxHeight })}
-            maxHeight={maxHeight}
-          />
+          {model.annotation != null ? (
+            <AnnotationTooltipContent annotation={model.annotation} />
+          ) : (
+            <VizTooltipContent
+              items={items}
+              isPinned={pinned}
+              scrollable={isTooltipScrollable({ mode, maxHeight })}
+              maxHeight={maxHeight}
+            />
+          )}
           {footer}
         </VizTooltipWrapper>
       </div>
