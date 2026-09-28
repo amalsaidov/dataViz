@@ -1,4 +1,5 @@
 import {
+  type DataFrame,
   type FieldConfigSource,
   type GrafanaTheme2,
   type InterpolateFunction,
@@ -64,6 +65,11 @@ export interface ChartContext<T = SeriesType, C = EChartsFieldConfig, V = EChart
   timeZone: TimeZone;
   timeRange: TimeRange;
   options: PanelOptions;
+  /**
+   * The annotation frames of the panel (`PanelData.annotations`). Only the cartesian time axis
+   * draws them. https://grafana.com/docs/grafana/latest/dashboards/build-dashboards/annotate-visualizations/
+   */
+  annotations?: DataFrame[];
   /**
    * The one timestamp the marks are read at, instead of reducing their rows away — the
    * relations time slider's selection (`ChartTimeSlider`). `null`/absent is the reducing

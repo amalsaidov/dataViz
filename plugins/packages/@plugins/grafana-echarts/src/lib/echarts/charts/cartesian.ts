@@ -23,6 +23,7 @@ import {
 } from 'lib/echarts/converters/multiValueCartesian';
 import { timeSeriesToEChartsOption } from 'lib/echarts/converters/timeSeries';
 import { getCartesianGrid } from 'lib/echarts/grid/grid';
+import { buildAnnotationSeries } from 'lib/echarts/options/annotations';
 import { AXIS_FONT_SIZE } from 'lib/echarts/options/base';
 import { isHorizontalBars, resolvePanelStacking } from 'lib/echarts/options/bars';
 import {
@@ -52,6 +53,7 @@ import {
 } from 'lib/grafana/fields/thresholds';
 import { isNumberField } from 'lib/grafana/narrowing';
 import { getTimeAxisLabelFormatter } from 'lib/grafana/timeAxisFormat';
+import { readAnnotations } from 'lib/grafana/annotations';
 import { type FieldTypedDataFrame } from 'lib/grafana/types';
 import { type PanelOptions } from 'types';
 import {
@@ -95,7 +97,15 @@ function buildTimeOption(
     colorOf: (field) => getCartesianSeriesColor(field, timeCtx.frames, theme),
   });
   const indexedSeries = cartSeries.map((cartesian, i) => ({ ...cartesian, yAxisIndex: axes.seriesYAxisIndex[i] ?? 0 }));
-  const series = attachThresholdMarks(indexedSeries, cartesianThresholdMarks(ctx, false));
+  const thresholdSeries = attachThresholdMarks(indexedSeries, cartesianThresholdMarks(ctx, false));
+  // The annotation series goes last, so the index of each data series stays its field index
+  // (see `cartesianSeriesFields`).
+  const annotationSeries = buildAnnotationSeries(
+    readAnnotations(ctx.annotations, theme),
+    getTimeAxisBounds(ctx.timeRange),
+    options.zLevel?.series
+  );
+  const series = annotationSeries ? [...thresholdSeries, annotationSeries] : thresholdSeries;
 
   // Pin the time axis to the dashboard range so gaps in this panel's data still
   // align with sibling panels sharing the same range. Labels are formatted via

@@ -25,7 +25,7 @@ styling defaults, exposing only a small set of per-field overrides.
 | Legend: visibility, mode, placement, width, values | Grafana legend via `addLegendOptions`                                                                       | Supported     |
 | Legend: series show/hide + color (interactive)     | `VizLegend` writes `hideFrom`/color field-config overrides                                                  | Supported     |
 | Axis: time zone editor                             | none (timeZone from panel context)                                                                          | Not supported |
-| Annotations                                        | none                                                                                                        | Not supported |
+| Annotations: points and regions                    | `data.annotations` drawn as a dashed `markLine` (points, region edges) and a `markArea` band (regions)      | Partial       |
 | —                                                  | `editorMode` radio (Default / Advanced editor tiers)                                                        | ECharts-only  |
 | —                                                  | Advanced: `performance.showPoints`, `performance.downsampling` (LTTB), `animation.enabled` (off by default) | Advanced      |
 
@@ -60,6 +60,18 @@ byValue + bySeries).
   `viz` is honored: viz-hidden fields are stripped from the render, while the
   series stays greyed in the legend. The `legend`/`tooltip` sub-toggles have no
   effect. Clicking a legend item toggles the same `viz` state.
+- **Annotations** draw on the time axis only (line, bar and scatter). A point is a
+  dashed vertical line. A region is a band with a dashed line at each edge. The line
+  width (2 px), the dash (5 px) and the band opacity (0.1) are the core defaults. Each
+  event has its own color (`getColorByName`, default `DEFAULT_ANNOTATION_COLOR`). Marks
+  out of the time range do not draw, and regions are clipped to it. A legend click that
+  hides a series keeps the marks. Tests: [canvas baseline](../../../lib/components/annotations.canvas.test.tsx),
+  [integration](../../../lib/components/annotations.integration.test.tsx). Dashboard:
+  `provisioning/dashboards/cartesian/cartesian-annotations.json`.
+- Annotations: not supported yet. The markers under the plot and the hover tooltip
+  (#259), the `options.annotations` editor (`lines.width`, `regions.opacity`,
+  `clustering`, `multiLane`), and add, edit and delete of an annotation. Candlestick
+  (#260) and the standalone renderer (#261) do not draw annotations.
 
 ## ECharts API support
 
@@ -78,7 +90,7 @@ the registered runtime surface.
 | Tooltip: click-to-pin, data links, ad-hoc filters                                              | React `VizTooltip` footer (annotations: todo)         | Supported                                                                                                                                                                                                                                    |
 | `axisPointer`                                                                                  | Partial                                               | Crosshair via `tooltip.axisPointer`; shared on the time axis, per-item on category axes.                                                                                                                                                     |
 | `brush`                                                                                        | Partial                                               | `lineX` drag maps to the dashboard time range; time axis only.                                                                                                                                                                               |
-| `markLine` / `markArea`                                                                        | Supported                                             | Threshold lines / regions on the shared value axis.                                                                                                                                                                                          |
+| `markLine` / `markArea`                                                                        | Supported                                             | Threshold lines / regions on the shared value axis. Annotation lines / bands on the time axis, in one series with no data.                                                                                                                   |
 | `legend`                                                                                       | Supported                                             | Grafana DOM legend (`addLegendOptions`); native legend hidden. Interactive show/hide + color persist as field-config overrides.                                                                                                              |
 | `animation`                                                                                    | Supported                                             | Off by default for every family; opt in via the Advanced `animation.enabled` switch.                                                                                                                                                         |
 | `color` / `textStyle`                                                                          | Supported                                             | Derived from the Grafana theme.                                                                                                                                                                                                              |

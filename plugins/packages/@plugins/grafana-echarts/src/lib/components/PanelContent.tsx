@@ -62,6 +62,7 @@ export const PanelContent: React.FC<Props> = ({
   const baseContext: ChartContext = useMemo(
     () => ({
       frames: data.series,
+      annotations: data.annotations,
       theme,
       timeZone,
       timeRange,
@@ -72,7 +73,19 @@ export const PanelContent: React.FC<Props> = ({
       fieldConfig,
       replaceVariables,
     }),
-    [data.series, theme, timeZone, timeRange, options, seriesType, family, formatValue, fieldConfig, replaceVariables]
+    [
+      data.series,
+      data.annotations,
+      theme,
+      timeZone,
+      timeRange,
+      options,
+      seriesType,
+      family,
+      formatValue,
+      fieldConfig,
+      replaceVariables,
+    ]
   );
 
   // The stops this render can be stepped through, or `null` for no slider. Relations can
