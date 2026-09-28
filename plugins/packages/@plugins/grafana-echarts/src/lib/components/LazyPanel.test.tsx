@@ -1,9 +1,17 @@
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
+import { searchAnnotationTags } from 'lib/grafana/annotationTags';
+import React, { useContext } from 'react';
+import { AnnotationTagsContext } from './annotations/annotationTagsContext';
 import { makeLazyPanel } from './LazyPanel';
 
-// Stand in for the heavy Panel chunk; the test is about when it first renders.
-jest.mock('lib/components/Panel', () => ({ Panel: () => <div>panel</div> }));
+// Stand in for the heavy Panel chunk; the tests are about when it first renders and what it gets.
+let mockReceivedTagSearch: unknown;
+jest.mock('lib/components/Panel', () => ({
+  Panel: function MockPanel() {
+    mockReceivedTagSearch = useContext(AnnotationTagsContext);
+    return <div>panel</div>;
+  },
+}));
 
 describe('makeLazyPanel', () => {
   it('waits for preload before the first render', async () => {
@@ -25,5 +33,12 @@ describe('makeLazyPanel', () => {
     const LazyPanel = makeLazyPanel('cartesian');
     render(<LazyPanel {...({} as React.ComponentProps<typeof LazyPanel>)} />);
     expect(await screen.findByText('panel')).toBeInTheDocument();
+  });
+
+  it('gives the panel the tag search of the Grafana API', async () => {
+    const LazyPanel = makeLazyPanel('cartesian');
+    render(<LazyPanel {...({} as React.ComponentProps<typeof LazyPanel>)} />);
+    expect(await screen.findByText('panel')).toBeInTheDocument();
+    expect(mockReceivedTagSearch).toBe(searchAnnotationTags);
   });
 });

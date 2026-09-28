@@ -14,8 +14,10 @@ import {
 } from '@grafana/ui';
 import { cursorTransform } from 'lib/components/tooltip/placement';
 import { formatDraftTime, toAnnotationEvent } from 'lib/grafana/annotationDraft';
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { type PlacedAnnotationDraft } from '../hooks/useAnnotationGestures';
+import { AnnotationTagsContext } from './annotationTagsContext';
+import { AnnotationTagsSelect } from './AnnotationTagsSelect';
 
 interface Props {
   draft: PlacedAnnotationDraft;
@@ -32,14 +34,17 @@ export const ANNOTATION_EDITOR_ATTR = 'data-echarts-annotation-editor';
  * sends the event to `PanelContext.onAnnotationCreate`, and the dashboard stores it. If the save
  * fails, the form stays open and shows the error.
  *
- * Differences from core: `TagsInput` replaces core `TagFilter` (not exported, and it has no list
- * of the existing tags), and the form opens at the cursor, not under the plot.
+ * Differences from core: core `TagFilter` is not exported. With a tag search in `AnnotationTagsContext` (the
+ * Grafana panel), `AnnotationTagsSelect` suggests the existing tags. With no search (the standalone renderer),
+ * `TagsInput` takes free text only. The form opens at the cursor, not under the plot.
  * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/timeseries/plugins/annotations/AnnotationEditor.tsx
  * https://developers.grafana.com/ui/latest/index.html?path=/docs/inputs-tagsinput--docs
  */
 export const AnnotationEditor: React.FC<Props> = ({ draft, timeZone, dismiss }) => {
   const styles = useStyles2(getStyles);
   const { onAnnotationCreate } = usePanelContext();
+  const searchTags = useContext(AnnotationTagsContext);
+  const tagsId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -60,7 +65,7 @@ export const AnnotationEditor: React.FC<Props> = ({ draft, timeZone, dismiss }) 
   // A press out of the editor or Escape closes it, as core (`useClickAway`).
   useEffect(() => {
     const onMouseDown = (event: MouseEvent) => {
-      if (event.target instanceof Node && !rootRef.current?.contains(event.target)) {
+      if (event.target instanceof Node && !inEditor(rootRef.current, event.target)) {
         dismiss();
       }
     };
@@ -121,8 +126,12 @@ export const AnnotationEditor: React.FC<Props> = ({ draft, timeZone, dismiss }) 
                 }}
               />
             </Field>
-            <Field label="Tags">
-              <TagsInput placeholder="Add tags" tags={tags} onChange={setTags} />
+            <Field label="Tags" htmlFor={tagsId}>
+              {searchTags === undefined ? (
+                <TagsInput id={tagsId} placeholder="Add tags" tags={tags} onChange={setTags} />
+              ) : (
+                <AnnotationTagsSelect id={tagsId} tags={tags} onChange={setTags} searchTags={searchTags} />
+              )}
             </Field>
           </div>
           <div className={styles.footer}>
@@ -145,6 +154,24 @@ export const AnnotationEditor: React.FC<Props> = ({ draft, timeZone, dismiss }) 
     </Portal>
   );
 };
+
+/**
+ * True if `target` is in the editor, or in a menu that an input of the editor controls. The tags menu opens in
+ * a portal, so a press on a suggestion must not close the editor.
+ * https://www.w3.org/TR/wai-aria-1.2/#aria-controls
+ */
+function inEditor(root: HTMLElement | null, target: Node): boolean {
+  if (root == null) {
+    return false;
+  }
+  if (root.contains(target)) {
+    return true;
+  }
+  return Array.from(root.querySelectorAll('[aria-controls]')).some((el) => {
+    const menuId = el.getAttribute('aria-controls');
+    return menuId != null && menuId !== '' && document.getElementById(menuId)?.contains(target) === true;
+  });
+}
 
 // Core `AnnotationEditor` styles, and fixed placement as the tooltip.
 const getStyles = (theme: GrafanaTheme2) => ({
