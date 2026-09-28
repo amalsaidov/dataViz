@@ -37,7 +37,7 @@ exposes no per-field mapping or candlestick-specific styling in the editor.
 | Additional fields (ignore / include)      | none                                             | Not supported |
 | Tooltip: mode                             | `tooltip.mode` (only if candlestick is rendered) | Partial       |
 | Legend                                    | Grafana legend via `addLegendOptions`            | Partial       |
-| Annotations                               | none                                             | Not supported |
+| Annotations: points and regions           | `data.annotations` at the nearest candle         | Partial       |
 | —                                         | `editorMode` radio (Default / Advanced tiers)    | ECharts-only  |
 | —                                         | Advanced: `animation.enabled` (off by default)   | Advanced      |
 
@@ -57,6 +57,17 @@ Color), matching core Candlestick which uses the timeseries graph field config.
   `getSeriesPerfOptions`. ECharts does support `large`/`largeThreshold` on
   candlestick, so wiring that converter is the obvious fix; it is not done. See
   [performance.md](../../../../docs/performance.md).
+- **Annotations** use the code of the time axis ([timeseries.md](./timeseries.md)):
+  a dashed line for a point, and a band with a dashed line at each edge for a region.
+  Core Candlestick draws them on a time axis. This panel draws candles on a category
+  axis, which rounds a value to a category index. Thus each annotation time moves to
+  the nearest candle. A region with both edges nearest to one candle is one line.
+  Marks before the first candle or after the last candle do not draw, and regions are
+  clipped to the candles. Boxplot draws no annotations. The gaps of the time axis
+  (markers, tooltip, editor) also apply here. Tests:
+  [canvas baseline](../../../lib/components/annotations.canvas.test.tsx),
+  [integration](../../../lib/components/annotations.integration.test.tsx). Dashboard:
+  `provisioning/dashboards/cartesian/cartesian-annotations.json`.
 
 ## ECharts API support
 
@@ -73,7 +84,7 @@ the registered runtime surface.
 | Tooltip: click-to-pin, data links                                                              | React `VizTooltip` footer, unioned across the four OHLC fields | Supported                                                                                                                                                                                                                             |
 | `axisPointer`                                                                                  | Partial                                                        | Per-item crosshair only (category axis has no shared pointer).                                                                                                                                                                        |
 | `brush`                                                                                        | Partial                                                        | `lineX` drag maps category indices back to the dashboard time range.                                                                                                                                                                  |
-| `markLine` / `markArea`                                                                        | Supported                                                      | Threshold lines / regions on the shared value axis.                                                                                                                                                                                   |
+| `markLine` / `markArea`                                                                        | Supported                                                      | Threshold lines / regions on the shared value axis. Annotation lines / bands at the nearest candle.                                                                                                                                   |
 | `legend`                                                                                       | Supported                                                      | Grafana DOM legend (`addLegendOptions`); native legend hidden. Interactive show/hide (via the core `hideSeriesFrom` byNames override) + color (via `byName`) read directly (per series, not per field).                               |
 | `animation`                                                                                    | Supported                                                      | Off by default for every family; opt in via the Advanced `animation.enabled` switch.                                                                                                                                                  |
 | `color` / `textStyle`                                                                          | Supported                                                      | Derived from the Grafana theme.                                                                                                                                                                                                       |

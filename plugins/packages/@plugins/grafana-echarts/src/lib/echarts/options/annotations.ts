@@ -1,8 +1,9 @@
 import { type LineSeriesOption, type MarkLineComponentOption } from 'echarts';
 import { type MarkArea2DDataItemOption } from 'echarts/types/src/component/marker/MarkAreaModel';
 
-// Build the ECharts overlay for Grafana annotations on a time x axis. Pure ECharts: the Grafana
-// adapter (lib/grafana/annotations.ts) gives the times and colors.
+// Build the ECharts overlay for Grafana annotations on a time x axis, or on a category x axis of
+// times (candlestick). Pure ECharts: the Grafana adapter (lib/grafana/annotations.ts) gives the
+// times and colors.
 // https://echarts.apache.org/en/option.html#series-line.markLine
 // https://echarts.apache.org/en/option.html#series-line.markArea
 
@@ -80,4 +81,48 @@ export function buildAnnotationSeries(
     markLine: { silent: true, symbol: 'none', label: { show: false }, animation: false, data: lines },
     markArea: { silent: true, animation: false, data: areas },
   };
+}
+
+/**
+ * The annotation series for a category x axis whose categories are the times in `categoryTimes`
+ * (ascending), as the candlestick axis. Each time moves to the index of the nearest category,
+ * because a category axis rounds a numeric value to an index.
+ * https://echarts.apache.org/en/option.html#xAxis.data
+ *
+ * A time before the first category or after the last one gets an index out of the axis, so
+ * `buildAnnotationSeries` drops that point and clips that region as on a time axis.
+ */
+export function buildCategoryAnnotationSeries(
+  marks: AnnotationMark[],
+  categoryTimes: number[],
+  zlevel?: number
+): LineSeriesOption | undefined {
+  if (categoryTimes.length === 0) {
+    return undefined;
+  }
+  const toIndex = (time: number) => nearestCategoryIndex(time, categoryTimes);
+  const indexed = marks.map((mark) => ({
+    ...mark,
+    time: toIndex(mark.time),
+    timeEnd: mark.timeEnd == null ? undefined : toIndex(mark.timeEnd),
+  }));
+  return buildAnnotationSeries(indexed, { min: 0, max: categoryTimes.length - 1 }, zlevel);
+}
+
+/** The index of the category nearest to `time`: -1 before the first category, `length` after the last. */
+function nearestCategoryIndex(time: number, categoryTimes: number[]): number {
+  const last = categoryTimes.length - 1;
+  if (time < categoryTimes[0]) {
+    return -1;
+  }
+  if (time > categoryTimes[last]) {
+    return categoryTimes.length;
+  }
+  let nearest = 0;
+  categoryTimes.forEach((categoryTime, index) => {
+    if (Math.abs(categoryTime - time) < Math.abs(categoryTimes[nearest] - time)) {
+      nearest = index;
+    }
+  });
+  return nearest;
 }

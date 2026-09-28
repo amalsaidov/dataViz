@@ -36,6 +36,7 @@ The rendered tests of each option are in
 | Color by field                         | `colorByField`: each bar takes the display color of that field in the same row                                 | Supported     |
 | Tooltip: mode                          | `tooltip.mode`; All uses the `axis` trigger on the category axis too                                           | Supported     |
 | Legend                                 | Grafana legend via `addLegendOptions`                                                                          | Supported     |
+| —                                      | Annotations on the time x-axis (core Bar chart has none)                                                       | ECharts-only  |
 | Animation                              | `animation.enabled` (Advanced, **off by default** for every family)                                            | Supported     |
 | Text size: value                       | `text.valueSize`; unset fits the label in 65% of the bar thickness, 8 px to 14 px                              | Supported     |
 | —                                      | `editorMode` radio (Default / Advanced editor tiers)                                                           | ECharts-only  |
@@ -81,6 +82,11 @@ only when a field's `seriesType` override is `bar`.
 - Interactive legend: clicking a legend item shows/hides its series and the legend
   color picker sets a fixed color; color persists as a `byName` override and
   visibility as the core `hideSeriesFrom` system override.
+- **Annotations** draw on the time x-axis, with the code of Time series
+  ([timeseries.md](./timeseries.md)). On a category x-axis, bars draw no annotations,
+  as core Bar chart (it has no annotation support). Tests:
+  [canvas baseline](../../../lib/components/annotations.canvas.test.tsx),
+  [integration](../../../lib/components/annotations.integration.test.tsx).
 - Per-field `seriesType` / `stackSeries` overrides apply on the **category** x-axis
   as well as the time axis, so a categorical bar chart can carry a line or scatter
   overlay (e.g. actuals as bars with a target as a line).

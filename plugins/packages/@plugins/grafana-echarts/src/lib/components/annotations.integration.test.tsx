@@ -1,11 +1,12 @@
 import { type DataFrame, DataTopic, type FieldConfigSource, FieldType, toDataFrame } from '@grafana/data';
 import { render } from '@testing-library/react';
+import { type SeriesType } from 'editor/types';
 import { type CanvasRenderingContext2DEvent } from 'jest-canvas-mock';
 import { SERIES_ZLEVEL } from 'test/canvas';
 import { getCanvasEvents, getComponent } from 'test/panel';
 
-// Claims about the annotation marks of the cartesian time axis, read from the drawn
-// primitives. The baseline is `annotations.canvas.test.tsx`.
+// Claims about the annotation marks of the cartesian panel, read from the drawn primitives.
+// The baselines are in `annotations.canvas.test.tsx`.
 
 const times = [1783137094497, 1783140694497, 1783144294497, 1783147894497];
 
@@ -41,11 +42,16 @@ const hideCpu: FieldConfigSource = {
 };
 
 /** The annotation draw calls on the default layer: dashed strokes and translucent fills. */
-const renderMarks = async (annotations: DataFrame[] | undefined, fieldConfig?: FieldConfigSource) => {
+const renderMarks = async (
+  annotations: DataFrame[] | undefined,
+  fieldConfig?: FieldConfigSource,
+  frames: DataFrame[] = [seriesFrame],
+  seriesType: SeriesType = 'line'
+) => {
   const { container } = render(
     getComponent(
-      [seriesFrame],
-      'line',
+      frames,
+      seriesType,
       { zLevel: { series: SERIES_ZLEVEL }, animation: { enabled: false }, editorMode: 'advanced' },
       { annotations },
       undefined,
@@ -126,6 +132,100 @@ describe('cartesian annotations', () => {
 
   it('draws no exemplar frame as an annotation', async () => {
     const { dashedStrokes, fills } = await renderMarks([annotationFrame({ name: 'exemplar' })]);
+    expect(dashedStrokes).toEqual([]);
+    expect(fills).toEqual([]);
+  });
+});
+
+// OHLC rows at the times of `seriesFrame`.
+const ohlcFrame = toDataFrame({
+  name: 'BTC',
+  fields: [
+    { name: 'time', type: FieldType.time, values: times },
+    { name: 'open', type: FieldType.number, values: [10, 18, 22, 15] },
+    { name: 'high', type: FieldType.number, values: [20, 25, 28, 24] },
+    { name: 'low', type: FieldType.number, values: [5, 12, 18, 11] },
+    { name: 'close', type: FieldType.number, values: [18, 22, 15, 21] },
+  ],
+});
+
+const pointsAt = (values: number[]) =>
+  toDataFrame({
+    meta: { dataTopic: DataTopic.Annotations },
+    fields: [{ name: 'time', type: FieldType.time, values }],
+  });
+
+const hideOhlc: FieldConfigSource = {
+  defaults: {},
+  overrides: [
+    {
+      matcher: { id: 'byName', options: 'BTC' },
+      properties: [{ id: 'custom.hideFrom', value: { viz: true, legend: false, tooltip: false } }],
+    },
+  ],
+};
+
+describe('candlestick annotations', () => {
+  const renderCandles = (annotations: DataFrame[], fieldConfig?: FieldConfigSource) =>
+    renderMarks(annotations, fieldConfig, [ohlcFrame], 'candlestick');
+
+  it('draws a point between two candles at the nearest candle', async () => {
+    // 1783139000000 is 1906 s after candle 0 and 1694 s before candle 1.
+    const between = await renderCandles([pointsAt([1783139000000])]);
+    const onCandle = await renderCandles([pointsAt([times[1]])]);
+    expect(between.dashedStrokes).toHaveLength(1);
+    expect(between.dashedStrokes).toEqual(onCandle.dashedStrokes);
+  });
+
+  it('draws a region between its nearest candles', async () => {
+    const { dashedStrokes, fills } = await renderCandles([annotationFrame()]);
+    // The point snaps to candle 1. The region (1783143000000 to 1783145500000) snaps to candle 2
+    // at both edges, so it draws two lines at the same x.
+    const edges = await renderCandles([pointsAt([times[1], times[2], times[2]])]);
+    expect(dashedStrokes).toEqual(edges.dashedStrokes);
+    expect(fills).toHaveLength(1);
+  });
+
+  it('drops a point out of the candles', async () => {
+    const { dashedStrokes } = await renderCandles([pointsAt([times[0] - 1, times[3] + 1])]);
+    expect(dashedStrokes).toEqual([]);
+  });
+
+  it('keeps the marks when a legend click hides the candles', async () => {
+    const shown = await renderCandles([annotationFrame()]);
+    const hidden = await renderCandles([annotationFrame()], hideOhlc);
+    expect(hidden.seriesStrokes).toBeLessThan(shown.seriesStrokes);
+    // The empty value axis has narrower labels, so the plot and the marks move: compare counts.
+    expect(hidden.dashedStrokes).toHaveLength(3);
+    expect(hidden.fills).toEqual(shown.fills);
+  });
+});
+
+describe('panels with no core annotations', () => {
+  it('draws no marks on a boxplot', async () => {
+    const boxFrame = toDataFrame({
+      fields: [
+        { name: 'time', type: FieldType.time, values: times },
+        { name: 'min', type: FieldType.number, values: [1, 2, 3, 4] },
+        { name: 'q1', type: FieldType.number, values: [3, 4, 5, 6] },
+        { name: 'median', type: FieldType.number, values: [5, 6, 7, 8] },
+        { name: 'q3', type: FieldType.number, values: [7, 8, 9, 10] },
+        { name: 'max', type: FieldType.number, values: [9, 10, 11, 12] },
+      ],
+    });
+    const { dashedStrokes, fills } = await renderMarks([annotationFrame()], undefined, [boxFrame], 'boxplot');
+    expect(dashedStrokes).toEqual([]);
+    expect(fills).toEqual([]);
+  });
+
+  it('draws no marks on bars over a category axis, as core Bar chart', async () => {
+    const categoryFrame = toDataFrame({
+      fields: [
+        { name: 'host', type: FieldType.string, values: ['a', 'b', 'c'] },
+        { name: 'cpu', type: FieldType.number, values: [10, 20, 30] },
+      ],
+    });
+    const { dashedStrokes, fills } = await renderMarks([annotationFrame()], undefined, [categoryFrame], 'bar');
     expect(dashedStrokes).toEqual([]);
     expect(fills).toEqual([]);
   });

@@ -60,7 +60,8 @@ byValue + bySeries).
   `viz` is honored: viz-hidden fields are stripped from the render, while the
   series stays greyed in the legend. The `legend`/`tooltip` sub-toggles have no
   effect. Clicking a legend item toggles the same `viz` state.
-- **Annotations** draw on the time axis only (line, bar and scatter). A point is a
+- **Annotations** draw on the time axis (line, bar and scatter) and on the candlestick
+  axis ([candlestick.md](./candlestick.md)). A point is a
   dashed vertical line. A region is a band with a dashed line at each edge. The line
   width (2 px), the dash (5 px) and the band opacity (0.1) are the core defaults. Each
   event has its own color (`getColorByName`, default `DEFAULT_ANNOTATION_COLOR`). Marks
@@ -70,8 +71,8 @@ byValue + bySeries).
   `provisioning/dashboards/cartesian/cartesian-annotations.json`.
 - Annotations: not supported yet. The markers under the plot and the hover tooltip
   (#259), the `options.annotations` editor (`lines.width`, `regions.opacity`,
-  `clustering`, `multiLane`), and add, edit and delete of an annotation. Candlestick
-  (#260) and the standalone renderer (#261) do not draw annotations.
+  `clustering`, `multiLane`), and add, edit and delete of an annotation. The standalone
+  renderer (#261) does not draw annotations.
 
 ## ECharts API support
 

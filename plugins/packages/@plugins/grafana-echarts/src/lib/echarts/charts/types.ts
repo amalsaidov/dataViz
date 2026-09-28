@@ -236,7 +236,10 @@ export type EChartCandlestickSeriesOption = ComposeOption<CandlestickSeriesOptio
 export type EChartBoxPlotSeriesOption = ComposeOption<BoxplotSeriesOption>;
 export type EChartEffectScatterSeriesOption = ComposeOption<EffectScatterSeriesOption>;
 
-export type EChartMultiValueCartesianSeriesOption = ComposeOption<CandlestickSeriesOption | BoxplotSeriesOption>;
+// The line series is the annotation overlay (lib/echarts/options/annotations.ts).
+export type EChartMultiValueCartesianSeriesOption = ComposeOption<
+  CandlestickSeriesOption | BoxplotSeriesOption | LineSeriesOption
+>;
 export type EChartCartesianSeriesOption = ComposeOption<
   BarSeriesOption | LineSeriesOption | CandlestickSeriesOption | ScatterSeriesOption | EffectScatterSeriesOption
 >;

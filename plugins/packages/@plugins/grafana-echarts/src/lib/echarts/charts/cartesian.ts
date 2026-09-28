@@ -23,7 +23,7 @@ import {
 } from 'lib/echarts/converters/multiValueCartesian';
 import { timeSeriesToEChartsOption } from 'lib/echarts/converters/timeSeries';
 import { getCartesianGrid } from 'lib/echarts/grid/grid';
-import { buildAnnotationSeries } from 'lib/echarts/options/annotations';
+import { buildAnnotationSeries, buildCategoryAnnotationSeries } from 'lib/echarts/options/annotations';
 import { AXIS_FONT_SIZE } from 'lib/echarts/options/base';
 import { isHorizontalBars, resolvePanelStacking } from 'lib/echarts/options/bars';
 import {
@@ -331,7 +331,9 @@ function buildMultiValueOption(
   const seriesNames = seriesArray.map((chartSeries) => String(chartSeries.name ?? ''));
   const hidden = getHiddenSeriesNames(ctx.fieldConfig, seriesNames);
   const visibleSeries = seriesArray.filter((chartSeries) => !hidden.has(String(chartSeries.name ?? '')));
-  const series = attachThresholdMarks(visibleSeries, cartesianThresholdMarks(ctx, false));
+  const thresholdSeries = attachThresholdMarks(visibleSeries, cartesianThresholdMarks(ctx, false));
+  const annotationSeries = candlestickAnnotationSeries(ctx, multiValueData?.categories);
+  const series = annotationSeries ? [...thresholdSeries, annotationSeries] : thresholdSeries;
 
   return {
     ...cartesianCategoryDefaultOptions,
@@ -341,6 +343,22 @@ function buildMultiValueOption(
     yAxis,
     series,
   };
+}
+
+/**
+ * The annotation series of a candlestick with a time field, as core Candlestick (it is built on
+ * the Time series panel). Each category label is the ISO time of its row (see
+ * `multiValueCartesian`). Boxplot has no core panel with annotations, so it draws none.
+ */
+function candlestickAnnotationSeries(ctx: ChartContext<MultiValueSeriesType>, categories: unknown[] | undefined) {
+  if (ctx.seriesType !== 'candlestick' || !categories || !framesHaveTimeField(ctx.frames)) {
+    return undefined;
+  }
+  return buildCategoryAnnotationSeries(
+    readAnnotations(ctx.annotations, ctx.theme),
+    categories.map((label) => Date.parse(String(label))),
+    ctx.options.zLevel?.series
+  );
 }
 
 /**
