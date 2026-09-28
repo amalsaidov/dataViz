@@ -1,3 +1,17 @@
+# --- dataViz monorepo CI metadata. Not Crowdin CLI config. ---
+# Read by .github/workflows/i18n-*.yml: the presence of a crowdin.yml is what
+# opts a package into i18n CI, and this block supplies the per-package values
+# the workflows need. crowdin-cli parses this file as a plain map and pulls
+# known keys out by name, so it ignores this block; the workflows also strip it
+# before handing the file to the CLI (belt and braces).
+x_dataviz:
+  crowdin_project_id: '36'
+  # Path SUFFIX only. The full path is ci/data/repo/<github.repository>/<this>.
+  # The repo segment is derived from github.repository by get-vault-secrets and
+  # is NOT configurable — see .github/workflows/i18n-crowdin-upload.yml.
+  vault_secret_path: grafana-frontend-crowdin-token
+  vault_secret_key: access_token
+
 # The following are pulled from env variables
 project_id_env: CROWDIN_PROJECT_ID
 api_token_env: CROWDIN_PERSONAL_TOKEN

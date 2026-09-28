@@ -1,3 +1,10 @@
 .idea
 .pnpm-store/
 .DS_Store
+
+# Generated at CI run time by the i18n Crowdin workflows. The upstream
+# crowdin-upload/crowdin-download composites hardcode `config: 'crowdin.yml'`
+# at the workspace root, so each matrix job materializes one there from the
+# package's own config. crowdin-download commits whatever `git status` reports,
+# so an untracked copy would land in every translations PR.
+/crowdin.yml
