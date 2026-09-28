@@ -1,6 +1,6 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 import { type PanelContext } from '@grafana/ui';
-import { act, fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { type EChartsType } from 'echarts';
 import { ANNOTATION_EDITOR_ATTR } from 'lib/components/annotations/AnnotationEditor';
 import { defaultTimeRange } from 'test/panel';
@@ -104,8 +104,10 @@ describe('add an annotation from the chart', () => {
       });
 
       expect(editorEl()).not.toBeNull();
-      // The pinned tooltip closes, as core's `dismiss()`.
-      expect(tooltipText()).toBe('');
+      // The pinned tooltip closes, as core's `dismiss()`. The hide renders on the next animation
+      // frame (`useRafState`), so wait for it.
+      // https://testing-library.com/docs/dom-testing-library/api-async/#waitfor
+      await waitFor(() => expect(tooltipText()).toBe(''));
       await save('Deploy');
 
       const time = Math.round(timeAt(chart, x));
