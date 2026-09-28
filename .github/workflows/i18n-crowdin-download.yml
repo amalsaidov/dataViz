@@ -1,0 +1,153 @@
+# Pulls completed translations back from Crowdin once a week and opens a PR per
+# package. This is the only thing that ever updates the non-en-US locale files;
+# they are Crowdin's output, not hand-edited.
+#
+# KNOWN LIMITATION — not safe for more than one detected package. The upstream
+# crowdin-download composite hardcodes the branch `i18n_crowdin_translations`
+# in three places (localization_branch_name, the branch name in its
+# github-script step, and `gh pr create --head`). With two or more packages,
+# matrix jobs branch from the same main SHA and force-push over each other, so
+# the last to finish wins and the others' translations are silently lost.
+# max-parallel: 1 below narrows the race but does NOT fix it. Only clock-panel
+# is detected today, so this is latent. Fixing it needs a branch-name input
+# upstream — do not add a second i18n package before that lands.
+#
+# Packages are discovered at run time — see the discover job for the rule. Keep
+# that job identical across the i18n-* workflows.
+name: i18n Crowdin download
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1' # Mondays, 00:00 UTC
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false # never interrupt a run that may be mid-commit
+
+jobs:
+  discover:
+    name: Discover i18n packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout only
+    outputs:
+      packages: ${{ steps.find.outputs.packages }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Detection rule: a package opts into i18n CI by having a crowdin.yml.
+      # (Depending on @grafana/i18n is NOT the marker — grafana-echarts imports
+      # it without having any extraction pipeline.)
+      #
+      # yq (4.53) and jq (1.7) are preinstalled on ubuntu-latest. Do not move
+      # this job to a self-hosted runner label without re-checking that.
+      - id: find
+        env:
+          ROOT: plugins/packages/@plugins
+        run: |
+          set -euo pipefail
+          shopt -s nullglob # must precede the glob, or `set -u` sees the literal pattern
+          entries='[]'
+          for cfg in "$ROOT"/*/crowdin.yml; do
+            dir="$(dirname "$cfg")"
+            pkg="$(jq -r '.name' "$dir/package.json")"
+            meta="$(yq -o=json '.x_dataviz // {}' "$cfg")"
+            src="$(yq -r '.files[0].source' "$cfg")"
+
+            # Having a crowdin.yml and having a working extraction pipeline are
+            # two different facts. `pnpm --filter` exits 0 on a missing script,
+            # so assert here rather than fan out a job that passes vacuously.
+            jq -e '.scripts["i18n-extract:ci"]' "$dir/package.json" >/dev/null \
+              || { echo "::error file=$dir/package.json::has crowdin.yml but no i18n-extract:ci script"; exit 1; }
+
+            # dir and en_path are repo-root-relative: dir is used as Crowdin's
+            # base_path, and en_path is matched against `gh pr diff --name-only`
+            # output inside the crowdin-download composite.
+            entry="$(jq -nc \
+              --arg dir "$dir" --arg pkg "$pkg" --arg en "$dir/$src" \
+              --argjson meta "$meta" \
+              '{dir:$dir, pkg:$pkg, en_path:$en,
+                project_id: ($meta.crowdin_project_id // null | tostring),
+                vault_path:  $meta.vault_secret_path,
+                vault_key:  ($meta.vault_secret_key // "access_token")}')"
+
+            jq -e '.project_id != "null" and .vault_path != null' <<<"$entry" >/dev/null \
+              || { echo "::error file=$cfg::x_dataviz.crowdin_project_id and x_dataviz.vault_secret_path are required"; exit 1; }
+
+            entries="$(jq -c --argjson e "$entry" '. + [$e]' <<<"$entries")"
+          done
+          echo "Detected: $entries"
+          echo "packages=$entries" >> "$GITHUB_OUTPUT"
+
+  download:
+    name: Download ${{ matrix.pkg }} translations from Crowdin
+    needs: discover
+    if: needs.discover.outputs.packages != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # repo writes go through the App token, not GITHUB_TOKEN
+      id-token: write # Vault auth via OIDC
+    strategy:
+      fail-fast: false
+      max-parallel: 1 # see the branch-collision note in the file header
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.packages) }}
+    env:
+      # Repo-wide, not per-package: these identify the team that triages
+      # translation PRs, not the plugin. Promote to x_dataviz if a second team
+      # ever owns a package here.
+      PR_LABELS: i18n
+      GITHUB_BOARD_ID: '76' # Plugins Platform / Grafana Community project
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The composite commits via the GitHub API rather than plain git, because
+      # the Signed Commits ruleset rejects unsigned commits on this repo.
+      - name: Get GitHub App token
+        id: get-github-app-token
+        uses: grafana/shared-workflows/actions/create-github-app-token@5bbb526b1728ca57fbe1750c4c27ab6ab06171c2 # create-github-app-token/v1.0.0
+        with:
+          github_app: grafana-pr-automation
+
+      - name: Get Vault secrets
+        id: vault-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@2f1ddaf3ce1aa677356243d0dd584be33cfa35e3 # get-vault-secrets/v2.1.0
+        with:
+          # Resolves to ci/data/repo/${{ github.repository }}/<vault_path>.
+          # The repo segment is derived from github.repository and is NOT
+          # configurable.
+          repo_secrets: |
+            CROWDIN_TOKEN=${{ matrix.vault_path }}:${{ matrix.vault_key }}
+
+      # See the equivalent step in i18n-crowdin-upload.yml for why this is
+      # needed and why it sets base_path rather than rewriting `source:`.
+      - name: Materialize root crowdin.yml
+        env:
+          PKG_DIR: ${{ matrix.dir }}
+        run: |
+          set -euo pipefail
+          yq 'del(.x_dataviz) | .base_path = strenv(PKG_DIR)' \
+            "$PKG_DIR/crowdin.yml" > crowdin.yml
+          cat crowdin.yml
+
+      - name: Download from Crowdin
+        uses: grafana/grafana-github-actions/crowdin-download@b1c422726cc4ff4adb0838ebca67586f24babb42 # main @ 2026-09-28
+        with:
+          # get-vault-secrets sets exportEnv: false, so secrets arrive as a JSON
+          # output rather than env vars.
+          crowdin_token: ${{ fromJSON(steps.vault-secrets.outputs.secrets).CROWDIN_TOKEN }}
+          crowdin_project_id: ${{ matrix.project_id }}
+          pr_labels: ${{ env.PR_LABELS }}
+          github_board_id: ${{ env.GITHUB_BOARD_ID }}
+          github_repo_token: ${{ steps.get-github-app-token.outputs.token }}
+          # Only consulted for automerge, which additionally requires
+          # github_pr_approver_token — deliberately not supplied, so automerge
+          # stays off and translation PRs get a human review.
+          en_paths: ${{ matrix.en_path }}

@@ -1,0 +1,137 @@
+# Uploads each i18n package's en-US source strings to its Crowdin project, so
+# translators see new strings. Runs after en-US lands on main; i18n-verify.yml
+# is what guarantees it is up to date at that point.
+#
+# Packages are discovered at run time — see the discover job for the rule. Keep
+# that job identical across the i18n-* workflows.
+name: i18n Crowdin upload
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    # Superset of every detected package's files[0].source. The layout
+    # (src/locales/en-US/<namespace>.json) is a convention shared by all
+    # packages here, not something Crowdin enforces — a package that deviates
+    # would still be discovered but would not trigger this push.
+    paths:
+      - 'plugins/packages/@plugins/*/src/locales/en-US/*.json'
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false # never interrupt a partial upload
+
+jobs:
+  discover:
+    name: Discover i18n packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout only
+    outputs:
+      packages: ${{ steps.find.outputs.packages }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Detection rule: a package opts into i18n CI by having a crowdin.yml.
+      # (Depending on @grafana/i18n is NOT the marker — grafana-echarts imports
+      # it without having any extraction pipeline.)
+      #
+      # yq (4.53) and jq (1.7) are preinstalled on ubuntu-latest. Do not move
+      # this job to a self-hosted runner label without re-checking that.
+      - id: find
+        env:
+          ROOT: plugins/packages/@plugins
+        run: |
+          set -euo pipefail
+          shopt -s nullglob # must precede the glob, or `set -u` sees the literal pattern
+          entries='[]'
+          for cfg in "$ROOT"/*/crowdin.yml; do
+            dir="$(dirname "$cfg")"
+            pkg="$(jq -r '.name' "$dir/package.json")"
+            meta="$(yq -o=json '.x_dataviz // {}' "$cfg")"
+            src="$(yq -r '.files[0].source' "$cfg")"
+
+            # Having a crowdin.yml and having a working extraction pipeline are
+            # two different facts. `pnpm --filter` exits 0 on a missing script,
+            # so assert here rather than fan out a job that passes vacuously.
+            jq -e '.scripts["i18n-extract:ci"]' "$dir/package.json" >/dev/null \
+              || { echo "::error file=$dir/package.json::has crowdin.yml but no i18n-extract:ci script"; exit 1; }
+
+            # dir and en_path are repo-root-relative: dir is used as Crowdin's
+            # base_path, and en_path is matched against `gh pr diff --name-only`
+            # output inside the crowdin-download composite.
+            entry="$(jq -nc \
+              --arg dir "$dir" --arg pkg "$pkg" --arg en "$dir/$src" \
+              --argjson meta "$meta" \
+              '{dir:$dir, pkg:$pkg, en_path:$en,
+                project_id: ($meta.crowdin_project_id // null | tostring),
+                vault_path:  $meta.vault_secret_path,
+                vault_key:  ($meta.vault_secret_key // "access_token")}')"
+
+            jq -e '.project_id != "null" and .vault_path != null' <<<"$entry" >/dev/null \
+              || { echo "::error file=$cfg::x_dataviz.crowdin_project_id and x_dataviz.vault_secret_path are required"; exit 1; }
+
+            entries="$(jq -c --argjson e "$entry" '. + [$e]' <<<"$entries")"
+          done
+          echo "Detected: $entries"
+          echo "packages=$entries" >> "$GITHUB_OUTPUT"
+
+  upload:
+    name: Upload ${{ matrix.pkg }} sources to Crowdin
+    needs: discover
+    if: needs.discover.outputs.packages != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout only
+      id-token: write # Vault auth via OIDC
+    strategy:
+      fail-fast: false # one package's Crowdin outage must not cancel another's
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.packages) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Get Vault secrets
+        id: vault-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@2f1ddaf3ce1aa677356243d0dd584be33cfa35e3 # get-vault-secrets/v2.1.0
+        with:
+          # Resolves to ci/data/repo/${{ github.repository }}/<vault_path>.
+          # The repo segment is derived from github.repository and is NOT
+          # configurable, so a plugin's token must live under this repo's path
+          # even if the plugin came from its own repo with its own token.
+          repo_secrets: |
+            CROWDIN_TOKEN=${{ matrix.vault_path }}:${{ matrix.vault_key }}
+
+      # The composite hardcodes `config: 'crowdin.yml'` at the workspace root
+      # and exposes no config-path or working-directory input, so it cannot see
+      # a package-level config. Derive a root one pointing back at the package.
+      #
+      # base_path (not a rewritten `source:`) is what keeps this safe: with
+      # preserve_hierarchy: true, Crowdin computes remote paths relative to
+      # base_path, so they stay identical to today's. Rewriting `source:` to a
+      # repo-root path would relocate every file in the Crowdin project and
+      # orphan the existing translations.
+      - name: Materialize root crowdin.yml
+        env:
+          PKG_DIR: ${{ matrix.dir }}
+        run: |
+          set -euo pipefail
+          yq 'del(.x_dataviz) | .base_path = strenv(PKG_DIR)' \
+            "$PKG_DIR/crowdin.yml" > crowdin.yml
+          cat crowdin.yml
+
+      - name: Upload to Crowdin
+        uses: grafana/grafana-github-actions/crowdin-upload@b1c422726cc4ff4adb0838ebca67586f24babb42 # main @ 2026-09-28
+        with:
+          # get-vault-secrets sets exportEnv: false, so secrets arrive as a JSON
+          # output rather than env vars. Reading env.CROWDIN_TOKEN here would
+          # silently pass an empty string.
+          crowdin_token: ${{ fromJSON(steps.vault-secrets.outputs.secrets).CROWDIN_TOKEN }}
+          crowdin_project_id: ${{ matrix.project_id }}

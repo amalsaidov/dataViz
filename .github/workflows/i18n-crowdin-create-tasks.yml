@@ -1,0 +1,111 @@
+# Creates monthly translation tasks in Crowdin, so pending strings get assigned
+# to translators instead of sitting untranslated.
+#
+# Packages are discovered at run time — see the discover job for the rule. Keep
+# that job identical across the i18n-* workflows.
+name: i18n Crowdin create tasks
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 1 * *' # 1st of the month, 00:00 UTC
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    name: Discover i18n packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout only
+    outputs:
+      packages: ${{ steps.find.outputs.packages }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Detection rule: a package opts into i18n CI by having a crowdin.yml.
+      # (Depending on @grafana/i18n is NOT the marker — grafana-echarts imports
+      # it without having any extraction pipeline.)
+      #
+      # yq (4.53) and jq (1.7) are preinstalled on ubuntu-latest. Do not move
+      # this job to a self-hosted runner label without re-checking that.
+      - id: find
+        env:
+          ROOT: plugins/packages/@plugins
+        run: |
+          set -euo pipefail
+          shopt -s nullglob # must precede the glob, or `set -u` sees the literal pattern
+          entries='[]'
+          for cfg in "$ROOT"/*/crowdin.yml; do
+            dir="$(dirname "$cfg")"
+            pkg="$(jq -r '.name' "$dir/package.json")"
+            meta="$(yq -o=json '.x_dataviz // {}' "$cfg")"
+            src="$(yq -r '.files[0].source' "$cfg")"
+
+            # Having a crowdin.yml and having a working extraction pipeline are
+            # two different facts. `pnpm --filter` exits 0 on a missing script,
+            # so assert here rather than fan out a job that passes vacuously.
+            jq -e '.scripts["i18n-extract:ci"]' "$dir/package.json" >/dev/null \
+              || { echo "::error file=$dir/package.json::has crowdin.yml but no i18n-extract:ci script"; exit 1; }
+
+            # dir and en_path are repo-root-relative: dir is used as Crowdin's
+            # base_path, and en_path is matched against `gh pr diff --name-only`
+            # output inside the crowdin-download composite.
+            entry="$(jq -nc \
+              --arg dir "$dir" --arg pkg "$pkg" --arg en "$dir/$src" \
+              --argjson meta "$meta" \
+              '{dir:$dir, pkg:$pkg, en_path:$en,
+                project_id: ($meta.crowdin_project_id // null | tostring),
+                vault_path:  $meta.vault_secret_path,
+                vault_key:  ($meta.vault_secret_key // "access_token")}')"
+
+            jq -e '.project_id != "null" and .vault_path != null' <<<"$entry" >/dev/null \
+              || { echo "::error file=$cfg::x_dataviz.crowdin_project_id and x_dataviz.vault_secret_path are required"; exit 1; }
+
+            entries="$(jq -c --argjson e "$entry" '. + [$e]' <<<"$entries")"
+          done
+          echo "Detected: $entries"
+          echo "packages=$entries" >> "$GITHUB_OUTPUT"
+
+  create-tasks:
+    name: Create ${{ matrix.pkg }} tasks in Crowdin
+    needs: discover
+    if: needs.discover.outputs.packages != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Vault auth via OIDC
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.packages) }}
+    steps:
+      # No checkout, and no crowdin.yml: the composite checks out
+      # grafana/grafana-github-actions into the workspace itself with no `path:`,
+      # which REPLACES the workspace. Anything checked out here would be
+      # discarded, and nothing after the composite can read this repo's tree —
+      # which is also why this runs as its own workflow rather than as another
+      # job in the upload/download ones.
+      - name: Get Vault secrets
+        id: vault-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@2f1ddaf3ce1aa677356243d0dd584be33cfa35e3 # get-vault-secrets/v2.1.0
+        with:
+          # Resolves to ci/data/repo/${{ github.repository }}/<vault_path>.
+          # The repo segment is derived from github.repository and is NOT
+          # configurable.
+          repo_secrets: |
+            CROWDIN_TOKEN=${{ matrix.vault_path }}:${{ matrix.vault_key }}
+
+      - name: Create tasks in Crowdin
+        uses: grafana/grafana-github-actions/crowdin-create-tasks@b1c422726cc4ff4adb0838ebca67586f24babb42 # main @ 2026-09-28
+        with:
+          # get-vault-secrets sets exportEnv: false, so secrets arrive as a JSON
+          # output rather than env vars.
+          crowdin_token: ${{ fromJSON(steps.vault-secrets.outputs.secrets).CROWDIN_TOKEN }}
+          crowdin_project_id: ${{ matrix.project_id }}
