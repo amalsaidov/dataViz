@@ -11,7 +11,7 @@ interface Props {
 /**
  * The body of the tooltip of an annotation marker, as core's `AnnotationTooltipBody`: the title
  * and the text as sanitized HTML, and the tags. The `VizTooltipHeader` above it shows the time.
- * It has no edit or delete buttons (see the `annotate` todo in `EChartsTooltip`).
+ * It has no edit or delete buttons.
  *
  * The tags are plain elements in one theme color, not core `Tag` with a color for each name:
  * `Tag`, `Stack` and the tag colors add about 4.9 KB to the viz bundle, over its size limit.

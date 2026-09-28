@@ -1,11 +1,25 @@
 import { type AbsoluteTimeRange, type FieldConfigSource } from '@grafana/data';
 import { TooltipDisplayMode } from '@grafana/schema';
+import { usePanelContext } from '@grafana/ui';
+import { timeAtPixel } from 'lib/echarts/annotationGestures';
+import { isMultiValueSeriesType } from 'lib/echarts/charts/narrowing';
 import { type ChartContext, type ChartModule } from 'lib/echarts/charts/types';
 import { type EChartsType, init } from 'lib/echarts/echarts';
+import { hasTimeBrush } from 'lib/echarts/options/panelOption';
 import { collectProximitySeries } from 'lib/echarts/tooltip/proximity';
-import React, { type MutableRefObject, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  type MutableRefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { type PanelOptions } from 'types';
 import { type InteractedRelationsView } from 'lib/echarts/relations/options/view';
+import { AnnotationEditor } from './annotations/AnnotationEditor';
+import { type PlacedAnnotationDraft, useAnnotationGestures } from './hooks/useAnnotationGestures';
 import { useBrushTimeZoom } from './hooks/useBrushTimeZoom';
 import { useChartOption } from './hooks/useChartOption';
 import { useChartResize } from './hooks/useChartResize';
@@ -138,7 +152,49 @@ export const EChart: React.FC<Props> = ({
     strategy: resizeStrategy,
     getSettledOption: getSettledResizeOption,
   });
-  useBrushTimeZoom(isPreview ? null : chart, onChangeTimeRange);
+  // Add an annotation from the chart, as core Time series: ctrl/cmd + click or drag, or the
+  // tooltip's "Add annotation" button. Only when the dashboard lets the user add annotations
+  // and the x-axis is a time axis (candlestick and boxplot use a category axis).
+  // https://grafana.com/docs/grafana/latest/dashboards/build-dashboards/annotate-visualizations/#add-annotations
+  const { canAddAnnotations } = usePanelContext();
+  const [annotationDraft, setAnnotationDraft] = useState<PlacedAnnotationDraft | null>(null);
+  const timeAxis = useMemo(
+    () => !isPreview && hasTimeBrush(chartContext, chartModule) && !isMultiValueSeriesType(chartContext.seriesType),
+    [chartContext, chartModule, isPreview]
+  );
+  const canAnnotate = timeAxis && canAddAnnotations?.() === true;
+  const openAnnotationEditor = useCallback(
+    (draft: PlacedAnnotationDraft) => {
+      dismissTooltip();
+      setAnnotationDraft(draft);
+    },
+    [dismissTooltip]
+  );
+  const closeAnnotationEditor = useCallback(() => setAnnotationDraft(null), []);
+  const annotationGestureRef = useAnnotationGestures(
+    isPreview ? null : chart,
+    panelDOMRef,
+    canAnnotate ? openAnnotationEditor : null
+  );
+  // The button adds a point at the pinned cursor, as core (`u.posToVal(u.cursor.left)`). The
+  // position is read from a ref, so the callback does not change on each mouse move.
+  const tooltipPositionRef = useRef(tooltipState.position);
+  useEffect(() => {
+    tooltipPositionRef.current = tooltipState.position;
+  }, [tooltipState.position]);
+  const annotateFromTooltip = useCallback(() => {
+    const position = tooltipPositionRef.current;
+    const rect = panelDOMRef.current?.getBoundingClientRect();
+    if (chart == null || position == null || rect == null) {
+      return;
+    }
+    const time = timeAtPixel(chart, position.x - rect.left, position.y - rect.top);
+    if (time != null) {
+      openAnnotationEditor({ from: time, to: time, position });
+    }
+  }, [chart, openAnnotationEditor]);
+
+  useBrushTimeZoom(isPreview ? null : chart, onChangeTimeRange, annotationGestureRef);
   useRelationsPersistence(isPreview ? null : chart, { chartContext, onFieldConfigChange, onOptionsChange });
 
   return (
@@ -148,10 +204,14 @@ export const EChart: React.FC<Props> = ({
         <EChartsTooltip
           state={tooltipState}
           dismiss={dismissTooltip}
+          annotate={canAnnotate ? annotateFromTooltip : undefined}
           mode={tooltipMode}
           maxWidth={chartContext.options.tooltip?.maxWidth}
           maxHeight={chartContext.options.tooltip?.maxHeight}
         />
+      )}
+      {annotationDraft != null && (
+        <AnnotationEditor draft={annotationDraft} timeZone={chartContext.timeZone} dismiss={closeAnnotationEditor} />
       )}
     </>
   );

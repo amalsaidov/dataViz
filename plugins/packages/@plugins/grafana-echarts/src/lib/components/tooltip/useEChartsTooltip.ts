@@ -2,6 +2,7 @@ import { debug, LOG_LEVELS } from 'development';
 import { type ECElementEvent } from 'echarts/core';
 import { type EChartsType } from 'lib/echarts/echarts';
 
+import { isAnnotationGesture } from 'lib/echarts/annotationGestures';
 import { ANNOTATION_MARKER_SERIES_ID } from 'lib/echarts/options/annotationMarkers';
 import { findHoveredPoint } from 'lib/echarts/tooltip/proximity';
 import { type EChartsTooltipTrigger, type TooltipModel, type TooltipSink } from 'lib/echarts/tooltip/types';
@@ -735,6 +736,10 @@ export function useEChartsTooltip(
      * it only contributes the `seriesIndex`/`dataIndex` ZRender could not report.
      */
     const onChartClick = (params: ECElementEvent) => {
+      // A ctrl/cmd click adds an annotation (`useAnnotationGestures`) and does not pin, as core.
+      if (isAnnotationGesture(params.event?.event)) {
+        return;
+      }
       const cur = latestRef.current;
       // The ZRender click runs first and may already have pinned this same user
       // click, from the proximity-focused point — which outranks whichever
@@ -752,7 +757,10 @@ export function useEChartsTooltip(
       pinWith({ seriesIndex: params.seriesIndex, dataIndex: params.dataIndex, dataType: params.dataType });
     };
 
-    const onZrClick = () => {
+    const onZrClick = (event?: { event?: Pick<MouseEvent, 'ctrlKey' | 'metaKey'> }) => {
+      if (isAnnotationGesture(event?.event)) {
+        return;
+      }
       // Both clicks fire for a click on an element and the order is not
       // guaranteed. If the element handler already pinned this same user click,
       // leave it alone: it knows the `seriesIndex`/`dataIndex`/`dataType` ZRender

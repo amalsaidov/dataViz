@@ -27,6 +27,7 @@ styling defaults, exposing only a small set of per-field overrides.
 | Axis: time zone editor                             | none (timeZone from panel context)                                                                          | Not supported |
 | Annotations: points and regions                    | `data.annotations` drawn as a dashed `markLine` (points, region edges) and a `markArea` band (regions)      | Partial       |
 | Annotations: markers and tooltip                   | A `custom` series draws the markers under the plot; its item tooltip shows the annotation                   | Partial       |
+| Annotations: add from the chart                    | Tooltip "Add annotation" button, ctrl/cmd + click (point), ctrl/cmd + drag (region), editor form            | Partial       |
 | —                                                  | `editorMode` radio (Default / Advanced editor tiers)                                                        | ECharts-only  |
 | —                                                  | Advanced: `performance.showPoints`, `performance.downsampling` (LTTB), `animation.enabled` (off by default) | Advanced      |
 
@@ -80,8 +81,22 @@ byValue + bySeries).
   13.1.0). Tests:
   [canvas baseline](../../../lib/components/annotation-markers.canvas.test.tsx),
   [integration](../../../lib/components/annotation-markers.integration.test.tsx).
+- **Add an annotation** from the chart, as core. The pinned tooltip has an "Add annotation"
+  button, which adds a point at the cursor time. Ctrl or cmd + click adds a point, and
+  ctrl or cmd + drag adds a region. A ctrl or cmd click does not pin the tooltip, and a
+  ctrl or cmd drag does not zoom. The editor has a required description and tags. Save
+  sends the event to `PanelContext.onAnnotationCreate`. All of this is only on a time
+  x-axis (the tests and the browser check use a line chart), and only when
+  `PanelContext.canAddAnnotations()` is true. The standalone renderer has no panel context, so it does not show the button.
+  As in core, Grafana saves the panel id with the annotation, and the built-in layer
+  shows it only on that panel. Differences from core: the editor opens at the cursor
+  (core puts it under the plot), no marker shows the new annotation while the editor is
+  open, and the tags input does not list the existing tags. Candlestick does not add
+  annotations. Tests:
+  [integration](../../../lib/components/annotation-create.integration.test.tsx). Tested
+  on Grafana 13.2.0. Dashboard: `provisioning/dashboards/cartesian/cartesian-annotations.json`.
 - Annotations: not supported yet. The `options.annotations` editor (`lines.width`,
-  `regions.opacity`, `clustering`, `multiLane`), and add, edit and delete of an
+  `regions.opacity`, `clustering`, `multiLane`), and edit and delete of an
   annotation. The marker tooltip follows the cursor (core puts it under the marker),
   has no data links, and does not show when the tooltip mode is Hidden (core shows it).
   Its tags are in one theme color, and its time is in the font of the data tooltip header.
@@ -103,7 +118,7 @@ the registered runtime surface.
 | `tooltip`                                                                                      | Supported                                             | Rendered by a React `@grafana/ui` `VizTooltip` overlay; the (invisible) ECharts tooltip only drives hover + "All"-mode aggregation. Mode maps to `trigger` (item / axis / none). Supports pin, data links, ad-hoc filters, max width/height. |
 | Tooltip: hover sort, hide zeros                                                                | `tooltip.sort` / `tooltip.hideZeros` (Multi only)     | Supported                                                                                                                                                                                                                                    |
 | Tooltip: max width / height + scroll                                                           | `tooltip.maxWidth` / `maxHeight` (React `VizTooltip`) | Supported                                                                                                                                                                                                                                    |
-| Tooltip: click-to-pin, data links, ad-hoc filters                                              | React `VizTooltip` footer (annotations: todo)         | Supported                                                                                                                                                                                                                                    |
+| Tooltip: click-to-pin, data links, ad-hoc filters                                              | React `VizTooltip` footer (with "Add annotation")     | Supported                                                                                                                                                                                                                                    |
 | `axisPointer`                                                                                  | Partial                                               | Crosshair via `tooltip.axisPointer`; shared on the time axis, per-item on category axes.                                                                                                                                                     |
 | `brush`                                                                                        | Partial                                               | `lineX` drag maps to the dashboard time range; time axis only.                                                                                                                                                                               |
 | `markLine` / `markArea`                                                                        | Supported                                             | Threshold lines / regions on the shared value axis. Annotation lines / bands on the time axis, in one series with no data.                                                                                                                   |

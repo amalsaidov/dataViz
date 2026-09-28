@@ -363,4 +363,32 @@ describe('EChartsTooltip', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(dismiss).toHaveBeenCalled();
   });
+
+  it('shows "Add annotation" in the pinned footer when given `annotate`, and calls it', () => {
+    const annotate = jest.fn();
+    const ui = (over: Partial<EChartsTooltipState>) => (
+      <EChartsTooltip state={state(over)} dismiss={jest.fn()} annotate={annotate} mode={TooltipDisplayMode.Single} />
+    );
+    const { rerender } = render(ui({}));
+    // The footer is only for a pinned tooltip.
+    expect(screen.queryByRole('button', { name: 'Add annotation' })).not.toBeInTheDocument();
+
+    rerender(ui({ pinned: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add annotation' }));
+    expect(annotate).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no "Add annotation" on the tooltip of an annotation marker, as core', () => {
+    const annotation = { title: 'Deploy', tags: [] };
+    render(
+      <EChartsTooltip
+        state={state({ pinned: true, model: model({ rows: [], annotation }) })}
+        dismiss={jest.fn()}
+        annotate={jest.fn()}
+        mode={TooltipDisplayMode.Single}
+      />
+    );
+    expect(screen.getByText('Deploy')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add annotation' })).not.toBeInTheDocument();
+  });
 });

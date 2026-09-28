@@ -5,7 +5,7 @@ import { partToWholeSeriesTypes } from 'editor/pie';
 import { panelTypeToAxis } from 'lib/echarts/axes/converters';
 import { isRelationsSeriesType } from 'lib/echarts/charts/narrowing';
 import { resolveChartModule } from 'lib/echarts/charts/registry';
-import { type BaseOptionParts, type ChartContext } from 'lib/echarts/charts/types';
+import { type BaseOptionParts, type ChartContext, type ChartModule } from 'lib/echarts/charts/types';
 import { framesHaveTimeField } from 'lib/echarts/converters/frames';
 import { applyEditorModeDefaults } from 'lib/echarts/options/editorMode';
 import { resolveAnimation } from 'lib/echarts/performance/resolvers';
@@ -116,11 +116,8 @@ export function buildPanelChartOption(
         : getCrosshairAxisPointer()
       : undefined;
 
-  // Drag-to-zoom is only meaningful on a time axis, where the brush selection
-  // maps to an absolute time range the dashboard can adopt. The cursor is armed
-  // programmatically in Panel.tsx after `setOption`. Families whose time axis is
-  // not a cartesian grid axis opt out (see `ChartModule.disableTimeBrush`).
-  const isTimeAxis = hasTimeField && axisType === 'time' && !chartModule.disableTimeBrush;
+  // The cursor is armed programmatically in useChartOption after `setOption`.
+  const isTimeAxis = hasTimeBrush(ctx, chartModule, hasTimeField, axisType);
 
   return {
     ...echartOption,
@@ -132,4 +129,19 @@ export function buildPanelChartOption(
     ...(!isPreview && axisPointer ? { axisPointer } : {}),
     ...(!isPreview && isTimeAxis ? { brush: getTimeBrushOption(ctx.theme) } : {}),
   };
+}
+
+/**
+ * Whether the chart has the time brush: drag-to-zoom, and the ctrl/cmd gestures that add an
+ * annotation. It is only meaningful on a time axis, where the brush selection maps to an
+ * absolute time range the dashboard can adopt. Families whose time axis is not a cartesian grid
+ * axis opt out (see `ChartModule.disableTimeBrush`).
+ */
+export function hasTimeBrush(
+  ctx: ChartContext,
+  chartModule: ChartModule,
+  hasTimeField = framesHaveTimeField(ctx.frames),
+  axisType = panelTypeToAxis(ctx, hasTimeField)
+): boolean {
+  return hasTimeField && axisType === 'time' && !chartModule.disableTimeBrush;
 }

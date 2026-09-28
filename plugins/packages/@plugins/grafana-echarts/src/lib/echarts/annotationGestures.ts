@@ -1,0 +1,30 @@
+import { type EChartsType } from 'lib/echarts/echarts';
+
+// The ECharts side of "add an annotation from the chart": which pointer events ask for one, and
+// the time under the cursor. Grafana-free, so the standalone renderer can use it too (#280).
+// Core reference: `TooltipPlugin2` (packages/grafana-ui/src/components/uPlot/plugins/TooltipPlugin2.tsx).
+
+/** The modifier keys of a DOM mouse event. */
+type ModifierKeys = Pick<MouseEvent, 'ctrlKey' | 'metaKey'>;
+
+/**
+ * Whether a pointer event asks for an annotation: ctrl or cmd is held, as core's
+ * `maybeZoomAction` test. Such a click does not pin the tooltip, and such a drag does not zoom.
+ */
+export function isAnnotationGesture(event: ModifierKeys | null | undefined): boolean {
+  return event != null && (event.ctrlKey || event.metaKey);
+}
+
+/**
+ * The time (epoch ms) at a canvas pixel on the first x-axis, or `null` when the pixel is out of
+ * the first grid or that axis is not a time axis.
+ * https://echarts.apache.org/en/api.html#echartsInstance.containPixel
+ * https://echarts.apache.org/en/api.html#echartsInstance.convertFromPixel
+ */
+export function timeAtPixel(chart: EChartsType, x: number, y: number): number | null {
+  if (chart.isDisposed() || !chart.containPixel({ gridIndex: 0 }, [x, y])) {
+    return null;
+  }
+  const time: unknown = chart.convertFromPixel({ xAxisIndex: 0 }, x);
+  return typeof time === 'number' && Number.isFinite(time) ? time : null;
+}

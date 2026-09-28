@@ -1,4 +1,4 @@
-import { type DataFrame, type FieldConfigSource } from '@grafana/data';
+import { type DataFrame, type FieldConfigSource, type PanelProps } from '@grafana/data';
 import { type PanelContext, PanelContextProvider } from '@grafana/ui';
 import { act, render } from '@testing-library/react';
 import { type EChartsType } from 'echarts';
@@ -31,26 +31,37 @@ export const tooltipText = (): string => tooltipEl()?.textContent ?? '';
  * genuine pointer: it runs `findHover`, dispatches element events, and only
  * synthesizes `click` after a matching press/release pair.
  */
-export const dispatch = async (chart: EChartsType, type: string, x: number, y: number): Promise<void> => {
+export const dispatch = async (
+  chart: EChartsType,
+  type: string,
+  x: number,
+  y: number,
+  modifiers: Modifiers = {}
+): Promise<void> => {
   await act(async () => {
     // ZRender's Handler is not part of the public typings.
     const handler = (chart.getZr() as unknown as { handler: { dispatch: (t: string, e: unknown) => void } }).handler;
-    handler.dispatch(type, { zrX: x, zrY: y, offsetX: x, offsetY: y, preventDefault: () => undefined });
+    // The event object is the DOM event of the ZRender event (`event.event`), so the modifier
+    // keys reach the handlers as a real press gives them.
+    handler.dispatch(type, { zrX: x, zrY: y, offsetX: x, offsetY: y, preventDefault: () => undefined, ...modifiers });
     // Let ECharts' tooltip timers and the hook's rAF flush settle.
     await new Promise((resolve) => setTimeout(resolve, 50));
   });
 };
 
+/** The modifier keys of a pointer event, for the ctrl/cmd annotation gestures. */
+export type Modifiers = Partial<Pick<MouseEvent, 'ctrlKey' | 'metaKey'>>;
+
 /** Emulate a browser click: zrender only synthesizes `click` after a press pair. */
-export const clickAt = async (chart: EChartsType, x: number, y: number): Promise<void> => {
+export const clickAt = async (chart: EChartsType, x: number, y: number, modifiers: Modifiers = {}): Promise<void> => {
   // The document-level mousedown is what dismisses a pinned tooltip, so it has
   // to fire too — re-pinning depends on the click rebuilding state afterwards.
   await act(async () => {
-    document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, ...modifiers }));
   });
-  await dispatch(chart, 'mousedown', x, y);
-  await dispatch(chart, 'mouseup', x, y);
-  await dispatch(chart, 'click', x, y);
+  await dispatch(chart, 'mousedown', x, y, modifiers);
+  await dispatch(chart, 'mouseup', x, y, modifiers);
+  await dispatch(chart, 'click', x, y, modifiers);
 };
 
 /** Hover each candidate point until one lands on a chart item, then click to pin. */
@@ -123,6 +134,8 @@ export interface TooltipPanelArgs {
   panelContext?: Partial<PanelContext>;
   /** The annotation frames of the panel (`PanelData.annotations`). */
   annotations?: DataFrame[];
+  /** Panel props, for example `onChangeTimeRange`. */
+  panelProps?: Partial<PanelProps<PanelOptions>>;
 }
 
 /** The panel rendered and settled, with the chart instance the pointer helpers drive. */
@@ -134,8 +147,9 @@ export const renderTooltipPanel = async ({
   fieldConfig,
   panelContext,
   annotations,
+  panelProps,
 }: TooltipPanelArgs): Promise<EChartsType> => {
-  const panel = getComponent(frames, seriesType, options, { annotations }, undefined, family, fieldConfig);
+  const panel = getComponent(frames, seriesType, options, { annotations }, panelProps, family, fieldConfig);
   const { container } = render(
     panelContext ? <PanelContextProvider value={panelContext as PanelContext}>{panel}</PanelContextProvider> : panel
   );
