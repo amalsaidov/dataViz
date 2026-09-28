@@ -1,5 +1,5 @@
 import { type EChartsType } from 'lib/echarts/echarts';
-import { isAnnotationGesture, timeAtPixel } from 'lib/echarts/annotationGestures';
+import { draftFromRange, isAnnotationGesture, timeAtPixel } from 'lib/echarts/annotationGestures';
 
 describe('isAnnotationGesture', () => {
   it.each([
@@ -36,5 +36,12 @@ describe('timeAtPixel', () => {
   it('gives null when the axis gives no finite number', () => {
     expect(timeAtPixel(fakeChart({ value: () => NaN }), 100, 20)).toBeNull();
     expect(timeAtPixel(fakeChart({ value: () => 'a' }), 100, 20)).toBeNull();
+  });
+});
+
+describe('draftFromRange', () => {
+  it('orders the two times', () => {
+    expect(draftFromRange(300, 100)).toEqual({ from: 100, to: 300 });
+    expect(draftFromRange(100, 300)).toEqual({ from: 100, to: 300 });
   });
 });

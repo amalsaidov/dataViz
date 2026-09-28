@@ -29,7 +29,8 @@ export const ANNOTATION_EDITOR_ATTR = 'data-echarts-annotation-editor';
 
 /**
  * The "Add annotation" form, as core's `AnnotationEditor`: a required description and tags. Save
- * sends the event to `PanelContext.onAnnotationCreate`, and the dashboard stores it.
+ * sends the event to `PanelContext.onAnnotationCreate`, and the dashboard stores it. If the save
+ * fails, the form stays open and shows the error.
  *
  * Differences from core: `TagsInput` replaces core `TagFilter` (not exported, and it has no list
  * of the existing tags), and the form opens at the cursor, not under the plot.
@@ -44,6 +45,9 @@ export const AnnotationEditor: React.FC<Props> = ({ draft, timeZone, dismiss }) 
   const [tags, setTags] = useState<string[]>([]);
   const [invalid, setInvalid] = useState(false);
   const [saving, setSaving] = useState(false);
+  // The message of a failed save. Core keeps the error of `useAsyncFn` in state, and the form
+  // stays open.
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Placed as the tooltip, beside the cursor, and flipped at the window edges.
   useLayoutEffect(() => {
@@ -80,10 +84,13 @@ export const AnnotationEditor: React.FC<Props> = ({ draft, timeZone, dismiss }) 
       return;
     }
     setSaving(true);
+    setSaveError(null);
     try {
       // The type says `void`, but the dashboard returns a promise; wait for it as core.
       await onAnnotationCreate?.(toAnnotationEvent(draft, { description, tags }));
       dismiss();
+    } catch (error) {
+      setSaveError(error instanceof Error && error.message !== '' ? error.message : 'Failed to save the annotation');
     } finally {
       setSaving(false);
     }
@@ -119,6 +126,11 @@ export const AnnotationEditor: React.FC<Props> = ({ draft, timeZone, dismiss }) 
             </Field>
           </div>
           <div className={styles.footer}>
+            {saveError != null && (
+              <div role="alert" className={styles.error}>
+                {saveError}
+              </div>
+            )}
             <Stack justifyContent="flex-end">
               <Button size="sm" variant="secondary" fill="outline" onClick={dismiss}>
                 Cancel
@@ -161,6 +173,11 @@ const getStyles = (theme: GrafanaTheme2) => ({
   footer: css({
     borderTop: `1px solid ${theme.colors.border.weak}`,
     padding: theme.spacing(1),
+  }),
+  error: css({
+    color: theme.colors.error.text,
+    fontSize: theme.typography.bodySmall.fontSize,
+    paddingBottom: theme.spacing(1),
   }),
   textarea: css({
     color: theme.colors.text.secondary,

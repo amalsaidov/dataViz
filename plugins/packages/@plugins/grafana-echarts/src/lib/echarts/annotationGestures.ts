@@ -4,6 +4,20 @@ import { type EChartsType } from 'lib/echarts/echarts';
 // the time under the cursor. Grafana-free, so the standalone renderer can use it too (#280).
 // Core reference: `TooltipPlugin2` (packages/grafana-ui/src/components/uPlot/plugins/TooltipPlugin2.tsx).
 
+/**
+ * A new annotation in epoch ms: a point when `from` equals `to`, else a region. Core keeps the
+ * same range in `TimeSeriesPanel` (`newAnnotationRange`).
+ */
+export interface AnnotationDraft {
+  from: number;
+  to: number;
+}
+
+/** A draft from two times in any order. */
+export function draftFromRange(start: number, end: number): AnnotationDraft {
+  return { from: Math.min(start, end), to: Math.max(start, end) };
+}
+
 /** The modifier keys of a DOM mouse event. */
 type ModifierKeys = Pick<MouseEvent, 'ctrlKey' | 'metaKey'>;
 

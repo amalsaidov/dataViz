@@ -1,7 +1,6 @@
 import { type EChartsType } from 'lib/echarts/echarts';
-import { isAnnotationGesture, timeAtPixel } from 'lib/echarts/annotationGestures';
+import { type AnnotationDraft, draftFromRange, isAnnotationGesture, timeAtPixel } from 'lib/echarts/annotationGestures';
 import { type BrushEndEvent, brushEndToTimeRange } from 'lib/echarts/timeBrush';
-import { type AnnotationDraft, draftFromRange } from 'lib/grafana/annotationDraft';
 import { type MutableRefObject, type RefObject, useEffect, useRef } from 'react';
 
 /** A draft and the window position where its editor opens. */

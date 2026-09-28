@@ -212,6 +212,25 @@ describe('add an annotation from the chart', () => {
       expect(screen.getByText('Annotation description is required')).toBeInTheDocument();
     });
 
+    it('stays open and shows the error when the save fails, and saves on a retry', async () => {
+      const onAnnotationCreate = jest.fn().mockRejectedValueOnce(new Error('Permission denied'));
+      const chart = await renderPanel(canAdd(onAnnotationCreate));
+      const [x, y] = pointPixel(chart);
+      await clickAt(chart, x, y, { ctrlKey: true });
+      await save('Deploy');
+
+      expect(onAnnotationCreate).toHaveBeenCalledTimes(1);
+      expect(editorEl()).not.toBeNull();
+      expect(screen.getByRole('alert')).toHaveTextContent('Permission denied');
+      expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+      });
+      expect(onAnnotationCreate).toHaveBeenCalledTimes(2);
+      expect(editorEl()).toBeNull();
+    });
+
     it('closes on Cancel, on Escape and on a press out of it, with no save', async () => {
       const onAnnotationCreate = jest.fn();
       const chart = await renderPanel(canAdd(onAnnotationCreate));

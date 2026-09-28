@@ -1,26 +1,17 @@
 import { type AnnotationEventUIModel, dateTimeFormat, systemDateFormats } from '@grafana/data';
 import { type TimeZone } from '@grafana/schema';
+import { type AnnotationDraft } from 'lib/echarts/annotationGestures';
 
-// The annotation that a user adds from the chart, before Grafana saves it. Core keeps the same
-// range in `TimeSeriesPanel` (`newAnnotationRange`) and saves it from `AnnotationEditor`.
+// The Grafana side of the annotation that a user adds from the chart (`AnnotationDraft`, in
+// lib/echarts/annotationGestures.ts): the event that Grafana saves, and the time text.
+// Core saves the range from `AnnotationEditor`.
 // https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/timeseries/plugins/annotations/AnnotationEditor.tsx
 // https://grafana.com/docs/grafana/latest/dashboards/build-dashboards/annotate-visualizations/#add-annotations
-
-/** A new annotation in epoch ms: a point when `from` equals `to`, else a region. */
-export interface AnnotationDraft {
-  from: number;
-  to: number;
-}
 
 /** The fields of the editor form. */
 export interface AnnotationDraftForm {
   description: string;
   tags: string[];
-}
-
-/** A draft from two times in any order. */
-export function draftFromRange(start: number, end: number): AnnotationDraft {
-  return { from: Math.min(start, end), to: Math.max(start, end) };
 }
 
 /**

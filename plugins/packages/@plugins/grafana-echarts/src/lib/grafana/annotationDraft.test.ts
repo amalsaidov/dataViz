@@ -1,14 +1,7 @@
 import { dateTimeFormat, systemDateFormats } from '@grafana/data';
-import { draftFromRange, formatDraftTime, toAnnotationEvent } from 'lib/grafana/annotationDraft';
+import { formatDraftTime, toAnnotationEvent } from 'lib/grafana/annotationDraft';
 
 const full = (value: number) => dateTimeFormat(value, { format: systemDateFormats.fullDate, timeZone: 'utc' });
-
-describe('draftFromRange', () => {
-  it('orders the two times', () => {
-    expect(draftFromRange(300, 100)).toEqual({ from: 100, to: 300 });
-    expect(draftFromRange(100, 300)).toEqual({ from: 100, to: 300 });
-  });
-});
 
 describe('toAnnotationEvent', () => {
   it('rounds the times to whole ms, as core', () => {
