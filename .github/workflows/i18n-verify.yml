@@ -1,0 +1,129 @@
+# Verifies that extracted i18n markup has been committed, for every package
+# that opts into i18n CI.
+#
+# Revived from grafana-clock-panel's own .github/workflows/i18n-verify.yml,
+# which is inert where it lives (GitHub Actions only discovers workflows at the
+# repo root). Only thin plumbing lives here — the actual check stays in each
+# package's own `i18n-extract:ci` script, so it travels with the package if it
+# is ever ejected back out to a standalone repo.
+#
+# Packages are discovered at run time rather than named here, so a plugin that
+# gains i18n needs no change to this file. See the discover job for the rule.
+name: i18n verify
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Superseded PR pushes are cancelled, but main is not: cancelling there would
+  # leave the merged commit without a completed check.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# No `paths:` filter, deliberately. A static path glob would be a second source
+# of truth that drifts from the discover job's actual rule, and the honest union
+# of it (plugins/packages/@plugins/*/**) is broad enough to be equivalent to no
+# filter anyway. Discover is a checkout plus one shell step, and `verify` skips
+# entirely when nothing is detected.
+
+jobs:
+  discover:
+    name: Discover i18n packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout only
+    outputs:
+      packages: ${{ steps.find.outputs.packages }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      # Detection rule: a package opts into i18n CI by having a crowdin.yml.
+      # (Depending on @grafana/i18n is NOT the marker — grafana-echarts imports
+      # it without having any extraction pipeline.)
+      #
+      # yq (4.53) and jq (1.7) are preinstalled on ubuntu-latest. Do not move
+      # this job to a self-hosted runner label without re-checking that.
+      - id: find
+        env:
+          ROOT: plugins/packages/@plugins
+        run: |
+          set -euo pipefail
+          shopt -s nullglob # must precede the glob, or `set -u` sees the literal pattern
+          entries='[]'
+          for cfg in "$ROOT"/*/crowdin.yml; do
+            dir="$(dirname "$cfg")"
+            pkg="$(jq -r '.name' "$dir/package.json")"
+            meta="$(yq -o=json '.x_dataviz // {}' "$cfg")"
+            src="$(yq -r '.files[0].source' "$cfg")"
+
+            # Having a crowdin.yml and having a working extraction pipeline are
+            # two different facts. `pnpm --filter` exits 0 on a missing script,
+            # so assert here rather than fan out a job that passes vacuously.
+            jq -e '.scripts["i18n-extract:ci"]' "$dir/package.json" >/dev/null \
+              || { echo "::error file=$dir/package.json::has crowdin.yml but no i18n-extract:ci script"; exit 1; }
+
+            # dir and en_path are repo-root-relative: dir is used as Crowdin's
+            # base_path, and en_path is matched against `gh pr diff --name-only`
+            # output inside the crowdin-download composite.
+            entry="$(jq -nc \
+              --arg dir "$dir" --arg pkg "$pkg" --arg en "$dir/$src" \
+              --argjson meta "$meta" \
+              '{dir:$dir, pkg:$pkg, en_path:$en,
+                project_id: ($meta.crowdin_project_id // null | tostring),
+                vault_path:  $meta.vault_secret_path,
+                vault_key:  ($meta.vault_secret_key // "access_token")}')"
+
+            jq -e '.project_id != "null" and .vault_path != null' <<<"$entry" >/dev/null \
+              || { echo "::error file=$cfg::x_dataviz.crowdin_project_id and x_dataviz.vault_secret_path are required"; exit 1; }
+
+            entries="$(jq -c --argjson e "$entry" '. + [$e]' <<<"$entries")"
+          done
+          echo "Detected: $entries"
+          echo "packages=$entries" >> "$GITHUB_OUTPUT"
+
+  verify:
+    name: Verify i18n markup has been committed (${{ matrix.pkg }})
+    needs: discover
+    if: needs.discover.outputs.packages != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout only; nothing here writes back to the repo
+    strategy:
+      fail-fast: false # one package's failure must not mask another's
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.packages) }}
+    defaults:
+      run:
+        working-directory: plugins
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      # pnpm action uses the packageManager field in plugins/package.json to
+      # understand which version to install. package_json_file is relative
+      # to the workspace root, not affected by defaults.run.working-directory.
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          package_json_file: plugins/package.json
+      - name: Setup Node.js environment
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: plugins/.nvmrc
+          cache: 'pnpm'
+          cache-dependency-path: plugins/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Verify i18n extraction is up to date
+        run: pnpm --filter ${{ matrix.pkg }} run i18n-extract:ci
