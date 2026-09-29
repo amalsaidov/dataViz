@@ -2,8 +2,8 @@
 # translators see new strings. Runs after en-US lands on main; i18n-verify.yml
 # is what guarantees it is up to date at that point.
 #
-# Packages are discovered at run time — see the discover job for the rule. Keep
-# that job identical across the i18n-* workflows.
+# Packages are discovered at run time — the rule lives in
+# ./.github/actions/discover-i18n-packages, shared by every i18n-* workflow.
 name: i18n Crowdin upload
 
 on:
@@ -33,67 +33,17 @@ jobs:
     outputs:
       packages: ${{ steps.find.outputs.packages }}
     steps:
+      # Sparse: this job reads three files per package and the local action
+      # below. Without `.github/actions` the `uses:` path would not resolve.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          sparse-checkout: |
+            .github/actions
+            plugins/packages/@plugins
 
-      # Detection rule: a package opts into i18n CI by having a crowdin.yml.
-      # (Depending on @grafana/i18n is NOT the marker — grafana-echarts imports
-      # it without having any extraction pipeline.)
-      #
-      # yq (4.53) and jq (1.7) are preinstalled on ubuntu-latest. Do not move
-      # this job to a self-hosted runner label without re-checking that.
       - id: find
-        env:
-          ROOT: plugins/packages/@plugins
-        run: |
-          set -euo pipefail
-          shopt -s nullglob # must precede the glob, or `set -u` sees the literal pattern
-          entries='[]'
-          for cfg in "$ROOT"/*/crowdin.yml; do
-            dir="$(dirname "$cfg")"
-            pkg="$(jq -r '.name' "$dir/package.json")"
-            slug="$(jq -r '.id // ""' "$dir/src/plugin.json")"
-            meta="$(yq -o=json '.x_dataviz // {}' "$cfg")"
-            src="$(yq -r '.files[0].source' "$cfg")"
-
-            # Having a crowdin.yml and having a working extraction pipeline are
-            # two different facts. `pnpm --filter` exits 0 on a missing script,
-            # so assert here rather than fan out a job that passes vacuously.
-            jq -e '.scripts["i18n-extract:ci"]' "$dir/package.json" >/dev/null \
-              || { echo "::error file=$dir/package.json::has crowdin.yml but no i18n-extract:ci script"; exit 1; }
-
-            # dir and en_path are repo-root-relative: dir is used as Crowdin's
-            # base_path, and en_path is what the download workflow's automerge
-            # gate matches `gh pr diff --name-only` output against.
-            #
-            # slug is the plugin id, which is what the download workflow builds
-            # its per-package branch name from. It comes from src/plugin.json
-            # rather than package.json (whose name is scoped —
-            # @plugins/grafana-clock-panel — so unusable in a git ref) and
-            # rather than the directory name (which is only required to equal
-            # the id for app plugins, not panels).
-            entry="$(jq -nc \
-              --arg dir "$dir" --arg pkg "$pkg" --arg slug "$slug" --arg en "$dir/$src" \
-              --argjson meta "$meta" \
-              '{dir:$dir, pkg:$pkg, slug:$slug, en_path:$en,
-                project_id: ($meta.crowdin_project_id // null | tostring),
-                vault_path:  $meta.vault_secret_path,
-                vault_key:  ($meta.vault_secret_key // "access_token")}')"
-
-            jq -e '.project_id != "null" and .vault_path != null' <<<"$entry" >/dev/null \
-              || { echo "::error file=$cfg::x_dataviz.crowdin_project_id and x_dataviz.vault_secret_path are required"; exit 1; }
-
-            # Grafana's own validator already restricts plugin ids to this
-            # shape, so this is a tripwire, not a sanitizer: fail loudly here
-            # rather than force-push a ref with a surprising name.
-            [[ "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
-              || { echo "::error file=$dir/src/plugin.json::id '$slug' is empty or not a usable branch-name component"; exit 1; }
-
-            entries="$(jq -c --argjson e "$entry" '. + [$e]' <<<"$entries")"
-          done
-          echo "Detected: $entries"
-          echo "packages=$entries" >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/discover-i18n-packages
 
   upload:
     name: Upload ${{ matrix.pkg }} sources to Crowdin
