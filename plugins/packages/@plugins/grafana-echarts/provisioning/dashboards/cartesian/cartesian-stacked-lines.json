@@ -566,6 +566,141 @@
       ],
       "title": "Core: 100%",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "spanNulls 1h on b, Never on a (override). At 01:30 each line is null for 45 min: a breaks, and b connects over the gap on the stack. The 60 min gap at 02:45 breaks both.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "spanNulls": 3600000
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "a"
+            },
+            "properties": [
+              {
+                "id": "custom.spanNulls",
+                "value": false
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "seriesType": "line",
+        "stacking": "normal"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000, 1767236400000, 1767237300000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, null, 25, 20, null, null, 15, 20, null, null, null, 25]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, null, 7, null, null, 8, 6, null, null, null, 9]}]}]"
+        }
+      ],
+      "title": "ECharts: Threshold 1h on the upper line only",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "spanNulls 1h on b, Never on a (override). At 01:30 each line is null for 45 min: a breaks, and b connects over the gap on the stack. The 60 min gap at 02:45 breaks both.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "spanNulls": 3600000,
+            "drawStyle": "line",
+            "showPoints": "always",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "a"
+            },
+            "properties": [
+              {
+                "id": "custom.spanNulls",
+                "value": false
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000, 1767236400000, 1767237300000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, null, 25, 20, null, null, 15, 20, null, null, null, 25]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, null, 7, null, null, 8, 6, null, null, null, 9]}]}]"
+        }
+      ],
+      "title": "Core: Threshold 1h on the upper line only",
+      "type": "timeseries"
     }
   ],
   "refresh": "",

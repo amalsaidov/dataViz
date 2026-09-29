@@ -1,6 +1,7 @@
 import { type Field } from '@grafana/data';
 import { resolveFieldSpanNulls } from 'lib/echarts/converters/fieldOverrides';
 import { isSpanNullsThreshold, spannedRows } from 'lib/echarts/converters/spanNulls';
+import { isFieldHiddenFromViz } from 'lib/grafana/fields/fieldConfig';
 
 /** The frame rows that a series draws, with the field value and the drawn value at each of them. */
 export interface DrawnSeries {
@@ -9,6 +10,11 @@ export interface DrawnSeries {
   values: Array<number | null>;
   /** The value that the series draws at each row, if it is not the field value. */
   drawnValues?: Array<number | null>;
+  /**
+   * The points where the line connects over a row that the stack keeps, as indexes of `rows`. The
+   * drawn value there is null until `connectStackedLines` puts the point on the segment of the line.
+   */
+  connected?: number[];
 }
 
 /**
@@ -25,16 +31,17 @@ export interface DrawnSeries {
  * - At a row where each field of the stack has no value, "Connect null values" decides
  *   (`spanNulls.ts`), and a line always connects over a row that the time join adds. The stack
  *   leaves out the row when each field connects over it, so that each line draws one segment
- *   across it. Otherwise the row stays, and a field that connects over each null
- *   (`spanNulls: true`) does so with ECharts `connectNulls`. A field with a numeric threshold then
- *   breaks at the row, where core connects it (#440).
+ *   across it. Otherwise the row stays: a field that breaks draws null, and a field that connects
+ *   gets a `connected` point (see `connectStackedLines`).
+ * - A field hidden from the viz (`hideFrom.viz`) does not give a row a value, as core `anyValsAtX`.
  *
  * All the series of a stack draw the same rows, because ECharts stacks by data index. The field
  * values do not change.
  */
 export function stackedLineSeries(xs: ArrayLike<unknown>, fields: Field[]): DrawnSeries[] {
   const length = xs.length;
-  const hasValue = Array.from({ length }, (_, row) => fields.some((field) => field.values[row] != null));
+  const visible = fields.filter((field) => !isFieldHiddenFromViz(field));
+  const hasValue = Array.from({ length }, (_, row) => visible.some((field) => field.values[row] != null));
   const connects = fields.map((field) => connectsAt(xs, field));
 
   const rows: number[] = [];
@@ -43,14 +50,69 @@ export function stackedLineSeries(xs: ArrayLike<unknown>, fields: Field[]): Draw
       rows.push(row);
     }
   }
-  return fields.map((field) => {
+  return fields.map((field, i) => {
     const values: ArrayLike<number | null | undefined> = field.values;
+    const connected = rows.flatMap((row, index) =>
+      values[row] == null && !hasValue[row] && connects[i](row) ? [index] : []
+    );
     return {
       rows,
       values: rows.map((row) => values[row] ?? null),
       drawnValues: rows.map((row) => values[row] ?? (hasValue[row] ? 0 : null)),
+      ...(connected.length > 0 ? { connected } : {}),
     };
   });
+}
+
+/**
+ * Put each `connected` point of a stack of lines on the segment of its line, so that the line
+ * connects over the row as in core. The segment goes from the stacked value of the point before
+ * to the stacked value of the point after, in x. The drawn value is that position less the
+ * stacked values below it. `drawn` is in stack order, after the percent and "Negative Y" steps,
+ * because ECharts stacks these values. ECharts adds only the values of the same sign (the default
+ * `stackStrategy: 'samesign'`).
+ * https://echarts.apache.org/en/option.html#series-line.stackStrategy
+ */
+export function connectStackedLines(
+  xs: ArrayLike<unknown>,
+  drawn: Array<Array<number | null>>,
+  connected: number[][]
+): Array<Array<number | null>> {
+  const result = drawn.map((values) => [...values]);
+  const below = (k: number, index: number, sign: number) =>
+    result
+      .slice(0, k)
+      .reduce((sum, values) => sum + (Math.sign(values[index] ?? 0) === sign ? (values[index] ?? 0) : 0), 0);
+  const top = (k: number, index: number) => {
+    const value = result[k][index] ?? 0;
+    return value + below(k, index, value < 0 ? -1 : 1);
+  };
+
+  result.forEach((values, k) => {
+    const points = new Set(connected[k]);
+    for (const index of points) {
+      const before = findPoint(values, points, index, -1);
+      const after = findPoint(values, points, index, 1);
+      if (before == null || after == null) {
+        continue;
+      }
+      const [x0, x1, x] = [before, after, index].map((i) => Number(xs[i]));
+      const [y0, y1] = [top(k, before), top(k, after)];
+      const y = x1 === x0 ? y0 : y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+      values[index] = y - below(k, index, y < 0 ? -1 : 1);
+    }
+  });
+  return result;
+}
+
+/** The nearest point of a line in one direction that has a drawn value and is not `connected`. */
+function findPoint(values: Array<number | null>, connected: Set<number>, from: number, step: 1 | -1) {
+  for (let i = from + step; i >= 0 && i < values.length; i += step) {
+    if (values[i] != null && !connected.has(i)) {
+      return i;
+    }
+  }
+  return undefined;
 }
 
 /**

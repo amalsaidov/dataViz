@@ -129,6 +129,37 @@ describe('stacked lines: drawn geometry', () => {
     expect(linePieces(events)).toHaveLength(4);
   });
 
+  it('connects a line with a threshold where the line below it breaks, as core (#440)', async () => {
+    // Row 2 is null in each line. `a` breaks there; `b` connects under its threshold.
+    const a = [10, 12, null, 20, 22];
+    const b = [5, 6, null, 6, 7];
+    const stacked = await renderSeries(
+      [
+        frame([
+          { name: 'a', values: a, spanNulls: false },
+          { name: 'b', values: b, spanNulls: 3 * STEP },
+        ]),
+      ],
+      { stacking: StackingMode.Normal }
+    );
+    const summed = await renderSeries([
+      frame([
+        { name: 'a', values: a, spanNulls: false },
+        { name: 'b', values: sum(a, b).map((value, i) => (a[i] == null ? null : value)), spanNulls: 3 * STEP },
+      ]),
+    ]);
+    const [a1, a2, top] = linePieces(stacked);
+    // `a` draws 2 pieces and `b` draws 1.
+    expect(linePieces(stacked)).toHaveLength(3);
+    expect([a1, a2]).toEqual(linePieces(summed).slice(0, 2));
+    // `b` draws the line of the sum, with one more point on its segment at row 2.
+    const summedTop = linePieces(summed)[2];
+    expect(top.filter((_, i) => i !== 2)).toEqual(summedTop);
+    const [[x0, y0], [x1, y1]] = [summedTop[1], summedTop[2]];
+    const [x, y] = top[2];
+    expect(Math.abs(y - (y0 + ((y1 - y0) * (x - x0)) / (x1 - x0)))).toBeLessThanOrEqual(1);
+  });
+
   it('stacks the lines of two frames with unequal timestamps without a gap', async () => {
     // B starts one step after A and ends one step after A.
     const a = frame([{ name: 'a', values: [10, 20, 15, 25] }]);

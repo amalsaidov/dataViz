@@ -64,6 +64,10 @@ export interface CartesianValueSource {
   values: Array<number | null>;
   /** The values that the series draws, if they are not the field values: a stack of lines draws 0 for a null. */
   drawnValues?: Array<number | null>;
+  /** The points where a stacked line connects over a row of the stack (see `DrawnSeries.connected`). */
+  connected?: number[];
+  /** X value of each point on a time axis; omitted on a category axis. */
+  xs?: ArrayLike<OptionDataValue>;
   /** True for a series in a stack: a bar, or a line on a time axis. */
   stacked: boolean;
   isBar: boolean;
@@ -81,6 +85,8 @@ export interface CartesianDataInput {
   /** Value-end corner radius (px) of a bar. 0 or unset draws square corners. */
   radius?: number;
   barFillOpacity?: number;
+  /** Points that draw no symbol: they are on the segment of a connected line, not a value. */
+  connected?: number[];
 }
 
 /** A source with what {@link resolveSeriesValues} needs to build its data. */
@@ -92,8 +98,6 @@ export interface CartesianSeriesSource extends CartesianValueSource {
   rows: Array<number | null>;
   /** Series color: the fill of bars that no value mapping colors. */
   color: string;
-  /** X value of each point on a time axis; omitted on a category axis. */
-  xs?: ArrayLike<OptionDataValue>;
 }
 
 /** Placement inputs: orientation and the bar bands along the plot. */

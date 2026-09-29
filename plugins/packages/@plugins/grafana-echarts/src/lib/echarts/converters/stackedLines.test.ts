@@ -5,7 +5,8 @@ import { seriesTypePath } from 'editor/constants';
 import { type CartesianSingleValueSeriesType } from 'editor/types';
 import { cartesianChartModule } from 'lib/echarts/charts/cartesian';
 import { type ChartContext } from 'lib/echarts/charts/types';
-import { stackedLineSeries } from 'lib/echarts/converters/stackedLines';
+import { resolveDrawnValues } from 'lib/echarts/converters/cartesianValues';
+import { connectStackedLines, stackedLineSeries } from 'lib/echarts/converters/stackedLines';
 import { type PanelOptions } from 'types';
 
 // The null rules of a stack of line series, against core Time series `preparePlotData2`:
@@ -14,12 +15,12 @@ import { type PanelOptions } from 'types';
 const HOUR = 3_600_000;
 const xs = [0, 1, 2, 3, 4, 5, 6].map((i) => i * HOUR);
 
-const field = (values: Array<number | null | undefined>, spanNulls?: boolean | number): Field =>
+const field = (values: Array<number | null | undefined>, spanNulls?: boolean | number, custom = {}): Field =>
   ({
     name: 'v',
     type: FieldType.number,
     values,
-    config: spanNulls == null ? {} : { custom: { spanNulls } },
+    config: { custom: { ...custom, ...(spanNulls == null ? {} : { spanNulls }) } },
   }) as Field;
 
 describe('stackedLineSeries', () => {
@@ -87,6 +88,29 @@ describe('stackedLineSeries', () => {
     const series = stackedLineSeries(xs.slice(0, 3), [field([1, null, 3], false), field([4, null, 6], true)]);
     expect(series[1].rows).toEqual([0, 1, 2]);
     expect(series[1].drawnValues).toEqual([4, null, 6]);
+    // The field that connects gets a connected point there; the field that breaks does not.
+    expect(series[1].connected).toEqual([1]);
+    expect(series[0].connected).toBeUndefined();
+  });
+
+  it('connects a field with a threshold over a row where another field breaks (#440)', () => {
+    // Row 1 is 2 h wide: `b` connects under its 3 h threshold, `a` never connects.
+    const [a, b] = stackedLineSeries(xs.slice(0, 3), [field([1, null, 3], false), field([4, null, 6], 3 * HOUR)]);
+    expect(b.rows).toEqual([0, 1, 2]);
+    expect(b.connected).toEqual([1]);
+    expect(a.connected).toBeUndefined();
+  });
+
+  it('gives no connected point where the threshold breaks the line', () => {
+    const [, b] = stackedLineSeries(xs.slice(0, 3), [field([1, null, 3], false), field([4, null, 6], HOUR)]);
+    expect(b.connected).toBeUndefined();
+  });
+
+  it('does not add 0 for a row where only a field hidden from the viz has a value, as core', () => {
+    // Core `anyValsAtX` leaves out a field with `hideFrom.viz`.
+    const hidden = field([1, 2, 3], undefined, { hideFrom: { viz: true, legend: false, tooltip: false } });
+    const [, b] = stackedLineSeries(xs.slice(0, 3), [hidden, field([4, null, 6], false)]);
+    expect(b.drawnValues).toEqual([4, null, 6]);
   });
 
   it('always connects over a row that the time join adds (`undefined`), as uPlot', () => {
@@ -101,6 +125,59 @@ describe('stackedLineSeries', () => {
     stackedLineSeries(xs.slice(0, 3), [field(values, true), field(other, true)]);
     expect(values).toEqual([1, null, 3]);
     expect(other).toEqual([null, null, 5]);
+  });
+});
+
+describe('connectStackedLines', () => {
+  it('puts a connected point on the segment of its line, less the stack below it', () => {
+    // `a` breaks at row 1. The line of `b` goes from 1 + 4 = 5 to 3 + 6 = 9.
+    const [a, b] = connectStackedLines(
+      xs,
+      [
+        [1, null, 3],
+        [4, null, 6],
+      ],
+      [[], [1]]
+    );
+    expect(a).toEqual([1, null, 3]);
+    expect(b).toEqual([4, 7, 6]);
+  });
+
+  it('subtracts the connected points of the lines below', () => {
+    // `a` goes from 1 to 3, so it draws 2. `b` goes from 5 to 9, so it draws 7 - 2 = 5.
+    const [a, b] = connectStackedLines(
+      xs,
+      [
+        [1, null, 3],
+        [4, null, 6],
+      ],
+      [[1], [1]]
+    );
+    expect(a[1]).toBe(2);
+    expect(b[1]).toBe(5);
+  });
+
+  it('places the point by its x on unequal row distances', () => {
+    // Rows at 0 h, 1 h and 4 h: row 1 is a quarter of the way from 4 to 8.
+    const [b] = connectStackedLines(
+      [0, 1, 4].map((i) => i * HOUR),
+      [[4, null, 8]],
+      [[1]]
+    );
+    expect(b[1]).toBe(5);
+  });
+
+  it('places the point on the 100% line of the shares', () => {
+    // Row 0: `a` 25%, `b` 75%. Row 2: `a` 75%, `b` 25%. The top of the stack is 1 at both rows.
+    const [a, b] = [field([1, null, 3], false), field([3, null, 1], 3 * HOUR)];
+    const [drawnA, drawnB] = stackedLineSeries(xs.slice(0, 3), [a, b]);
+    const sources = [
+      { field: a, ...drawnA },
+      { field: b, ...drawnB },
+    ].map((source) => ({ ...source, xs: xs.slice(0, 3), stacked: true, isBar: false }));
+    const [percentA, percentB] = resolveDrawnValues(sources as never, StackingMode.Percent);
+    expect(percentA).toEqual([0.25, null, 0.75]);
+    expect(percentB[1]).toBe(1);
   });
 });
 
@@ -194,6 +271,19 @@ describe('stacked line series of the Cartesian panel', () => {
       [0, 0.75, 3],
       [HOUR, 0, null],
     ]);
+  });
+
+  it('draws a connected point with no symbol and keeps the field value for the tooltip (#440)', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'time', type: FieldType.time, values: [0, HOUR, 2 * HOUR] },
+        { name: 'A', type: FieldType.number, values: [1, null, 3], config: { custom: { spanNulls: false } } },
+        { name: 'B', type: FieldType.number, values: [4, null, 6], config: { custom: { spanNulls: 3 * HOUR } } },
+      ],
+    });
+    const [a, b] = lineSeries([frame]);
+    expect(a.data?.[1]).toEqual([HOUR, null]);
+    expect(b.data?.[1]).toEqual({ value: [HOUR, 7, null], symbol: 'none' });
   });
 
   it('maps each tooltip point of a stack with a left-out row back to its frame row', () => {

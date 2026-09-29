@@ -12,6 +12,7 @@ import { GraphTransform, StackingMode } from '@grafana/schema';
 import { type LineSeriesOption } from 'echarts';
 import { type OptionDataValue } from 'echarts/types/src/util/types';
 import { getBarRadius } from 'lib/echarts/options/cartesian';
+import { connectStackedLines } from 'lib/echarts/converters/stackedLines';
 import {
   estimateBarThickness,
   getBarFillColor,
@@ -42,7 +43,8 @@ import { type PanelOptions } from 'types';
 
 /**
  * Drawn values of every source: the `drawnValues` of a stack of lines, the percent of the stack total,
- * then the "Negative Y" transform.
+ * then the "Negative Y" transform. Last, the connected points of the stacked lines go on their
+ * segments (see `connectStackedLines`).
  */
 export function resolveDrawnValues(
   sources: CartesianValueSource[],
@@ -59,9 +61,20 @@ export function resolveDrawnValues(
       stackedIndexes.forEach((index, i) => (drawn[index] = shares[i]));
     }
   }
-  return drawn.map((values, index) =>
+  const result = drawn.map((values, index) =>
     isNegativeY(sources[index].field) ? values.map((value) => (value == null ? null : -value)) : values
   );
+  const lines = sources.flatMap((source, index) => (source.stacked && !source.isBar ? [index] : []));
+  const xs = sources[lines[0]]?.xs;
+  if (xs && lines.some((index) => sources[index].connected)) {
+    const connected = connectStackedLines(
+      xs,
+      lines.map((index) => result[index]),
+      lines.map((index) => sources[index].connected ?? [])
+    );
+    lines.forEach((index, i) => (result[index] = connected[i]));
+  }
+  return result;
 }
 
 /** Core Time series / Bar chart `custom.transform: negative-Y`: the series draws below zero. */
@@ -150,6 +163,7 @@ export function findColorByField(
  */
 export function buildCartesianData(input: CartesianDataInput): LineSeriesOption['data'] {
   const { xs, drawn, values, horizontal, colors, radius = 0, barFillOpacity } = input;
+  const connected = new Set(input.connected);
   return drawn.map((value, i) => {
     const raw = values[i] ?? null;
     const transformed = value !== raw;
@@ -167,6 +181,9 @@ export function buildCartesianData(input: CartesianDataInput): LineSeriesOption[
       ...(color ? { color: getBarFillColor(color, barFillOpacity), borderColor: color } : {}),
       ...(radius > 0 && value != null ? { borderRadius: getBarValueEndRadius(radius, value, horizontal) } : {}),
     };
+    if (connected.has(i)) {
+      return { value: point, symbol: 'none' };
+    }
     return Object.keys(itemStyle).length > 0 ? { value: point, itemStyle } : point;
   });
 }
@@ -209,6 +226,7 @@ export function resolveSeriesValues(
       colors: getPerBarColors(source, source.colorField, source.rows, theme),
       radius: source.isBar && (!source.stacked || i === topStacked) ? radius : 0,
       barFillOpacity: options.barFillOpacity,
+      connected: source.connected,
     });
     if (!source.isBar) {
       return { data };

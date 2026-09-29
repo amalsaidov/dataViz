@@ -53,11 +53,12 @@ export function timeSeriesToEChartsOption(
     const isBar = type === 'bar';
     // The frame rows that the series draws, and the drawn values (see `getDrawnSeries`). The field
     // keeps its values.
-    const { rows, values, drawnValues } = drawn[i];
+    const { rows, values, drawnValues, connected } = drawn[i];
     return {
       field,
       values,
       drawnValues,
+      connected,
       rows,
       color: getCartesianSeriesColor(field, frames, theme),
       xs: rows.map((row) => timeField.values[row]),

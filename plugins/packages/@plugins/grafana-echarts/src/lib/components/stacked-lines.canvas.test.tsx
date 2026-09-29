@@ -13,12 +13,12 @@ const a = [10, 30, null, 20, 40, null, null, null, 30, 10];
 // `b` is null where `a` is null, and at row 8, where `a` has a value: there `b` adds 0.
 const b = [5, 10, null, 10, 10, null, null, null, null, 5];
 
-const renderEvents = async (spanNulls: boolean | number, options = {}) => {
+const renderEvents = async (spanNulls: boolean | number, options = {}, spanNullsB = spanNulls) => {
   const frame = toDataFrame({
     fields: [
       { name: 'time', type: FieldType.time, values: a.map((_, i) => 1783137094497 + i * STEP) },
       { name: 'a', type: FieldType.number, values: a, config: { custom: { spanNulls } } },
-      { name: 'b', type: FieldType.number, values: b, config: { custom: { spanNulls } } },
+      { name: 'b', type: FieldType.number, values: b, config: { custom: { spanNulls: spanNullsB } } },
     ],
   });
   const { container } = render(
@@ -40,6 +40,11 @@ describe('cartesian stacked lines with null values', () => {
 
   it('stacks two areas with a 60 min threshold', async () => {
     const { defaultEvents, seriesEvents } = await renderEvents(3 * STEP, { fillOpacity: 30 });
+    expect(normalizeCanvasEvents(seriesEvents)).toMatchCanvasSnapshot(defaultEvents, { width, height });
+  });
+
+  it('connects the upper line with a 60 min threshold where the lower line breaks (#440)', async () => {
+    const { defaultEvents, seriesEvents } = await renderEvents(false, {}, 3 * STEP);
     expect(normalizeCanvasEvents(seriesEvents)).toMatchCanvasSnapshot(defaultEvents, { width, height });
   });
 });
