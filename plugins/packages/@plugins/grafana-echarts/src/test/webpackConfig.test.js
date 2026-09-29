@@ -119,4 +119,22 @@ describe('webpack configuration', () => {
       }
     }
   });
+
+  // The echarts chunk is loaded by each panel. An ECharts module that only the geo basemap chunk uses stays out.
+  it('keeps the ECharts modules that only the geo basemap uses out of the echarts chunk', async () => {
+    const { GEO_BASEMAP_CHUNK } = require('../../webpack.config');
+    const defaultConfig = await config({ production: true });
+    const test = defaultConfig.optimization.splitChunks.cacheGroups.echarts.test;
+    const echartsModule = { nameForCondition: () => '/x/node_modules/echarts/lib/coord/geo/Geo.js' };
+    const ownModule = { nameForCondition: () => '/x/src/lib/echarts/geo/basemap.ts' };
+    const usedBy = (...names) => ({ chunkGraph: { getModuleChunksIterable: () => names.map((name) => ({ name })) } });
+
+    expect(test(echartsModule, usedBy(GEO_BASEMAP_CHUNK))).toBe(false);
+    expect(test(echartsModule, usedBy(GEO_BASEMAP_CHUNK, undefined))).toBe(true);
+    expect(test(echartsModule, usedBy(undefined))).toBe(true);
+    expect(test(ownModule, usedBy(undefined))).toBe(false);
+    // The chunk name of the basemap import must be the name that the test skips.
+    const geoModule = require('fs').readFileSync(path.resolve(__dirname, '../modules/geo/module.tsx'), 'utf8');
+    expect(geoModule).toContain(`webpackChunkName: "${GEO_BASEMAP_CHUNK}"`);
+  });
 });

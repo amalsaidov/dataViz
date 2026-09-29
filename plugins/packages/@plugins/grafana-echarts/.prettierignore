@@ -1,2 +1,4 @@
 pnpm-lock.yaml
 src/modules/relations/CHANGELOG.md
+# The basemap is a byte-equal copy of core public/maps/countries.geojson (see its README).
+src/lib/echarts/geo/data/countries.json
