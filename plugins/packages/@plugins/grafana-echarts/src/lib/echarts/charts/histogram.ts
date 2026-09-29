@@ -3,8 +3,11 @@ import { type VizLegendItem } from '@grafana/ui';
 import {
   buildHistogramModel,
   getHistogramOptions,
+  getInvalidBucketOption,
   type HistogramModel,
+  type InvalidBucketOption,
   isOrdinalHistogram,
+  MAX_HISTOGRAM_BUCKETS,
 } from 'lib/echarts/converters/histogram';
 import { buildHistogramOption, getHistogramColors } from 'lib/echarts/options/histogram';
 import { getHiddenSeriesNames } from 'lib/grafana/fields/seriesConfig';
@@ -33,9 +36,29 @@ function getModel(ctx: ChartContext): HistogramModel | undefined {
   return model;
 }
 
-/** Buckets with names (heatmap-rows `le` buckets) need an ordinal axis, which the chart does not draw yet. */
+/**
+ * The data issue of the histogram, in this order:
+ * 1. A bucket option that is not valid. The frames are not bucketed.
+ * 2. More buckets than `MAX_HISTOGRAM_BUCKETS`.
+ * 3. Buckets with names (heatmap-rows `le` buckets). They need an ordinal axis, which the chart does not draw yet.
+ */
 export function getHistogramDataIssue(ctx: ChartContext): ChartDataIssue | undefined {
+  const invalid = getInvalidBucketOption(getHistogramOptions(ctx.options));
+  if (invalid) {
+    return {
+      reason: 'histogram-invalid-bucket-option',
+      message: `${invalid.name} ${String(invalid.value)} is not valid. ${INVALID_OPTION_FIX[invalid.name]}`,
+    };
+  }
   const model = getModel(ctx);
+  if (model && model.xMin.values.length > MAX_HISTOGRAM_BUCKETS) {
+    return {
+      reason: 'histogram-too-many-buckets',
+      message:
+        `The histogram has ${model.xMin.values.length} buckets. The limit is ${MAX_HISTOGRAM_BUCKETS}. ` +
+        'Use a larger bucket size or a smaller bucket count.',
+    };
+  }
   if (model && isOrdinalHistogram(model)) {
     return {
       reason: 'histogram-ordinal-buckets',
@@ -45,13 +68,23 @@ export function getHistogramDataIssue(ctx: ChartContext): ChartDataIssue | undef
   return undefined;
 }
 
+/** How to fix each bucket option that is not valid. */
+const INVALID_OPTION_FIX: Record<InvalidBucketOption['name'], string> = {
+  'Bucket count': 'Use a number greater than 0, or clear it for the default count.',
+  'Bucket size': 'Use a number greater than 0, or clear it for the automatic size.',
+  'Bucket offset': 'Use a number, or clear it for no offset.',
+};
+
 /** The histogram option, or `null` when the frames have no histogram ("No histogram found in response"). */
 export function buildHistogramChartOption(
   ctx: ChartContext,
   { isGrafanaLegend, plotWidth }: BaseOptionParts
 ): EChartCartesianSeriesOption | null {
+  if (getHistogramDataIssue(ctx)) {
+    return null;
+  }
   const model = getModel(ctx);
-  if (!model || isOrdinalHistogram(model)) {
+  if (!model) {
     return null;
   }
   return buildHistogramOption({

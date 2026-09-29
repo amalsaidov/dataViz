@@ -7,7 +7,7 @@ import {
   type HistogramTransformerOptions,
   toDataFrame,
 } from '@grafana/data';
-import { buildHistogramModel, isOrdinalHistogram, sanitizeHistogramOptions } from './histogram';
+import { buildHistogramModel, getInvalidBucketOption, isOrdinalHistogram, sanitizeHistogramOptions } from './histogram';
 
 // The buckets must be the buckets of the core Histogram panel. The panel calls `buildHistogram` of
 // `@grafana/data` for raw frames, and reads the bucket fields of a pre-bucketed frame.
@@ -189,5 +189,26 @@ describe('sanitizeHistogramOptions', () => {
     expect(coreBuckets(frames, { bucketCount: 0 }).xMin.every(Number.isFinite)).toBe(false);
     const model = buildHistogramModel(frames, { bucketCount: 0 }, theme);
     expect(model && bucketsOf(model)).toEqual(coreBuckets(frames, {}));
+  });
+});
+
+describe('getInvalidBucketOption', () => {
+  it.each<[string, HistogramTransformerOptions]>([
+    ['no options', {}],
+    ['a count and a size of 0, as core default and automatic', { bucketCount: 0, bucketSize: 0 }],
+    ['a negative offset', { bucketSize: 10, bucketOffset: -5 }],
+    ['options that are null', { bucketCount: null, bucketSize: null } as unknown as HistogramTransformerOptions],
+  ])('accepts %s', (_, options) => {
+    expect(getInvalidBucketOption(options)).toBeUndefined();
+  });
+
+  it.each<[string, HistogramTransformerOptions, string, unknown]>([
+    ['a negative count', { bucketCount: -1 }, 'Bucket count', -1],
+    ['a negative size', { bucketSize: -2 }, 'Bucket size', -2],
+    ['a size that is not finite', { bucketSize: Infinity }, 'Bucket size', Infinity],
+    ['a size that is text', { bucketSize: 'abc' } as unknown as HistogramTransformerOptions, 'Bucket size', 'abc'],
+    ['an offset that is NaN', { bucketOffset: NaN }, 'Bucket offset', NaN],
+  ])('rejects %s', (_, options, name, value) => {
+    expect(getInvalidBucketOption(options)).toEqual({ name, value });
   });
 });

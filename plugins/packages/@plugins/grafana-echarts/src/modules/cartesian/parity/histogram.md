@@ -25,14 +25,14 @@ gdev Histogram dashboard next to a core Histogram twin. The tests are
 
 ## Panel options
 
-| Core Grafana option | ECharts equivalent                                                              | Status    |
-| ------------------- | ------------------------------------------------------------------------------- | --------- |
-| Bucket count        | `bucketCount`, given to `buildHistogram`. A value of 0 or less uses the default | Supported |
-| Bucket size         | `bucketSize`, given to `buildHistogram`                                         | Supported |
-| Bucket offset       | `bucketOffset`, given to `buildHistogram`                                       | Supported |
-| Combine series      | `combine`: one `Count` series                                                   | Supported |
-| Legend              | Legend options of the panel. The legend has no calcs                            | Partial   |
-| Tooltip             | "Bucket" header with the range, and the counts. Hidden mode draws no tooltip    | Supported |
+| Core Grafana option | ECharts equivalent                                                            | Status    |
+| ------------------- | ----------------------------------------------------------------------------- | --------- |
+| Bucket count        | `bucketCount`, given to `buildHistogram`. A value of 0 uses the default       | Supported |
+| Bucket size         | `bucketSize`, given to `buildHistogram`. A value of 0 uses the automatic size | Supported |
+| Bucket offset       | `bucketOffset`, given to `buildHistogram`                                     | Supported |
+| Combine series      | `combine`: one `Count` series                                                 | Supported |
+| Legend              | Legend options of the panel. The legend has no calcs                          | Partial   |
+| Tooltip             | "Bucket" header with the range, and the counts. Hidden mode draws no tooltip  | Supported |
 
 ## Field config
 
@@ -52,3 +52,7 @@ gdev Histogram dashboard next to a core Histogram twin. The tests are
 - With a bucket offset, core puts the x ticks on multiples of the bucket size. ECharts starts the ticks at the
   lower bound of the first bucket.
 - Buckets with names (heatmap-rows `le` buckets) need an ordinal x axis. The panel shows a data issue for them.
+- The panel shows an error view for a bucket option that is not valid: a negative count or size, or a value that
+  is not a finite number. Core does not check the options. For a negative size, core uses the automatic size.
+- The panel shows an error view for more than 10000 buckets (`MAX_HISTOGRAM_BUCKETS`). Core has no limit.
+- The x axis has 50 ticks or fewer before the plot width is known.

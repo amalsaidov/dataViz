@@ -741,6 +741,107 @@
       "title": "ECharts: Stacking Normal",
       "type": "grafana-echartscartesian-panel",
       "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A negative bucket size. Core uses the automatic size. ECharts shows an error view (#486).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 56
+      },
+      "id": 15,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": -1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n1\n3\n9",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: bucket size -1 (not valid)",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A negative bucket size. Core uses the automatic size. ECharts shows an error view (#486).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 56
+      },
+      "id": 16,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true,
+        "bucketSize": -1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n1\n3\n9",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: bucket size -1 (not valid)",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
     }
   ],
   "refresh": "",

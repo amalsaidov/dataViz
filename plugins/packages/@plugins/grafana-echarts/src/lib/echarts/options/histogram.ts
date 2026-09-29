@@ -40,6 +40,9 @@ const COUNT = 4;
 /** Smallest space between two x tick labels, in px, as the uPlot default of a horizontal axis. */
 const X_TICK_MIN_SPACE = 60;
 
+/** The most x ticks. With no plot width, a small bucket size on a wide x range can give millions of ticks. */
+const MAX_X_TICKS = 50;
+
 /** Space on the right of the plot, in px, for the right half of the last x label. */
 const X_LABEL_OVERHANG = 16;
 
@@ -184,7 +187,7 @@ function getXAxisRange(model: HistogramModel): { min?: number; max?: number } {
 
 /**
  * Put the x ticks on the bucket bounds, as core `xSplits`: one tick every `skip` buckets, so the labels are
- * at least `X_TICK_MIN_SPACE` px apart. Only buckets of one size get this. Else ECharts selects the ticks.
+ * at least `X_TICK_MIN_SPACE` px apart, and there are no more than `MAX_X_TICKS` ticks. Only buckets of one size get this. Else ECharts selects the ticks.
  * https://echarts.apache.org/en/option.html#xAxis.interval
  */
 function getXTickInterval(model: HistogramModel, plotWidth: number | undefined): { interval?: number } {
@@ -196,7 +199,8 @@ function getXTickInterval(model: HistogramModel, plotWidth: number | undefined):
     return {};
   }
   const bucketPx = plotWidth ? (plotWidth * size) / (max - min) : X_TICK_MIN_SPACE;
-  return { interval: size * Math.max(1, Math.ceil(X_TICK_MIN_SPACE / bucketPx)) };
+  const skip = Math.max(1, Math.ceil(X_TICK_MIN_SPACE / bucketPx), Math.ceil((max - min) / size / MAX_X_TICKS));
+  return { interval: size * skip };
 }
 
 /** The values of a field as numbers. */

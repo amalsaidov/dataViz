@@ -95,6 +95,33 @@ export function sanitizeHistogramOptions(options: HistogramTransformerOptions): 
   };
 }
 
+/** The most buckets that the chart draws. Core has no limit, but many more bars can hang the page. */
+export const MAX_HISTOGRAM_BUCKETS = 10_000;
+
+/** A bucket option that `buildHistogram` cannot use, with its value as the user wrote it. */
+export interface InvalidBucketOption {
+  name: 'Bucket count' | 'Bucket size' | 'Bucket offset';
+  value: unknown;
+}
+
+/**
+ * The first bucket option that is set but not valid. A count or a size must be a number of 0 or more. A value of 0
+ * uses the default count or the automatic size, as core. An offset must be a number. Core does not check the
+ * options: a negative count gives `NaN` buckets, and a value that is not a finite number gives bad buckets.
+ * https://github.com/grafana/grafana/blob/main/packages/grafana-data/src/transformations/transformers/histogram.ts
+ */
+export function getInvalidBucketOption(options: HistogramTransformerOptions): InvalidBucketOption | undefined {
+  const isSet = (value: unknown) => value != null && value !== '';
+  const isFiniteNumber = (value: unknown) => typeof value === 'number' && Number.isFinite(value);
+  const checks: Array<[InvalidBucketOption['name'], unknown, boolean]> = [
+    ['Bucket count', options.bucketCount, isFiniteNumber(options.bucketCount) && Number(options.bucketCount) >= 0],
+    ['Bucket size', options.bucketSize, isFiniteNumber(options.bucketSize) && Number(options.bucketSize) >= 0],
+    ['Bucket offset', options.bucketOffset, isFiniteNumber(options.bucketOffset)],
+  ];
+  const invalid = checks.find(([, value, valid]) => isSet(value) && !valid);
+  return invalid && { name: invalid[0], value: invalid[1] };
+}
+
 /**
  * True when the buckets are names, not numbers. Core gives such buckets for heatmap-rows frames (`le` buckets),
  * and draws them on an ordinal axis. The chart does not draw them yet.

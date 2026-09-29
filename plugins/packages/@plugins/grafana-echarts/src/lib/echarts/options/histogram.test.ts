@@ -88,6 +88,20 @@ describe('buildHistogramOption', () => {
     });
     expect(option.xAxis).toMatchObject({ type: 'value', min: 0, max: 20, interval: 10 });
   });
+
+  it('gives no more than 50 x ticks when the plot width is not known', () => {
+    // Two buckets of size 1, 1000 buckets apart: one tick for each bucket would give 1001 ticks.
+    const model = buildHistogramModel([frame({ A: [0.5, 1000.5] })], { bucketSize: 1 }, theme)!;
+    const option = buildHistogramOption({
+      model,
+      theme,
+      options: { legend } as unknown as PanelOptions,
+      fieldConfig: noOverrides,
+      isGrafanaLegend: true,
+      plotWidth: undefined,
+    });
+    expect(option.xAxis).toMatchObject({ min: 0, max: 1001, interval: 21 });
+  });
 });
 
 describe('histogram tooltip', () => {
