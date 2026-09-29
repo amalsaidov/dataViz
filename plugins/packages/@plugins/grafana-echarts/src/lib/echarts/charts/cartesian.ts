@@ -26,6 +26,7 @@ import {
   framesHaveTimeField,
   joinStackedFieldsOnTime,
 } from 'lib/echarts/converters/frames';
+import { isHistogramPanel } from 'lib/echarts/converters/histogram';
 import { isSpanNullsThreshold } from 'lib/echarts/converters/spanNulls';
 import {
   multiValueCartesianToEChartsOption,
@@ -77,6 +78,7 @@ import {
   type EChartCartesianSeriesOption,
   type EChartMultiValueCartesianSeriesOption,
 } from './types';
+import { buildHistogramChartOption, buildHistogramLegendItems, getHistogramDataIssue } from './histogram';
 
 // Cartesian family (Groups 1-2). The x-axis mode follows the data, not the
 // series type: time frames render on a `time` axis, while Numeric frames with no
@@ -436,7 +438,7 @@ function cartesianDrawnRows(ctx: CartesianContext): Array<number[] | undefined> 
  * x distance between two values, so on a category axis the line breaks at each null.
  */
 function getSpanNullsNotices(ctx: CartesianContext): ChartNotice[] {
-  if (isMultiValueSeriesType(ctx.seriesType) || framesHaveTimeField(ctx.frames)) {
+  if (isHistogramPanel(ctx.options) || isMultiValueSeriesType(ctx.seriesType) || framesHaveTimeField(ctx.frames)) {
     return [];
   }
   const count = categoryCartesianFields(ctx.frames, ctx.theme).filter(
@@ -490,6 +492,12 @@ function attachThresholdMarks<T>(series: T[], marks: ThresholdMarks | undefined)
 export const cartesianChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
   sharedCategoryAxis: true,
+  // A histogram bar has its own tooltip with the counts of its bucket (see `buildHistogramOption`).
+  singleTooltipOnly: (ctx) => isHistogramPanel(ctx.options),
+
+  getDataIssue(ctx) {
+    return isHistogramPanel(ctx.options) ? getHistogramDataIssue(ctx) : undefined;
+  },
 
   getNotices(ctx: CartesianContext) {
     return getSpanNullsNotices(ctx);
@@ -557,6 +565,10 @@ export const cartesianChartModule: ChartModule = {
 
     const seriesType = ctx.seriesType;
 
+    if (isHistogramPanel(ctx.options)) {
+      return buildHistogramChartOption(ctx, parts);
+    }
+
     if (isMultiValueSeriesType(seriesType)) {
       // @todo this is a unnecessary spread to get typescript playing nicely, I guess we need narrowing methods for context as well to avoid this
       return buildMultiValueOption({ ...ctx, seriesType }, isGrafanaLegend);
@@ -572,6 +584,9 @@ export const cartesianChartModule: ChartModule = {
   },
 
   buildLegendItems(ctx, calcs) {
+    if (isHistogramPanel(ctx.options)) {
+      return buildHistogramLegendItems(ctx);
+    }
     const seriesType = ctx.seriesType;
     if (isMultiValueSeriesType(seriesType)) {
       return buildMultiValueCartesianLegendItems({ ...ctx, seriesType });

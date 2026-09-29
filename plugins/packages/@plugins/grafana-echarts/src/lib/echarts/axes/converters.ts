@@ -4,6 +4,7 @@ import {
   isGeoSeriesType,
   isHeatmapSeriesType,
   isHierarchySeriesType,
+  isMultiValueSeriesType,
   isMultivariateSeriesType,
   isRelationsSeriesType,
   isStreamSeriesType,
@@ -11,6 +12,7 @@ import {
   isTimeAxisSupportedForSeriesType,
 } from 'lib/echarts/charts/narrowing';
 import { supportedChartSeriesTypes } from 'lib/echarts/charts/registry';
+import { isHistogramPanel } from 'lib/echarts/converters/histogram';
 import { type ChartContext } from 'lib/echarts/charts/types';
 
 /**
@@ -98,6 +100,14 @@ export const panelTypeToAxis = (ctx: ChartContext, hasTimeField = true): ECharts
       return 'category';
     }
     return 'time';
+  }
+
+  // The histogram mode of the cartesian panel draws buckets on a value x axis, also for frames with a time field.
+  if (
+    isHistogramPanel(ctx.options) &&
+    (isCategoricalAxisSeriesType(seriesType) || isMultiValueSeriesType(seriesType))
+  ) {
+    return 'value';
   }
 
   // Then if we have a time axis, we use it

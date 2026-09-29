@@ -7,6 +7,7 @@ import { isRelationsSeriesType } from 'lib/echarts/charts/narrowing';
 import { resolveChartModule } from 'lib/echarts/charts/registry';
 import { type BaseOptionParts, type ChartContext, type ChartModule } from 'lib/echarts/charts/types';
 import { framesHaveTimeField } from 'lib/echarts/converters/frames';
+import { isHistogramPanel } from 'lib/echarts/converters/histogram';
 import { applyEditorModeDefaults } from 'lib/echarts/options/editorMode';
 import { resolveAnimation } from 'lib/echarts/performance/resolvers';
 import { getTimeBrushOption } from 'lib/echarts/timeBrush';
@@ -74,8 +75,12 @@ export function buildPanelChartOption(
   //
   // Editor-mode normalization already ran generically above
   // (`applyEditorModeDefaults`), so both branches use the normalized `options`.
+  // - **histogram** mode of the cartesian panel, because a hidden field still counts for the automatic
+  //   bucket size, as core. The histogram hides the bars of the field (see `buildHistogramOption`).
   const hidesItsOwnMarks =
-    partToWholeSeriesTypes.includes(rawCtx.seriesType) || isRelationsSeriesType(rawCtx.seriesType);
+    partToWholeSeriesTypes.includes(rawCtx.seriesType) ||
+    isRelationsSeriesType(rawCtx.seriesType) ||
+    isHistogramPanel(rawCtx.options);
   const ctx: ChartContext = hidesItsOwnMarks
     ? { ...rawCtx, tooltipSink: sink, options }
     : { ...rawCtx, tooltipSink: sink, options, frames: stripHiddenValueFields(rawCtx.frames, rawCtx.fieldConfig) };

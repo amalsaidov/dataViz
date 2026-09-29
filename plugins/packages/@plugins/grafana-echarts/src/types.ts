@@ -12,6 +12,8 @@ import {
   type VizOrientation,
   type VizTextDisplayOptions,
 } from '@grafana/schema';
+// The core Histogram panel options. https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/histogram/
+import { type Options as CoreHistogramOptions } from '@grafana/schema/dist/esm/raw/composable/histogram/panelcfg/x/HistogramPanelCfg_types.gen';
 // The core Geomap panel options. https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/geomap/
 import { type Options as GeomapOptions } from '@grafana/schema/dist/esm/raw/composable/geomap/panelcfg/x/GeomapPanelCfg_types.gen';
 import { type editorModePath, type seriesTypePath } from 'editor/constants';
@@ -229,6 +231,17 @@ export interface PanelOptions
 
   /** Highlight the full category on hover (core Bar chart `fullHighlight`). */
   fullHighlight?: boolean;
+
+  /**
+   * Cartesian: draw the bucket counts of the numeric fields, as the core Histogram panel. The other
+   * histogram keys have the paths of core `Options`.
+   * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/histogram/
+   */
+  histogram?: boolean;
+  bucketCount?: CoreHistogramOptions['bucketCount'];
+  bucketSize?: CoreHistogramOptions['bucketSize'];
+  bucketOffset?: CoreHistogramOptions['bucketOffset'];
+  combine?: CoreHistogramOptions['combine'];
 
   /** Maximum length of an x tick label, in characters (core Bar chart `xTickLabelMaxLength`). */
   xTickLabelMaxLength?: number;

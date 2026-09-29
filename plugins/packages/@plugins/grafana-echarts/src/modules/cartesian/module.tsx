@@ -22,6 +22,7 @@ import { addCartesianBarFillOpacityOptions } from 'lib/grafana/editor/cartesian/
 import { addCartesianBarRadiusOptions } from 'lib/grafana/editor/cartesian/bar-radius';
 import { addCartesianBarWidthOptions } from 'lib/grafana/editor/cartesian/bar-width';
 import { addCartesianFillOpacityOptions } from 'lib/grafana/editor/cartesian/fill-opacity';
+import { addCartesianHistogramOptions } from 'lib/grafana/editor/cartesian/histogram';
 import { addCartesianLineWidthOptions } from 'lib/grafana/editor/cartesian/line-width';
 import { addCartesianPointSizeOptions } from 'lib/grafana/editor/cartesian/point-size';
 import { addCartesianSpanNullsFieldConfig } from 'lib/grafana/editor/cartesian/span-nulls';
@@ -182,6 +183,9 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
     // Core Bar chart options: Stacking, Orientation, full-area hover highlight
     // and "Color by field".
     addCartesianBarChartOptions(builder);
+
+    // Core Histogram options: the Histogram switch and the bucket options.
+    addCartesianHistogramOptions(builder);
 
     // Value labels — Default-tier "Show values" (Bar-chart parity) + Advanced
     // placement. Rendered by `getCartesianValueLabel`.

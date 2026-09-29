@@ -280,3 +280,10 @@ export const xTickLabelSpacingOptions: Array<SelectableValue<number>> = [
  * is opt-in for every family. See that constant for why, and `docs/performance.md`.
  */
 export const CARTESIAN_ANIMATION_ENABLED_DEFAULT = ANIMATION_ENABLED_DEFAULT;
+
+/**
+ * Histogram mode of the cartesian panel. The bucket options have the paths of the core Histogram panel, so a
+ * core panel keeps its values. https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/histogram/
+ */
+export const histogramPath = 'histogram';
+export const histogramCategoryName = 'Histogram';

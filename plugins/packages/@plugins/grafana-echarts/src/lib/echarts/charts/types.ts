@@ -450,8 +450,11 @@ export interface ChartModule {
    * so a dashboard saved with `multi` still builds an axis trigger there. Left
    * alone deliberately: setting it would change what those saved dashboards
    * render.
+   *
+   * A function decides for each render: the cartesian histogram mode draws its own
+   * "All" rows in the tooltip of each bar.
    */
-  singleTooltipOnly?: boolean;
+  singleTooltipOnly?: boolean | ((ctx: ChartContext) => boolean);
   /**
    * The category axis is a cartesian grid axis with the series side by side (the
    * cartesian family). Then the "All" tooltip lists every series at the hovered

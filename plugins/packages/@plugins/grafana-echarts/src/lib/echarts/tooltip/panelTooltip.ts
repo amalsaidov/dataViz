@@ -47,8 +47,11 @@ export function buildPanelTooltip(
   // Single: their editor no longer offers it, but a dashboard saved before that
   // still carries the value (see `ChartModule.singleTooltipOnly`).
   const requested = ctx.options.tooltip?.mode ?? TooltipDisplayMode.Single;
-  const mode =
-    chartModule.singleTooltipOnly && requested === TooltipDisplayMode.Multi ? TooltipDisplayMode.Single : requested;
+  const singleOnly =
+    typeof chartModule.singleTooltipOnly === 'function'
+      ? chartModule.singleTooltipOnly(ctx)
+      : chartModule.singleTooltipOnly === true;
+  const mode = singleOnly && requested === TooltipDisplayMode.Multi ? TooltipDisplayMode.Single : requested;
 
   // Per-series resolver so each row honors its field's unit/decimals overrides.
   // Families with a single value dimension omit it and share the panel formatter.
