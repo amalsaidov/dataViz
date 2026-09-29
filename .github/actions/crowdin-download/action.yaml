@@ -86,14 +86,24 @@ runs:
     # create_pull_request are false, so this step does no git work at all —
     # every git operation below is ours.
     #
-    # Held at v2 on purpose, matching every other Grafana caller. v3 is a
-    # Crowdin CLI 5 rewrite; its documented breaking changes only affect custom
-    # command_args, which we pass none of, but what this depends on is how
-    # base_path and preserve_hierarchy compute remote paths. If that shifted it
-    # would relocate every file in the Crowdin project and orphan the existing
-    # translations, and nothing here can test it before it runs for real.
+    # On v3 (Crowdin CLI 5) while Grafana's own callers are still on v2. What
+    # was checked before moving: the action's download_translations() is
+    # byte-identical between v2.7.0 and v3.3.0, no inputs were removed, and the
+    # new `user` input defaults to empty, which is v2's run-as-root behavior.
+    # CLI 5's breaking changes miss us — the preserve_hierarchy change is
+    # flag-only and the configured value still wins, the base_path change is
+    # scoped to `upload sources --cache`, and the pattern renames are `bundle
+    # add`. `crowdin config lint` passes on the generated config under 5.3.0.
+    #
+    # What that does NOT cover is how base_path and preserve_hierarchy compute
+    # REMOTE paths; proving that needs a live project. If it ever shifts, every
+    # file in the Crowdin project relocates and the existing translations are
+    # orphaned, so before changing this pin again, diff the old and new images:
+    #   docker run --rm -v "$PWD:/w" -w /w \
+    #     -e CROWDIN_PROJECT_ID=<id> -e CROWDIN_PERSONAL_TOKEN=<token> \
+    #     crowdin/cli:<ver> crowdin config translations -c crowdin.yml
     - name: Download translations
-      uses: crowdin/github-action@b8012bd5491b8aa8578b73ab5b5f5e7c94aaa6e2 # v2.7.0
+      uses: crowdin/github-action@9c23991700c0ec5256fd41089b9d9d7d540e424e # v3.3.0
       with:
         upload_sources: false
         upload_translations: false
