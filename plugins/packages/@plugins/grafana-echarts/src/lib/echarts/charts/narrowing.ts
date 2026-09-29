@@ -6,6 +6,7 @@ import {
   hierarchySeriesTypes,
   supportsTimeAxisSeriesTypes,
 } from 'editor/constants';
+import { geoSeriesTypes } from 'editor/geo';
 import { multivariateSeriesTypes } from 'editor/radar';
 import { streamSeriesTypes } from 'editor/stream';
 import { timelineSeriesTypes } from 'editor/timeline';
@@ -13,6 +14,7 @@ import {
   type CartesianSingleValueSeriesType,
   type CategoricalAxisSeriesType,
   type CategoricalOnlySeriesType,
+  type GeoSeriesType,
   type HeatmapSeriesType,
   type HierarchySeriesType,
   type MultiValueSeriesType,
@@ -71,6 +73,11 @@ export function isMultivariateSeriesType(type: SeriesType): type is Multivariate
 // links between them, from Grafana's node-graph frame pair.
 export function isRelationsSeriesType(type: SeriesType): type is RelationsSeriesType {
   return relationsSeriesTypes.some((t) => t === type);
+}
+
+// Geo charts draw markers on the `geo` coordinate system, not on a cartesian grid.
+export function isGeoSeriesType(type: SeriesType): type is GeoSeriesType {
+  return geoSeriesTypes.some((t) => t === type);
 }
 
 // Single-axis stream charts (themeRiver) render on the `singleAxis` coordinate

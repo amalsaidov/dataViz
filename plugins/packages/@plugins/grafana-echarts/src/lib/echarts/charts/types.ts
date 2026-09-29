@@ -17,6 +17,7 @@ import {
   type CustomSeriesOption,
   type EffectScatterSeriesOption,
   type FunnelSeriesOption,
+  type GeoComponentOption,
   type GraphSeriesOption,
   type GridComponentOption,
   type HeatmapSeriesOption,
@@ -206,6 +207,8 @@ export type EChartSunburstSeriesOption = ComposeOption<SunburstSeriesOption>;
 // Relations (graph) renders nodes plus links. The `graph` series ships its own
 // `View` coordinate system, so no coordinate component is composed in.
 export type EChartGraphSeriesOption = ComposeOption<GraphSeriesOption>;
+// Geo renders a `scatter` series of markers on the basemap `geo` component.
+export type EChartGeoOption = ComposeOption<GeoComponentOption | ScatterSeriesOption>;
 // Relations (sankey) lays the same node/link model out as weighted flow ribbons.
 export type EChartSankeySeriesOption = ComposeOption<SankeySeriesOption>;
 // Relations (chord) lays the same node/link model out as a ring of arcs joined by
@@ -268,6 +271,7 @@ export type EChartBuildOption =
   | EChartSankeySeriesOption
   | EChartChordSeriesOption
   | EChartStreamSeriesOption
+  | EChartGeoOption
   | EChartTimelineOption
   | EChartCandlestickSeriesOption
   | EChartBoxPlotSeriesOption

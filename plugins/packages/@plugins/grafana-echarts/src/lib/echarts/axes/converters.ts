@@ -1,6 +1,7 @@
 import {
   isCategoricalAxisSeriesType,
   isCategoricalOnlySeriesType,
+  isGeoSeriesType,
   isHeatmapSeriesType,
   isHierarchySeriesType,
   isMultivariateSeriesType,
@@ -67,6 +68,12 @@ export const panelTypeToAxis = (ctx: ChartContext, hasTimeField = true): ECharts
   // they resolve to `category` so the tooltip uses an item trigger rather than an
   // axis pointer.
   if (isRelationsSeriesType(seriesType)) {
+    return 'category';
+  }
+
+  // The geo family draws on the `geo` coordinate system. Like relations, it resolves to `category`, so the
+  // tooltip uses an item trigger and the panel draws no axis pointer or time brush.
+  if (isGeoSeriesType(seriesType)) {
     return 'category';
   }
 

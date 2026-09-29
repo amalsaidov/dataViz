@@ -1,6 +1,7 @@
 import { createTheme, dateTime, type TimeRange, type ValueFormatter } from '@grafana/data';
 import { seriesTypePath } from 'editor/constants';
 import { type SeriesType } from 'editor/types';
+import { supportedChartSeriesTypes } from 'lib/echarts/charts/registry';
 import { type ChartContext } from 'lib/echarts/charts/types';
 import { type HeatmapLayout } from 'lib/echarts/options/types';
 import { type PanelOptions } from 'types';
@@ -62,6 +63,17 @@ describe('panelTypeToAxis', () => {
     expect(panelTypeToAxis(makeContext('pie'))).toBe('category');
     expect(panelTypeToAxis(makeContext('funnel'))).toBe('category');
     expect(panelTypeToAxis(makeContext('radar'))).toBe('category');
+  });
+
+  // A routed series type with no axis mapping crashes its panel (the geo `map` type did, #362). Candlestick
+  // without a time field throws on purpose (see below), so this test gives a time field.
+  it.each(supportedChartSeriesTypes)('maps the routed series type %s to an axis', (type) => {
+    expect(() => panelTypeToAxis(makeContext(type))).not.toThrow();
+  });
+
+  it('maps the geo family to a category axis, with or without a time field', () => {
+    expect(panelTypeToAxis(makeContext('map'))).toBe('category');
+    expect(panelTypeToAxis(makeContext('map'), false)).toBe('category');
   });
 
   it('keeps the stream family on a time axis, with or without a time field', () => {

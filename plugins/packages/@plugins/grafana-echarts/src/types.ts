@@ -12,6 +12,8 @@ import {
   type VizOrientation,
   type VizTextDisplayOptions,
 } from '@grafana/schema';
+// The core Geomap panel options. https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/geomap/
+import { type Options as GeomapOptions } from '@grafana/schema/dist/esm/raw/composable/geomap/panelcfg/x/GeomapPanelCfg_types.gen';
 import { type editorModePath, type seriesTypePath } from 'editor/constants';
 import { type RelationsPanelOptions } from 'editor/relations/options';
 import {
@@ -169,6 +171,12 @@ export interface PanelOptions
 
   /** The core annotation options of the cartesian panel (`OptionsWithAnnotations` in @grafana/schema). */
   annotations?: VizAnnotations;
+
+  /** The core Geomap map view. Only the geo family reads it. */
+  view?: GeomapOptions['view'];
+
+  /** The core Geomap data layers. The geo family reads the location of the first `markers` layer. */
+  layers?: GeomapOptions['layers'];
 
   /**
    * Heatmap coordinate model: continuous interval cells (`binned`, the dataplane
