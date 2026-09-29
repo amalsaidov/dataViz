@@ -1,7 +1,7 @@
 import { type CustomSeriesOption, type CustomSeriesRenderItem } from 'echarts';
 import { type AnnotationMark } from 'lib/echarts/options/annotations';
 import { isRect } from 'lib/echarts/options/narrowing';
-import { seriesTooltip } from 'lib/echarts/tooltip/option';
+import { SILENT_TOOLTIP_CHROME, seriesTooltip } from 'lib/echarts/tooltip/option';
 import { type TooltipModel, type TooltipSink } from 'lib/echarts/tooltip/types';
 
 // The annotation markers under the plot: a triangle for a point and a bar for a region, as core
@@ -29,7 +29,8 @@ interface MarkerOptions {
  * A region is clipped to the range, as `buildAnnotationSeries` clips its band. Returns
  * `undefined` when no mark is in the range.
  *
- * The series has its own item tooltip, so an "All" (axis) tooltip does not list it as a row.
+ * The series has its own item tooltip, so an "All" (axis) tooltip does not list it as a row, and a
+ * Hidden panel tooltip still shows it.
  * https://echarts.apache.org/en/option.html#series-custom.tooltip
  */
 export function buildAnnotationMarkerSeries(
@@ -94,6 +95,10 @@ export function buildAnnotationMarkerSeries(
     zlevel,
     tooltip: {
       trigger: 'item',
+      // Shown also when the panel tooltip is Hidden (`show: false`), as core renders
+      // `AnnotationsPlugin` in each tooltip mode.
+      show: true,
+      ...SILENT_TOOLTIP_CHROME,
       // An item tooltip gives one item, not an array.
       ...(tooltip &&
         seriesTooltip((params) => tooltip(markIndexes[Array.isArray(params) ? 0 : params.dataIndex]), sink)),

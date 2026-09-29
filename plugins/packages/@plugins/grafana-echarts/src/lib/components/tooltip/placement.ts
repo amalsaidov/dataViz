@@ -1,4 +1,5 @@
 import { TOOLTIP_OFFSET } from './constants';
+import { type TooltipAnchor } from './types';
 
 /**
  * Room core reserves for its window-edge math: `TooltipPlugin2` subtracts a
@@ -26,4 +27,23 @@ export function cursorTransform(position: { x: number; y: number }, size: { widt
   const reflectY = flipY ? ' translateY(-100%)' : '';
 
   return `translateX(${shiftX}px)${reflectX} translateY(${shiftY}px)${reflectY}`;
+}
+
+/**
+ * Position a tooltip under an anchor box like core `AnnotationMarker`: floating-ui `bottom`
+ * placement with the `shift` and `flip` middleware of `floatingUtils.getPositioningMiddleware`.
+ * The tooltip is centered under the box and moved on x to stay in the viewport. When it does
+ * not fit under the box, it goes above the box.
+ * https://floating-ui.com/docs/tutorial#placements
+ * https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/utils/floating.ts
+ */
+export function anchorTransform(anchor: TooltipAnchor, size: { width: number; height: number }): string {
+  const winWid = window.innerWidth - SCROLLBAR_WIDTH;
+  const winHgt = window.innerHeight - SCROLLBAR_WIDTH;
+  const centered = anchor.x + (anchor.width - size.width) / 2;
+  const x = Math.max(0, Math.min(centered, winWid - size.width));
+  const below = anchor.y + anchor.height;
+  const flipY = below + size.height > winHgt && anchor.y - size.height >= 0;
+  const y = flipY ? anchor.y - size.height : below;
+  return `translateX(${x}px) translateY(${y}px)`;
 }

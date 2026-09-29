@@ -8,7 +8,12 @@ import { findHoveredPoint } from 'lib/echarts/tooltip/proximity';
 import { type EChartsTooltipTrigger, type TooltipModel, type TooltipSink } from 'lib/echarts/tooltip/types';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { TOOLTIP_MARKER_ATTR } from './constants';
-import { type EChartsTooltipController, type EChartsTooltipOptions, type EChartsTooltipState } from './types';
+import {
+  type EChartsTooltipController,
+  type EChartsTooltipOptions,
+  type EChartsTooltipState,
+  type TooltipAnchor,
+} from './types';
 
 import { revealEdgeLabelsFor } from 'lib/echarts/relations/edgeLabels/reveal';
 /**
@@ -32,6 +37,24 @@ const isEdgeTarget = (target: TooltipTarget | null): boolean => target?.dataType
 const isAnnotationMarker = (params?: ECElementEvent): boolean => params?.seriesId === ANNOTATION_MARKER_SERIES_ID;
 
 /**
+ * The box of the hovered marker element in window coordinates: its zrender bounding rect in the
+ * global transform of the element, moved by the chart container.
+ * https://ecomfe.github.io/zrender-doc/public/api.html#zrenderelement
+ */
+function markerAnchor(params: ECElementEvent, container: HTMLElement | null): TooltipAnchor | null {
+  const element = params.event?.target;
+  if (element == null || container == null) {
+    return null;
+  }
+  const rect = element.getBoundingRect().clone();
+  if (element.transform) {
+    rect.applyTransform(element.transform);
+  }
+  const origin = container.getBoundingClientRect();
+  return { x: origin.left + rect.x, y: origin.top + rect.y, width: rect.width, height: rect.height };
+}
+
+/**
  * How long (ms) an item-triggered tooltip lingers after the cursor leaves its
  * element before hiding. A short grace period prevents a flicker-to-hidden when
  * the cursor crosses the gap between two adjacent items (the next item's hover
@@ -48,6 +71,7 @@ const HIDE_DELAY_MS = 120;
 const HIDDEN: EChartsTooltipState = {
   model: null,
   position: null,
+  anchor: null,
   visible: false,
   pinned: false,
   pinnedItem: null,
@@ -263,6 +287,8 @@ export function useEChartsTooltip(
   // point has to re-pin onto that point — which needs where the cursor actually
   // is now, not where the frozen pin sits.
   const livePositionRef = useRef<EChartsTooltipState['position']>(null);
+  // The box of the hovered annotation marker, also while pinned, so a click can re-pin onto it.
+  const liveAnchorRef = useRef<TooltipAnchor | null>(null);
   const liveHitRef = useRef<TooltipTarget | null>(null);
 
   // The mark the cursor is on right now (`null` for none), written by the hover handlers
@@ -380,7 +406,7 @@ export function useEChartsTooltip(
       // outside click) with no chart event behind it.
       revealEdgeLabelsFor(chart.getZr(), null);
     }
-    update({ pinned: false, pinnedItem: null, visible: false, model: null });
+    update({ pinned: false, pinnedItem: null, visible: false, model: null, anchor: null });
   }, [cancelHide, chart, focusPoint, latestRef, update]);
 
   useEffect(() => {
@@ -593,6 +619,9 @@ export function useEChartsTooltip(
       // in this same dispatch, and `settleFocus` reads the ref once both have run.
       hoveredRef.current = null;
       scheduleSettle();
+      if (isAnnotationMarker(params)) {
+        liveAnchorRef.current = null;
+      }
       if (latestRef.current.pinned) {
         // The pin owns the emphasis, and ECharts has just cleared it — see `settleFocus`.
         // Everything below is hide behaviour, which a pinned tooltip has none of.
@@ -646,10 +675,16 @@ export function useEChartsTooltip(
         dataType: params.dataType,
       };
       scheduleSettle();
+      if (isAnnotationMarker(params)) {
+        liveAnchorRef.current = markerAnchor(params, containerRef.current);
+      }
       if (latestRef.current.pinned) {
         return;
       }
       cancelHide();
+      if (isAnnotationMarker(params)) {
+        update({ anchor: liveAnchorRef.current });
+      }
       // Native hit-testing families (bars, and anything with proximity off) get
       // their active/bold row from the element actually under the cursor, so the
       // hovered item — not the vertically-nearest one — is the one emphasised.
@@ -688,7 +723,7 @@ export function useEChartsTooltip(
       // The frozen position belongs to the old pin; the cursor is what the new
       // one should sit beside.
       if (livePositionRef.current != null) {
-        update({ position: livePositionRef.current });
+        update({ position: livePositionRef.current, anchor: liveAnchorRef.current });
       }
 
       if (target?.seriesIndex != null && !chart.isDisposed()) {

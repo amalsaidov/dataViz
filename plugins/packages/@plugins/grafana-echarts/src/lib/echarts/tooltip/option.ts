@@ -106,6 +106,19 @@ export function getCrosshairAxisPointer(): TooltipOption['axisPointer'] {
 }
 
 /**
+ * Neutralize every visual aspect of the native box; the React overlay draws the real tooltip.
+ * `pointer-events: none` keeps the empty box from intercepting hover.
+ * https://echarts.apache.org/en/option.html#tooltip.extraCssText
+ */
+export const SILENT_TOOLTIP_CHROME = {
+  backgroundColor: 'transparent',
+  borderColor: 'transparent',
+  borderWidth: 0,
+  padding: 0,
+  extraCssText: 'box-shadow: none; pointer-events: none;',
+} satisfies TooltipOption;
+
+/**
  * A tooltip config that is functionally active but **visually silent**: ECharts
  * still does hover hit-testing, multi-series ("All") aggregation, and draws the
  * crosshair axisPointer, but the HTML box renders nothing (transparent chrome +
@@ -140,13 +153,6 @@ export function getSilentTooltipOption(
     // empty string with transparent chrome makes the native box invisible.
     // https://echarts.apache.org/en/option.html#tooltip.formatter
     formatter: toEmittingFormatter(produce, sink),
-    // Neutralize every visual aspect of the native box; the React overlay draws
-    // the real tooltip. `pointer-events: none` keeps the empty box from
-    // intercepting hover.
-    backgroundColor: 'transparent',
-    borderColor: 'transparent',
-    borderWidth: 0,
-    padding: 0,
-    extraCssText: 'box-shadow: none; pointer-events: none;',
+    ...SILENT_TOOLTIP_CHROME,
   };
 }

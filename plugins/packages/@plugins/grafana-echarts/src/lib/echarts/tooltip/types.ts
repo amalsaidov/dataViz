@@ -88,13 +88,15 @@ export interface TooltipModel {
 
 /**
  * What the tooltip of an annotation marker shows under the time, as core's `AnnotationTooltip`:
- * the title and the text, and the tags. `title` and `text` are the raw strings of the event;
- * the overlay sanitizes them as HTML.
+ * the title and the text, the tags, and the data links. `title` and `text` are the raw strings of
+ * the event; the overlay sanitizes them as HTML.
  */
 export interface AnnotationTooltipContent {
   title?: string;
   text?: string;
   tags: string[];
+  /** The fields of the annotation frame with data links, at the row of the event. */
+  sources?: TooltipSource[];
 }
 
 /**

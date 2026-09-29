@@ -17,6 +17,13 @@ export interface ResolvedAnnotation {
   title?: string;
   text?: string;
   tags?: string[];
+  /**
+   * The fields of the frame that have data links, and the row of the event. Set only when a field
+   * has links. The tooltip shows a link only when the host gave the field its `getLinks`, as core
+   * `getFieldDisplayLinks`. Grafana 13.2 does not do this for annotation frames (grafana/grafana#119619).
+   * https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/VizTooltip/utils.ts
+   */
+  links?: { fields: Field[]; rowIndex: number };
 }
 
 /**
@@ -38,6 +45,8 @@ export function readAnnotations(frames: DataFrame[] | undefined, theme: GrafanaT
     if (!time) {
       return [];
     }
+    // Core reads the links of each field of the frame (`AnnotationMarker`).
+    const linkFields = frame.fields.filter((field) => (field.config.links?.length ?? 0) > 0);
     const events: ResolvedAnnotation[] = [];
     for (let i = 0; i < frame.length; i++) {
       const start: unknown = time.values[i];
@@ -57,6 +66,7 @@ export function readAnnotations(frames: DataFrame[] | undefined, theme: GrafanaT
         title: asText(title?.values[i]),
         text: asText(text?.values[i]),
         tags: asTags(tags?.values[i]),
+        ...(linkFields.length > 0 ? { links: { fields: linkFields, rowIndex: i } } : {}),
       });
     }
     return events;

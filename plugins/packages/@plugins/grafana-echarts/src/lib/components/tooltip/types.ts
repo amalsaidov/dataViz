@@ -2,11 +2,24 @@ import { type ECElementEvent } from 'echarts/core';
 import { type SeriesPoints } from 'lib/echarts/tooltip/proximity';
 import { type EChartsTooltipTrigger, type TooltipModel, type TooltipSink } from 'lib/echarts/tooltip/types';
 
+/** A box in window coordinates. */
+export interface TooltipAnchor {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface EChartsTooltipState {
   /** The hovered content, or `null` when nothing is hovered. */
   model: TooltipModel | null;
   /** Cursor position in window coordinates. */
   position: { x: number; y: number } | null;
+  /**
+   * The box of the hovered annotation marker in window coordinates, or `null`. The overlay puts
+   * the tooltip of an annotation under this box, not at the cursor, as core `AnnotationMarker`.
+   */
+  anchor: TooltipAnchor | null;
   visible: boolean;
   /** Whether the user has click-to-pinned the tooltip (freezes content, enables interaction). */
   pinned: boolean;

@@ -1,6 +1,6 @@
 import { type DataFrame, DataTopic, FieldType, toDataFrame } from '@grafana/data';
 import { SortOrder, TooltipDisplayMode } from '@grafana/schema';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { type EChartsType } from 'echarts';
 import { type CanvasRenderingContext2DEvent } from 'jest-canvas-mock';
 import { ANNOTATION_MARKER_SERIES_ID } from 'lib/echarts/options/annotationMarkers';
@@ -39,12 +39,12 @@ const annotationFrame = toDataFrame({
   ],
 });
 
-const renderPanel = (mode: TooltipDisplayMode) =>
+const renderPanel = (mode: TooltipDisplayMode, annotations: DataFrame[] = [annotationFrame]) =>
   renderTooltipPanel({
     frames: [seriesFrame],
     seriesType: 'line',
     family: 'cartesian',
-    annotations: [annotationFrame],
+    annotations,
     options: {
       zLevel: { series: SERIES_ZLEVEL },
       animation: { enabled: false },
@@ -53,8 +53,8 @@ const renderPanel = (mode: TooltipDisplayMode) =>
     },
   });
 
-/** The center of the drawn marker at `dataIndex`, read off the chart rather than guessed. */
-const markerCenter = (chart: EChartsType, dataIndex: number): [number, number] => {
+/** The bounding rect of the drawn marker at `dataIndex`, read off the chart rather than guessed. */
+const markerRect = (chart: EChartsType, dataIndex: number): BoundingRect => {
   // `getOption()` types each component as `unknown`.
   const series = chart.getOption().series as Array<{ id?: string }>;
   const seriesIndex = series.findIndex((entry) => entry.id === ANNOTATION_MARKER_SERIES_ID);
@@ -66,8 +66,13 @@ const markerCenter = (chart: EChartsType, dataIndex: number): [number, number] =
       };
     };
   };
-  const rect = model.getModel().getSeriesByIndex(seriesIndex).getData().getItemGraphicEl(dataIndex).getBoundingRect();
-  return [rect.x + rect.width / 2, rect.y + rect.height * 0.75];
+  return model.getModel().getSeriesByIndex(seriesIndex).getData().getItemGraphicEl(dataIndex).getBoundingRect();
+};
+
+/** A point in the drawn marker at `dataIndex`: its center, or `at` of its width. */
+const markerCenter = (chart: EChartsType, dataIndex: number, at = 0.5): [number, number] => {
+  const rect = markerRect(chart, dataIndex);
+  return [rect.x + rect.width * at, rect.y + rect.height * 0.75];
 };
 
 interface BoundingRect {
@@ -240,5 +245,89 @@ describe('annotation marker tooltip', () => {
     await dispatch(chart, 'mousemove', x + 42, y);
     expect(tooltipText()).toContain('Deploy');
     expect(tooltipEl()?.querySelector('[aria-label="Close"]')).not.toBeNull();
+  });
+
+  // The tooltip is a floating-ui `bottom` placement on the marker in core `AnnotationMarker`.
+  describe('placement', () => {
+    // jsdom lays nothing out: the chart container is at the window origin, and the tooltip has this size.
+    const size = { width: 100, height: 60 };
+    beforeEach(() => {
+      jest.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(size.width);
+      jest.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(size.height);
+    });
+    afterEach(() => jest.restoreAllMocks());
+
+    /** The transform of a tooltip centered under `rect`. */
+    const under = (rect: BoundingRect) =>
+      `translateX(${rect.x + (rect.width - size.width) / 2}px) translateY(${rect.y + rect.height}px)`;
+
+    it('puts the tooltip of a point under the marker, not at the cursor', async () => {
+      const chart = await renderPanel(TooltipDisplayMode.Single);
+      const rect = markerRect(chart, 0);
+      await dispatch(chart, 'mousemove', ...markerCenter(chart, 0, 0.3));
+      expect(tooltipEl()?.style.transform).toBe(under(rect));
+      await dispatch(chart, 'mousemove', ...markerCenter(chart, 0, 0.7));
+      expect(tooltipEl()?.style.transform).toBe(under(rect));
+    });
+
+    it('puts the tooltip of a region under the center of the region bar', async () => {
+      const chart = await renderPanel(TooltipDisplayMode.Multi);
+      const rect = markerRect(chart, 1);
+      await dispatch(chart, 'mousemove', ...markerCenter(chart, 1, 0.1));
+      expect(tooltipEl()?.style.transform).toBe(under(rect));
+    });
+
+    it('keeps the tooltip under the marker when a click pins it', async () => {
+      const chart = await renderPanel(TooltipDisplayMode.Single);
+      const [x, y] = markerCenter(chart, 0, 0.3);
+      await dispatch(chart, 'mousemove', x, y);
+      await clickAt(chart, x, y);
+      expect(tooltipEl()?.querySelector('[aria-label="Close"]')).not.toBeNull();
+      expect(tooltipEl()?.style.transform).toBe(under(markerRect(chart, 0)));
+    });
+
+    it('puts a data tooltip at the cursor after a marker hover', async () => {
+      const chart = await renderPanel(TooltipDisplayMode.Single);
+      await dispatch(chart, 'mousemove', ...markerCenter(chart, 0));
+      const [x, y] = dataPoint(chart, 2);
+      await dispatch(chart, 'mousemove', x, y);
+      expect(tooltipText()).toContain('cpu');
+      expect(tooltipEl()?.style.transform).not.toBe(under(markerRect(chart, 0)));
+    });
+  });
+
+  it('shows the marker tooltip in Hidden mode, but no data tooltip, as core', async () => {
+    const chart = await renderPanel(TooltipDisplayMode.None);
+    await dispatch(chart, 'mousemove', ...dataPoint(chart, 2));
+    expect(tooltipText()).toBe('');
+    await dispatch(chart, 'mousemove', ...markerCenter(chart, 0));
+    expect(tooltipText()).toContain('Deploy');
+    expect(tooltipText()).not.toContain('cpu');
+    await dispatch(chart, 'mousemove', ...markerCenter(chart, 1));
+    expect(tooltipText()).toContain('Maintenance');
+  });
+
+  it('shows the data links of the annotation frame at the row of the event, as core', async () => {
+    // A copy of each field, so the links stay out of the other tests.
+    const withLinks = { ...annotationFrame, fields: annotationFrame.fields.map((field) => ({ ...field })) };
+    const title = withLinks.fields.find((field) => field.name === 'title')!;
+    title.config = { ...title.config, links: [{ title: 'Runbook', url: 'http://example.com' }] };
+    // The host gives a field `getLinks` when it applies the field overrides (not Grafana 13.2, grafana/grafana#119619).
+    title.getLinks = ({ valueRowIndex } = {}) => [
+      { title: `Runbook ${valueRowIndex}`, href: 'http://example.com', target: '_self', origin: title },
+    ];
+    const chart = await renderPanel(TooltipDisplayMode.None, [withLinks]);
+    await dispatch(chart, 'mousemove', ...markerCenter(chart, 1));
+    expect(screen.getByRole('link', { name: /Runbook 1/ })).toBeInTheDocument();
+    expect(tooltipText()).not.toContain('Runbook 0');
+  });
+
+  it('shows no footer for an annotation frame with no data links', async () => {
+    const chart = await renderPanel(TooltipDisplayMode.Single);
+    const [x, y] = markerCenter(chart, 0);
+    await dispatch(chart, 'mousemove', x, y);
+    await clickAt(chart, x, y);
+    expect(tooltipEl()?.querySelectorAll('a')).toHaveLength(0);
+    expect(screen.queryByRole('button', { name: 'Add annotation' })).not.toBeInTheDocument();
   });
 });

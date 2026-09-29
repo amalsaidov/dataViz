@@ -17,6 +17,7 @@ const model = (over: Partial<TooltipModel> = {}): TooltipModel => ({
 const state = (over: Partial<EChartsTooltipState> = {}): EChartsTooltipState => ({
   model: model(),
   position: { x: 10, y: 10 },
+  anchor: null,
   visible: true,
   pinned: false,
   pinnedItem: null,
@@ -390,5 +391,45 @@ describe('EChartsTooltip', () => {
     );
     expect(screen.getByText('Deploy')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add annotation' })).not.toBeInTheDocument();
+  });
+
+  it('shows the data links of an annotation also when not pinned, as core', () => {
+    const annotation = { title: 'Deploy', tags: [], sources: [{ field: fieldWithLinks(), rowIndex: 0 }] };
+    renderTooltip(state({ model: model({ rows: [], annotation }) }));
+    expect(screen.getByText('MyLink')).toBeInTheDocument();
+  });
+
+  it('places the tooltip of an annotation under its anchor, and a data tooltip at the cursor', () => {
+    const anchor = { x: 100, y: 200, width: 10, height: 5 };
+    const annotation = { title: 'Deploy', tags: [] };
+    const { rerender } = renderTooltip(state({ position: { x: 30, y: 40 }, anchor, model: model({ annotation }) }));
+    const wrapper = document.querySelector<HTMLElement>(`[${TOOLTIP_MARKER_ATTR}]`)!;
+    // jsdom gives the tooltip no size, so its left edge is the anchor center.
+    expect(wrapper.style.transform).toBe('translateX(105px) translateY(205px)');
+
+    // A data tooltip ignores a stale anchor.
+    rerender(
+      <EChartsTooltip
+        state={state({ position: { x: 30, y: 40 }, anchor })}
+        dismiss={jest.fn()}
+        mode={TooltipDisplayMode.Single}
+      />
+    );
+    expect(wrapper.style.transform).toBe('translateX(40px) translateY(50px)');
+  });
+
+  it('shows the time of an annotation in the monospace font, and each tag as a Tag', () => {
+    const annotation = { title: 'Deploy', tags: ['release', 'api'] };
+    renderTooltip(state({ model: model({ rows: [], annotation }) }));
+    // jsdom does not inherit a computed font, so the font is read from the ancestors of the time.
+    const fonts: string[] = [];
+    for (let node: Element | null = screen.getByText('MyHeader'); node != null; node = node.parentElement) {
+      fonts.push(getComputedStyle(node).fontFamily);
+    }
+    expect(fonts.find((font) => font !== '')).toContain('Roboto Mono');
+    // `Tag` colors each tag by its name (`getTagColorsFromName`).
+    const colors = ['release', 'api'].map((tag) => getComputedStyle(screen.getByText(tag).closest('span')!).background);
+    expect(colors[0]).not.toBe('');
+    expect(colors[0]).not.toBe(colors[1]);
   });
 });

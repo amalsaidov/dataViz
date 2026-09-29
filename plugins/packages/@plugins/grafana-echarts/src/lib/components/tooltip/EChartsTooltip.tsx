@@ -28,7 +28,7 @@ import {
 import React, { useLayoutEffect, useRef } from 'react';
 import { AnnotationTooltipContent } from './AnnotationTooltipContent';
 import { TOOLTIP_MARKER_ATTR } from './constants';
-import { cursorTransform } from './placement';
+import { anchorTransform, cursorTransform } from './placement';
 import { type EChartsTooltipState } from './types';
 
 /**
@@ -227,6 +227,13 @@ const getStyles = (theme: GrafanaTheme2) => ({
   pinned: css({
     boxShadow: theme.shadows.z3,
   }),
+  // Core `AnnotationTooltipHeader`: the time in the monospace font at the body size, with a
+  // line under it.
+  annotationHeader: css({
+    fontFamily: theme.typography.fontFamilyMonospace,
+    fontSize: theme.typography.fontSize,
+    borderBottom: `1px solid ${theme.colors.border.weak}`,
+  }),
   // Matches core's tooltip CloseButton placement (absolute top-right).
   closeButton: css({
     position: 'absolute',
@@ -246,9 +253,10 @@ const getStyles = (theme: GrafanaTheme2) => ({
  *
  * When pinned, the tooltip is interactive, shows a close button, and a footer
  * with the focused field's data links and label-based ad-hoc filters.
- * A hovered annotation marker shows the annotation under the header ({@link AnnotationTooltipContent}).
- * The footer has an "Add annotation" button when the caller gives `annotate`. Editing an
- * annotation is not wired yet.
+ * A hovered annotation marker shows the annotation under the header ({@link AnnotationTooltipContent}),
+ * and the data links of the annotation frame in the footer. The tooltip is under the marker.
+ * The footer of a data tooltip has an "Add annotation" button when the caller gives `annotate`.
+ * Editing an annotation is not wired yet.
  */
 export const EChartsTooltip: React.FC<Props> = ({ state, dismiss, annotate, mode, maxWidth, maxHeight }) => {
   // Hooks must run before any early return (Rules of Hooks).
@@ -259,8 +267,10 @@ export const EChartsTooltip: React.FC<Props> = ({ state, dismiss, annotate, mode
   // current cursor without being torn down on every mouse move.
   const placeRef = useRef<() => void>(() => undefined);
 
-  const { model, position, visible, pinned } = state;
+  const { model, position, anchor, visible, pinned } = state;
   const active = visible && model != null && position != null;
+  // The tooltip of an annotation marker is under the marker, as core `AnnotationMarker`.
+  const markerAnchor = model?.annotation != null ? anchor : null;
 
   // Positioned imperatively, as core's `TooltipPlugin2` does: writing the
   // transform straight to the node keeps the cursor-follow off React's render
@@ -272,10 +282,12 @@ export const EChartsTooltip: React.FC<Props> = ({ state, dismiss, annotate, mode
       if (dom == null || position == null) {
         return;
       }
-      dom.style.transform = cursorTransform(position, { width: dom.offsetWidth, height: dom.offsetHeight });
+      const size = { width: dom.offsetWidth, height: dom.offsetHeight };
+      dom.style.transform =
+        markerAnchor != null ? anchorTransform(markerAnchor, size) : cursorTransform(position, size);
     };
     placeRef.current();
-  }, [position]);
+  }, [position, markerAnchor]);
 
   // Re-place when the content resizes, so the edge-flip math reacts to a change
   // of row count (mirrors TooltipPlugin2's ResizeObserver on its wrapper).
@@ -311,15 +323,20 @@ export const EChartsTooltip: React.FC<Props> = ({ state, dismiss, annotate, mode
   // receives pointer events when pinned). Mirrors core Grafana, which shows the
   // links/filters footer for the focused series once pinned.
   let footer: React.ReactNode = null;
-  if (pinned) {
+  if (model.annotation != null) {
+    // The data links of the annotation frame, also on hover, as core `AnnotationTooltip`. No
+    // filters and no "Add annotation" button.
+    const dataLinks = collectDataLinks(model.annotation.sources ?? []);
+    if (dataLinks.length > 0) {
+      footer = <VizTooltipFooter dataLinks={dataLinks} />;
+    }
+  } else if (pinned) {
     const sources = resolveActiveSources(state);
     const dataLinks = collectDataLinks(sources);
     const filters = resolveFilters(state, sources);
     const adHocFilters = collectAdHocFilters(filters.each, onAddAdHocFilter);
     const filterByGroupedLabels = groupedLabelFilters(filters, onAddAdHocFilter);
-    // The tooltip of an annotation marker has no "Add annotation" button, as core.
-    const onAnnotate = model.annotation == null ? annotate : undefined;
-    if (dataLinks.length > 0 || adHocFilters.length > 0 || filterByGroupedLabels != null || onAnnotate != null) {
+    if (dataLinks.length > 0 || adHocFilters.length > 0 || filterByGroupedLabels != null || annotate != null) {
       // `annotate` renders core's "Add annotation" button. The footer hides it when a data
       // link is one-click, as core.
       // https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/VizTooltip/VizTooltipFooter.tsx
@@ -328,7 +345,7 @@ export const EChartsTooltip: React.FC<Props> = ({ state, dismiss, annotate, mode
           dataLinks={dataLinks}
           adHocFilters={adHocFilters}
           filterByGroupedLabels={filterByGroupedLabels}
-          annotate={onAnnotate}
+          annotate={annotate}
         />
       );
     }
@@ -354,7 +371,13 @@ export const EChartsTooltip: React.FC<Props> = ({ state, dismiss, annotate, mode
       >
         {pinned && <IconButton aria-label="Close" className={styles.closeButton} name="times" onClick={dismiss} />}
         <VizTooltipWrapper>
-          <VizTooltipHeader item={model.header} isPinned={pinned} />
+          {model.annotation != null ? (
+            <div className={styles.annotationHeader}>
+              <VizTooltipHeader item={model.header} isPinned={pinned} />
+            </div>
+          ) : (
+            <VizTooltipHeader item={model.header} isPinned={pinned} />
+          )}
           {model.annotation != null ? (
             <AnnotationTooltipContent annotation={model.annotation} />
           ) : (

@@ -81,3 +81,27 @@ describe('readAnnotations tooltip content', () => {
     ]);
   });
 });
+
+describe('readAnnotations data links', () => {
+  it('keeps the fields with data links and the row of each event, as core `AnnotationMarker`', () => {
+    const annotations = readAnnotations(
+      [
+        toDataFrame({
+          meta: { dataTopic: DataTopic.Annotations },
+          fields: [
+            { name: 'time', type: FieldType.time, values: [100, 200] },
+            {
+              name: 'title',
+              type: FieldType.string,
+              values: ['a', 'b'],
+              config: { links: [{ title: 'L', url: 'u' }] },
+            },
+          ],
+        }),
+      ],
+      theme
+    );
+    expect(annotations.map(({ links }) => links?.rowIndex)).toEqual([0, 1]);
+    expect(annotations[0].links?.fields.map((field) => field.name)).toEqual(['title']);
+  });
+});
