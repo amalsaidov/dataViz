@@ -9,9 +9,33 @@
 # A package like grafana-echarts publishes several plugins from one directory:
 # `src/plugin.json` is the app and each `src/modules/*/plugin.json` is a panel,
 # with the standalone Relations build registering its own translation namespace
-# (see `activePluginId` in that package's webpack.config.ts). So "one package,
-# one plugin, one Crowdin project" does not hold, and a package declares its
-# plugins explicitly when it has more than one:
+# (see `activePluginId` in that package's webpack.config.ts). Each published
+# plugin therefore needs its own namespace file, because `initPluginTranslations`
+# resolves translations by plugin id at run time.
+#
+# DEFAULT SHAPE: one Crowdin project per package, one namespace per plugin.
+# Declare only the project id and list a `files[]` entry per published plugin:
+#
+#   x_dataviz:
+#     crowdin_project_id: 'NN'
+#   files:
+#     - source: src/locales/en-US/grafana-echarts-app.json
+#       translation: src/locales/%locale%/%original_file_name%
+#     - source: src/locales/en-US/grafana-relations-panel.json
+#       translation: src/locales/%locale%/%original_file_name%
+#
+# This is the right default because most of a container package's strings come
+# from code shared by every build — in grafana-echarts, 19 of 21 `t()` calls
+# live in `src/lib`, which compiles into all of them. Those strings appear in
+# every namespace file, so they must be translated once and shared. Crowdin can
+# link identical source strings WITHIN a project (the "Duplicate strings"
+# project setting), and cannot across projects. One project per plugin would
+# mean translating the same shared string once per plugin per locale, with an
+# independent chance of divergence each time.
+#
+# SPLIT SHAPE: separate projects, for the rarer case where published plugins
+# have genuinely disjoint strings or must be owned by different teams. Then
+# declare them, since which strings belong to which project is not derivable:
 #
 #   x_dataviz:
 #     plugins:
@@ -21,6 +45,10 @@
 #       - id: grafana-relations-panel
 #         crowdin_project_id: 'MM'
 #         sources: ['src/locales/en-US/grafana-relations-panel.json']
+#
+# Two entries may not share a `crowdin_project_id` — that is two base_paths
+# writing into one project — so the one-project shape has to be the single
+# entry above, not two entries pointing at the same id.
 #
 # A single-plugin package declares only `crowdin_project_id` and gets the id
 # from `src/plugin.json` with every `files[].source` assigned to it.
