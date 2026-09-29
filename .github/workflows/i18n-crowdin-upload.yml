@@ -31,9 +31,9 @@ jobs:
     permissions:
       contents: read # checkout only
     outputs:
-      packages: ${{ steps.find.outputs.packages }}
+      packages: ${{ steps.narrow.outputs.packages }}
     steps:
-      # Sparse: all this job reads is three files per package. The action
+      # Sparse: all this job reads is a few files per package. The action
       # below needs no checkout of its own — `$/` is resolved by the runner
       # from this repo at the workflow's ref, not from the workspace.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,6 +43,51 @@ jobs:
 
       - id: find
         uses: $/.github/actions/discover-i18n-packages
+
+      # Every detected package would otherwise upload on any package's en-US
+      # change, which with N packages means N uploads to N Crowdin projects for
+      # one edit. Uploads are idempotent, so this is cost and Crowdin churn
+      # rather than a correctness bug — but it grows with every import.
+      #
+      # Uses the compare API rather than `git diff`, so the sparse shallow
+      # checkout above is enough and no extra history has to be fetched.
+      # Anything other than a normal push (manual dispatch, a new branch whose
+      # `before` is all zeroes, a force-push that rewrote the range) falls back
+      # to uploading everything, because the safe failure here is doing too
+      # much work, not skipping a package that did change.
+      - id: narrow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALL: ${{ steps.find.outputs.packages }}
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT" != 'push' ] || [ -z "$BEFORE" ] || [ "$BEFORE" = '0000000000000000000000000000000000000000' ]; then
+            echo "$EVENT: uploading every detected package"
+            echo "packages=$ALL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! changed="$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" \
+                --paginate --jq '.files[].filename' 2>/dev/null)"; then
+            echo "::warning::could not compare $BEFORE...$AFTER, uploading every detected package"
+            echo "packages=$ALL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_json="$(jq -Rsc 'split("\n") | map(select(length > 0))' <<<"$changed")"
+
+          # Keep a package if any of its en_paths is among the changed files.
+          packages="$(jq -c --argjson changed "$changed_json" \
+            '[.[] | select(any(.en_paths | split(",")[]; IN($changed[])))]' \
+            <<<"$ALL")"
+
+          echo "Changed files: $changed_json"
+          echo "Uploading: $(jq -r '[.[].slug] | join(", ") // "(none)"' <<<"$packages")"
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
 
   upload:
     name: Upload ${{ matrix.pkg }} sources to Crowdin

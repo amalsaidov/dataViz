@@ -6,11 +6,24 @@
 # before handing the file to the CLI (belt and braces).
 x_dataviz:
   crowdin_project_id: '36'
-  # Path SUFFIX only. The full path is ci/data/repo/<github.repository>/<this>.
-  # The repo segment is derived from github.repository by get-vault-secrets and
-  # is NOT configurable — see .github/workflows/i18n-crowdin-upload.yml.
-  vault_secret_path: grafana-frontend-crowdin-token
-  vault_secret_key: access_token
+
+# Everything else the i18n workflows need is derived, so a package that follows
+# the conventions declares only the project id above. Overrides, all optional:
+#
+#   vault_secret_path   Vault path SUFFIX. Defaults to <plugin id>-crowdin-token
+#                       — for this package, grafana-clock-panel-crowdin-token,
+#                       resolving to
+#                       ci/data/repo/<github.repository>/<suffix>. The repo
+#                       segment comes from github.repository and is NOT
+#                       configurable. Each package needs its own token because
+#                       Crowdin tokens are granular-scoped to one project, so
+#                       this name has to say which project it opens — which the
+#                       single-plugin-repo convention name
+#                       (grafana-frontend-crowdin-token) cannot do here.
+#   vault_secret_key    Key within that secret. Defaults to access_token.
+#   github_board_id     Project board for translation PRs. Defaults to the
+#                       owning team's board, set in the discover action.
+#   pr_labels           Comma-separated labels for translation PRs.
 
 # The following are pulled from env variables
 project_id_env: CROWDIN_PROJECT_ID

@@ -19,12 +19,25 @@ inputs:
     description: 'Directory holding the plugin packages to scan.'
     required: false
     default: plugins/packages/@plugins
+  default_board_id:
+    description: |
+      GitHub project board number for translation PRs from packages that do not
+      set x_dataviz.github_board_id. Empty disables the board step.
+    required: false
+    default: '76' # Plugins Platform / Grafana Community
+  default_pr_labels:
+    description: |
+      Comma-separated labels for translation PRs from packages that do not set
+      x_dataviz.pr_labels.
+    required: false
+    default: i18n
 
 outputs:
   packages:
     description: |
       JSON array of matrix entries, one per detected package, each with:
-      dir, pkg, slug, en_path, project_id, vault_path, vault_key.
+      dir, pkg, slug, en_paths, project_id, vault_path, vault_key, board_id,
+      pr_labels.
       `[]` when nothing opts in — callers should guard their matrix job with
       `if: needs.discover.outputs.packages != '[]'`, because a matrix over an
       empty include list is an error, not a skip.
@@ -43,6 +56,8 @@ runs:
       shell: bash
       env:
         ROOT: ${{ inputs.root }}
+        DEFAULT_BOARD_ID: ${{ inputs.default_board_id }}
+        DEFAULT_PR_LABELS: ${{ inputs.default_pr_labels }}
       run: |
         set -euo pipefail
         shopt -s nullglob # must precede the glob, or `set -u` sees the literal pattern
@@ -52,7 +67,13 @@ runs:
           pkg="$(jq -r '.name' "$dir/package.json")"
           slug="$(jq -r '.id // ""' "$dir/src/plugin.json")"
           meta="$(yq -o=json '.x_dataviz // {}' "$cfg")"
-          src="$(yq -r '.files[0].source' "$cfg")"
+
+          # Every source, not just files[0]: a package may split its strings
+          # over several namespaces, and a gate that only knows about the first
+          # one would treat the rest as non-i18n files.
+          srcs="$(yq -o=json '[.files[].source]' "$cfg")"
+          jq -e 'length > 0' <<<"$srcs" >/dev/null \
+            || { echo "::error file=$cfg::files[] is empty, so there are no sources to translate"; exit 1; }
 
           # Having a crowdin.yml and having a working extraction pipeline are
           # two different facts. `pnpm --filter` exits 0 on a missing script,
@@ -60,9 +81,9 @@ runs:
           jq -e '.scripts["i18n-extract:ci"]' "$dir/package.json" >/dev/null \
             || { echo "::error file=$dir/package.json::has crowdin.yml but no i18n-extract:ci script"; exit 1; }
 
-          # dir and en_path are repo-root-relative: dir is used as Crowdin's
-          # base_path, and en_path is what the download workflow's automerge
-          # gate matches `gh pr diff --name-only` output against.
+          # dir and en_paths are repo-root-relative: dir is used as Crowdin's
+          # base_path, and en_paths is the comma-separated list the download
+          # workflow's automerge gate matches `gh pr diff --name-only` against.
           #
           # slug is the plugin id, which is what the download workflow builds
           # its per-package branch name from. It comes from src/plugin.json
@@ -70,24 +91,51 @@ runs:
           # @plugins/grafana-clock-panel — so unusable in a git ref) and
           # rather than the directory name (which is only required to equal
           # the id for app plugins, not panels).
+          #
+          # vault_path defaults to <plugin id>-crowdin-token. Every package
+          # needs its OWN Crowdin token, because tokens are granular-scoped to
+          # one project, and deriving the name from the id makes that structural
+          # rather than a thing each import has to remember. The upstream
+          # convention name (grafana-frontend-crowdin-token) is a single-plugin
+          # repo's name: it identifies the bot account's owning team, not which
+          # project the token opens, so it cannot distinguish N packages here.
           entry="$(jq -nc \
-            --arg dir "$dir" --arg pkg "$pkg" --arg slug "$slug" --arg en "$dir/$src" \
-            --argjson meta "$meta" \
-            '{dir:$dir, pkg:$pkg, slug:$slug, en_path:$en,
+            --arg dir "$dir" --arg pkg "$pkg" --arg slug "$slug" \
+            --argjson srcs "$srcs" --argjson meta "$meta" \
+            --arg board "$DEFAULT_BOARD_ID" --arg labels "$DEFAULT_PR_LABELS" \
+            '{dir:$dir, pkg:$pkg, slug:$slug,
+              en_paths: ([$srcs[] | $dir + "/" + .] | join(",")),
               project_id: ($meta.crowdin_project_id // null | tostring),
-              vault_path:  $meta.vault_secret_path,
-              vault_key:  ($meta.vault_secret_key // "access_token")}')"
+              vault_path: ($meta.vault_secret_path // ($slug + "-crowdin-token")),
+              vault_key:  ($meta.vault_secret_key // "access_token"),
+              board_id:   ($meta.github_board_id // $board | tostring),
+              pr_labels:  ($meta.pr_labels // $labels)}')"
 
-          jq -e '.project_id != "null" and .vault_path != null' <<<"$entry" >/dev/null \
-            || { echo "::error file=$cfg::x_dataviz.crowdin_project_id and x_dataviz.vault_secret_path are required"; exit 1; }
+          jq -e '.project_id != "null"' <<<"$entry" >/dev/null \
+            || { echo "::error file=$cfg::x_dataviz.crowdin_project_id is required"; exit 1; }
 
           # Grafana's own validator already restricts plugin ids to this
           # shape, so this is a tripwire, not a sanitizer: fail loudly here
-          # rather than force-push a ref with a surprising name.
+          # rather than force-push a ref with a surprising name. It also has to
+          # hold for vault_path, which is derived from it.
           [[ "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
             || { echo "::error file=$dir/src/plugin.json::id '$slug' is empty or not a usable branch-name component"; exit 1; }
 
           entries="$(jq -c --argjson e "$entry" '. + [$e]' <<<"$entries")"
         done
+
+        # Collisions between packages, which no single package's config can
+        # see. Each of these fails in a way that is easy to misread:
+        #   slug        — two packages force-push the same translation branch
+        #   project_id  — two base_paths in one Crowdin project orphan files
+        #   vault_path  — both read one token, scoped to only one of the
+        #                 projects, so one package works and the other 403s
+        for field in slug project_id vault_path; do
+          dupes="$(jq -r --arg f "$field" \
+            '[.[][$f]] | group_by(.) | map(select(length > 1) | .[0]) | join(", ")' <<<"$entries")"
+          [ -z "$dupes" ] \
+            || { echo "::error::two or more i18n packages share the same $field: $dupes"; exit 1; }
+        done
+
         echo "Detected: $entries"
         echo "packages=$entries" >> "$GITHUB_OUTPUT"

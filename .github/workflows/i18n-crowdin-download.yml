@@ -58,12 +58,6 @@ jobs:
       fail-fast: false # one package's Crowdin outage must not cancel another's
       matrix:
         include: ${{ fromJson(needs.discover.outputs.packages) }}
-    env:
-      # Repo-wide, not per-package: these identify the team that triages
-      # translation PRs, not the plugin. Promote to x_dataviz if a second team
-      # ever owns a package here.
-      PR_LABELS: i18n
-      GITHUB_BOARD_ID: '76' # Plugins Platform / Grafana Community project
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -110,12 +104,15 @@ jobs:
           # output rather than env vars.
           crowdin_token: ${{ fromJSON(steps.vault-secrets.outputs.secrets).CROWDIN_TOKEN }}
           crowdin_project_id: ${{ matrix.project_id }}
-          pr_labels: ${{ env.PR_LABELS }}
-          github_board_id: ${{ env.GITHUB_BOARD_ID }}
+          # Per package, not repo-wide: an imported plugin can be owned by a
+          # different team, and its translation PRs have to reach that team's
+          # board. Defaults live in the discover action.
+          pr_labels: ${{ matrix.pr_labels }}
+          github_board_id: ${{ matrix.board_id }}
           github_repo_token: ${{ steps.get-github-app-token.outputs.token }}
           # Wired up but inert: the automerge gate this feeds also needs
           # github_pr_approver_token, which is deliberately not supplied, so
           # translation PRs get a human review. Automerge has never been on for
           # clock-panel — upstream grafana/clock-panel passed neither of these.
           # Supplying an approver token here is all it takes to enable it.
-          en_paths: ${{ matrix.en_path }}
+          en_paths: ${{ matrix.en_paths }}
