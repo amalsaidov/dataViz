@@ -142,7 +142,7 @@ jobs:
           cat crowdin.yml
 
       - name: Upload to Crowdin
-        uses: grafana/grafana-github-actions/crowdin-upload@b1c422726cc4ff4adb0838ebca67586f24babb42 # main @ 2026-09-28
+        uses: grafana/grafana-github-actions/crowdin-upload@b1c422726cc4ff4adb0838ebca67586f24babb42 # main @ 2026-09-11
         with:
           # get-vault-secrets sets exportEnv: false, so secrets arrive as a JSON
           # output rather than env vars. Reading env.CROWDIN_TOKEN here would
