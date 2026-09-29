@@ -62,6 +62,7 @@ jobs:
           for cfg in "$ROOT"/*/crowdin.yml; do
             dir="$(dirname "$cfg")"
             pkg="$(jq -r '.name' "$dir/package.json")"
+            slug="$(jq -r '.id // ""' "$dir/src/plugin.json")"
             meta="$(yq -o=json '.x_dataviz // {}' "$cfg")"
             src="$(yq -r '.files[0].source' "$cfg")"
 
@@ -72,18 +73,31 @@ jobs:
               || { echo "::error file=$dir/package.json::has crowdin.yml but no i18n-extract:ci script"; exit 1; }
 
             # dir and en_path are repo-root-relative: dir is used as Crowdin's
-            # base_path, and en_path is matched against `gh pr diff --name-only`
-            # output inside the crowdin-download composite.
+            # base_path, and en_path is what the download workflow's automerge
+            # gate matches `gh pr diff --name-only` output against.
+            #
+            # slug is the plugin id, which is what the download workflow builds
+            # its per-package branch name from. It comes from src/plugin.json
+            # rather than package.json (whose name is scoped —
+            # @plugins/grafana-clock-panel — so unusable in a git ref) and
+            # rather than the directory name (which is only required to equal
+            # the id for app plugins, not panels).
             entry="$(jq -nc \
-              --arg dir "$dir" --arg pkg "$pkg" --arg en "$dir/$src" \
+              --arg dir "$dir" --arg pkg "$pkg" --arg slug "$slug" --arg en "$dir/$src" \
               --argjson meta "$meta" \
-              '{dir:$dir, pkg:$pkg, en_path:$en,
+              '{dir:$dir, pkg:$pkg, slug:$slug, en_path:$en,
                 project_id: ($meta.crowdin_project_id // null | tostring),
                 vault_path:  $meta.vault_secret_path,
                 vault_key:  ($meta.vault_secret_key // "access_token")}')"
 
             jq -e '.project_id != "null" and .vault_path != null' <<<"$entry" >/dev/null \
               || { echo "::error file=$cfg::x_dataviz.crowdin_project_id and x_dataviz.vault_secret_path are required"; exit 1; }
+
+            # Grafana's own validator already restricts plugin ids to this
+            # shape, so this is a tripwire, not a sanitizer: fail loudly here
+            # rather than force-push a ref with a surprising name.
+            [[ "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
+              || { echo "::error file=$dir/src/plugin.json::id '$slug' is empty or not a usable branch-name component"; exit 1; }
 
             entries="$(jq -c --argjson e "$entry" '. + [$e]' <<<"$entries")"
           done

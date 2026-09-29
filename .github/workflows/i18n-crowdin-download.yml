@@ -2,15 +2,14 @@
 # package. This is the only thing that ever updates the non-en-US locale files;
 # they are Crowdin's output, not hand-edited.
 #
-# KNOWN LIMITATION — not safe for more than one detected package. The upstream
-# crowdin-download composite hardcodes the branch `i18n_crowdin_translations`
-# in three places (localization_branch_name, the branch name in its
-# github-script step, and `gh pr create --head`). With two or more packages,
-# matrix jobs branch from the same main SHA and force-push over each other, so
-# the last to finish wins and the others' translations are silently lost.
-# max-parallel: 1 below narrows the race but does NOT fix it. Only clock-panel
-# is detected today, so this is latent. Fixing it needs a branch-name input
-# upstream — do not add a second i18n package before that lands.
+# This uses the LOCAL ./.github/actions/crowdin-download, not
+# grafana/grafana-github-actions/crowdin-download. The upstream composite
+# hardcodes the branch `i18n_crowdin_translations` in all three places that do
+# git work and exposes no input to change them, so with two or more packages
+# the matrix jobs force-push the same ref and all but one package's
+# translations are silently lost. See that action's header for the full
+# rationale and the list of other differences. Each package here gets its own
+# branch, derived from its plugin id.
 #
 # Packages are discovered at run time — see the discover job for the rule. Keep
 # that job identical across the i18n-* workflows.
@@ -56,6 +55,7 @@ jobs:
           for cfg in "$ROOT"/*/crowdin.yml; do
             dir="$(dirname "$cfg")"
             pkg="$(jq -r '.name' "$dir/package.json")"
+            slug="$(jq -r '.id // ""' "$dir/src/plugin.json")"
             meta="$(yq -o=json '.x_dataviz // {}' "$cfg")"
             src="$(yq -r '.files[0].source' "$cfg")"
 
@@ -66,18 +66,31 @@ jobs:
               || { echo "::error file=$dir/package.json::has crowdin.yml but no i18n-extract:ci script"; exit 1; }
 
             # dir and en_path are repo-root-relative: dir is used as Crowdin's
-            # base_path, and en_path is matched against `gh pr diff --name-only`
-            # output inside the crowdin-download composite.
+            # base_path, and en_path is what the download workflow's automerge
+            # gate matches `gh pr diff --name-only` output against.
+            #
+            # slug is the plugin id, which is what the download workflow builds
+            # its per-package branch name from. It comes from src/plugin.json
+            # rather than package.json (whose name is scoped —
+            # @plugins/grafana-clock-panel — so unusable in a git ref) and
+            # rather than the directory name (which is only required to equal
+            # the id for app plugins, not panels).
             entry="$(jq -nc \
-              --arg dir "$dir" --arg pkg "$pkg" --arg en "$dir/$src" \
+              --arg dir "$dir" --arg pkg "$pkg" --arg slug "$slug" --arg en "$dir/$src" \
               --argjson meta "$meta" \
-              '{dir:$dir, pkg:$pkg, en_path:$en,
+              '{dir:$dir, pkg:$pkg, slug:$slug, en_path:$en,
                 project_id: ($meta.crowdin_project_id // null | tostring),
                 vault_path:  $meta.vault_secret_path,
                 vault_key:  ($meta.vault_secret_key // "access_token")}')"
 
             jq -e '.project_id != "null" and .vault_path != null' <<<"$entry" >/dev/null \
               || { echo "::error file=$cfg::x_dataviz.crowdin_project_id and x_dataviz.vault_secret_path are required"; exit 1; }
+
+            # Grafana's own validator already restricts plugin ids to this
+            # shape, so this is a tripwire, not a sanitizer: fail loudly here
+            # rather than force-push a ref with a surprising name.
+            [[ "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
+              || { echo "::error file=$dir/src/plugin.json::id '$slug' is empty or not a usable branch-name component"; exit 1; }
 
             entries="$(jq -c --argjson e "$entry" '. + [$e]' <<<"$entries")"
           done
@@ -93,8 +106,7 @@ jobs:
       contents: read # repo writes go through the App token, not GITHUB_TOKEN
       id-token: write # Vault auth via OIDC
     strategy:
-      fail-fast: false
-      max-parallel: 1 # see the branch-collision note in the file header
+      fail-fast: false # one package's Crowdin outage must not cancel another's
       matrix:
         include: ${{ fromJson(needs.discover.outputs.packages) }}
     env:
@@ -138,8 +150,13 @@ jobs:
           cat crowdin.yml
 
       - name: Download from Crowdin
-        uses: grafana/grafana-github-actions/crowdin-download@b1c422726cc4ff4adb0838ebca67586f24babb42 # main @ 2026-09-28
+        uses: ./.github/actions/crowdin-download
         with:
+          # One branch per plugin id. Sharing a branch across packages loses
+          # translations — see the action's header.
+          branch_name: i18n_crowdin_translations_${{ matrix.slug }}
+          pr_title: 'I18n: Download ${{ matrix.slug }} translations from Crowdin'
+          commit_message: New Crowdin translations for ${{ matrix.slug }} by GitHub Action
           # get-vault-secrets sets exportEnv: false, so secrets arrive as a JSON
           # output rather than env vars.
           crowdin_token: ${{ fromJSON(steps.vault-secrets.outputs.secrets).CROWDIN_TOKEN }}
@@ -147,7 +164,9 @@ jobs:
           pr_labels: ${{ env.PR_LABELS }}
           github_board_id: ${{ env.GITHUB_BOARD_ID }}
           github_repo_token: ${{ steps.get-github-app-token.outputs.token }}
-          # Only consulted for automerge, which additionally requires
-          # github_pr_approver_token — deliberately not supplied, so automerge
-          # stays off and translation PRs get a human review.
+          # Wired up but inert: the automerge gate this feeds also needs
+          # github_pr_approver_token, which is deliberately not supplied, so
+          # translation PRs get a human review. Automerge has never been on for
+          # clock-panel — upstream grafana/clock-panel passed neither of these.
+          # Supplying an approver token here is all it takes to enable it.
           en_paths: ${{ matrix.en_path }}

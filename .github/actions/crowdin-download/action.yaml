@@ -1,0 +1,375 @@
+# Local reimplementation of grafana/grafana-github-actions/crowdin-download.
+#
+# WHY THIS EXISTS: the upstream composite hardcodes the branch
+# `i18n_crowdin_translations` in the three places that do git work — the
+# signed-commit github-script, `gh pr view --head`, and `gh pr create --head`.
+# It exposes no input to change them, and nothing about them is overridable
+# from the caller. With two or more i18n packages, every matrix job builds its
+# tree from main and force-pushes the same ref, so the last job to finish wins
+# and the others' translations are silently dropped. Serializing the matrix
+# does not help: the clobber is deterministic, not a race.
+#
+# (Upstream's `localization_branch_name: i18n_crowdin_translations` is NOT one
+# of those three. crowdin/github-action reads that input only inside
+# push_to_branch(), gated on push_translations — which upstream sets to false.
+# The vendored action never touches git here; it only writes files into the
+# workspace.)
+#
+# HOW IT DIFFERS from upstream, beyond branch_name:
+#   - PR title and commit message are inputs, so per-package PRs are
+#     distinguishable. Defaults match upstream's strings.
+#   - The PR id is read from `gh pr view --json url,id` in one call rather than
+#     reconstructed from `gh pr create` stdout, dropping upstream's
+#     quote-stripping sed.
+#
+# Automerge is OFF here, and has always been off for clock-panel — upstream
+# grafana/clock-panel passed neither en_paths nor github_pr_approver_token. To
+# turn it on, supply github_pr_approver_token; en_paths is already wired up.
+name: Crowdin download (local)
+description: Download translations from Crowdin and open a pull request on a caller-chosen branch.
+
+inputs:
+  branch_name:
+    description: |
+      Git branch to force-push translations to, and the head branch of the pull
+      request. Must be unique per Crowdin project — two callers sharing a
+      branch will overwrite each other. Intentionally required, with no
+      default, so a new caller cannot silently collide with an existing one.
+      Callers here derive it from the plugin id in src/plugin.json.
+    required: true
+  crowdin_project_id:
+    description: 'The Crowdin project ID'
+    required: true
+  crowdin_token:
+    description: 'Crowdin API token with access to the Crowdin project, used to download translations.'
+    required: true
+  github_repo_token:
+    description: 'GitHub token with access to the repository, used to commit changes and create pull requests.'
+    required: true
+  pr_title:
+    description: 'Title for the pull request. Only used when the PR is first created.'
+    required: false
+    default: 'I18n: Download translations from Crowdin'
+  commit_message:
+    description: 'Commit message for the translation commit.'
+    required: false
+    default: 'New Crowdin translations by GitHub Action'
+  pr_labels:
+    description: 'Comma-separated list of labels to apply to the pull request'
+    required: false
+  github_board_id:
+    description: 'Number of the GitHub project board to add the pull request to. Skipped when empty.'
+    required: false
+  en_paths:
+    description: |
+      Comma-separated list of repo-root-relative paths to en-US locale files.
+      Used only by the automerge gate, which derives each package's translated
+      locale paths from them. Has no effect without github_pr_approver_token.
+    required: false
+  github_pr_approver_token:
+    description: |
+      GitHub token with write access, used to approve the PR and enable
+      automerge. Must be a different identity from github_repo_token — GitHub
+      refuses to let an actor approve its own pull request. Leave unset to keep
+      automerge off and require a human review.
+    required: false
+
+outputs:
+  pull_request_url:
+    description: 'URL of the created or existing pull request. Empty when there was nothing to download.'
+    value: ${{ steps.resolve-pr.outputs.pull_request_url }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Writes translations into the workspace only. push_translations and
+    # create_pull_request are false, so this step does no git work at all —
+    # every git operation below is ours.
+    - name: Download translations
+      uses: crowdin/github-action@b8012bd5491b8aa8578b73ab5b5f5e7c94aaa6e2 # v2.7.0
+      with:
+        upload_sources: false
+        upload_translations: false
+        download_sources: false
+        download_translations: true
+        push_translations: false
+        export_only_approved: true
+        create_pull_request: false
+        base_url: 'https://grafana.api.crowdin.com'
+        config: 'crowdin.yml'
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_repo_token }}
+        CROWDIN_PROJECT_ID: ${{ inputs.crowdin_project_id }}
+        CROWDIN_PERSONAL_TOKEN: ${{ inputs.crowdin_token }}
+
+    # The caller materializes a root crowdin.yml before invoking this action.
+    # That path is gitignored, so it does not show up here or in the tree below.
+    - name: Detect changes
+      id: detect-changes
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "No translation changes to commit."
+          echo "has_changes=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    # Commits via the GitHub API rather than plain git: this repo's Signed
+    # Commits ruleset rejects unsigned commits, and an App token's API commits
+    # are signed while its git pushes are not.
+    - name: Create signed commit and update branch
+      id: signed-commit
+      if: steps.detect-changes.outputs.has_changes == 'true'
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      env:
+        BRANCH_NAME: ${{ inputs.branch_name }}
+        COMMIT_MESSAGE: ${{ inputs.commit_message }}
+      with:
+        github-token: ${{ inputs.github_repo_token }}
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          const { execSync } = require('child_process');
+
+          const owner = context.repo.owner;
+          const repo = context.repo.repo;
+          const ws = process.env.GITHUB_WORKSPACE;
+          const branch = process.env.BRANCH_NAME;
+
+          // Each run rebuilds the branch from the default branch rather than
+          // appending to whatever is already there, so a translation PR never
+          // accumulates stale strings from an earlier run.
+          const { data: repoInfo } = await github.rest.repos.get({ owner, repo });
+          const baseBranch = repoInfo.default_branch;
+          const { data: base } = await github.rest.repos.getBranch({ owner, repo, branch: baseBranch });
+          const baseSha = base.commit.sha;
+          const { data: baseCommit } = await github.rest.git.getCommit({ owner, repo, commit_sha: baseSha });
+
+          const status = execSync('git status --porcelain -uall', { cwd: ws, encoding: 'utf8' })
+            .split('\n').filter(Boolean);
+
+          const files = status.map(line => ({
+            status: line.substring(0, 2).trim(),
+            path: line.substring(3),
+          }));
+
+          const tree = [];
+          for (const { status: st, path: filePath } of files) {
+            if (st === 'D') {
+              tree.push({ path: filePath, mode: '100644', type: 'blob', sha: null });
+            } else {
+              const content = fs.readFileSync(path.join(ws, filePath));
+              const { data: blob } = await github.rest.git.createBlob({
+                owner, repo,
+                content: content.toString('base64'),
+                encoding: 'base64',
+              });
+              tree.push({ path: filePath, mode: '100644', type: 'blob', sha: blob.sha });
+            }
+          }
+
+          const { data: newTree } = await github.rest.git.createTree({
+            owner, repo,
+            base_tree: baseCommit.tree.sha,
+            tree,
+          });
+
+          const { data: commit } = await github.rest.git.createCommit({
+            owner, repo,
+            message: process.env.COMMIT_MESSAGE,
+            tree: newTree.sha,
+            parents: [baseSha],
+          });
+
+          try {
+            await github.rest.git.updateRef({
+              owner, repo,
+              ref: `heads/${branch}`,
+              sha: commit.sha,
+              force: true,
+            });
+          } catch (e) {
+            if (e.status === 422) {
+              await github.rest.git.createRef({
+                owner, repo,
+                ref: `refs/heads/${branch}`,
+                sha: commit.sha,
+              });
+            } else {
+              throw e;
+            }
+          }
+
+          core.info(`Created signed commit ${commit.sha} on ${branch}`);
+          core.setOutput('base_branch', baseBranch);
+          core.setOutput('has_commit', 'true');
+
+    - name: Create pull request if none is open
+      if: steps.signed-commit.outputs.has_commit == 'true'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_repo_token }}
+        BRANCH_NAME: ${{ inputs.branch_name }}
+        BASE_BRANCH: ${{ steps.signed-commit.outputs.base_branch }}
+        PR_TITLE: ${{ inputs.pr_title }}
+        PR_LABELS: ${{ inputs.pr_labels }}
+      run: |
+        set -euo pipefail
+
+        if gh pr view --head "$BRANCH_NAME" --json url -q .url >/dev/null 2>&1; then
+          echo "A pull request is already open for $BRANCH_NAME; the force-push above updated it."
+          exit 0
+        fi
+
+        cat > /tmp/crowdin-pr-body.md << 'PREOF'
+        :robot: Automatic download of translations from Crowdin.
+
+        This runs on a schedule. It does not merge on its own — a human has to review it.
+
+        If there's a conflict, close the pull request and **delete the branch**.
+        You can then either wait for the schedule to trigger a new PR, or rerun the
+        workflow manually.
+        PREOF
+
+        LABEL_ARGS=()
+        if [ -n "$PR_LABELS" ]; then
+          IFS=',' read -ra LABELS <<< "$PR_LABELS"
+          for label in "${LABELS[@]}"; do
+            label=$(echo "$label" | xargs)
+            if [ -n "$label" ]; then
+              LABEL_ARGS+=(--label "$label")
+            fi
+          done
+        fi
+
+        gh pr create \
+          --title "$PR_TITLE" \
+          --body-file /tmp/crowdin-pr-body.md \
+          --base "$BASE_BRANCH" \
+          --head "$BRANCH_NAME" \
+          "${LABEL_ARGS[@]}"
+
+    # Read back by branch rather than parsing `gh pr create` output, so the
+    # url and node id are correct whether this run created the PR or reused an
+    # already-open one.
+    - name: Resolve pull request
+      id: resolve-pr
+      if: steps.signed-commit.outputs.has_commit == 'true'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_repo_token }}
+        BRANCH_NAME: ${{ inputs.branch_name }}
+      run: |
+        set -euo pipefail
+        pr="$(gh pr view --head "$BRANCH_NAME" --json url,id)"
+        {
+          echo "pull_request_url=$(jq -r .url <<<"$pr")"
+          echo "pull_request_id=$(jq -r .id <<<"$pr")"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Get project board ID
+      id: get-project-id
+      if: inputs.github_board_id != '' && steps.resolve-pr.outputs.pull_request_id
+      uses: octokit/graphql-action@51bf543c240dcd14761320e2efc625dc32ec0d32 # v2.3.2
+      with:
+        query: |
+          query getProjectId($org: String!, $project_number: Int!){
+            organization(login: $org) {
+              projectV2(number: $project_number) {
+                title
+                id
+              }
+            }
+          }
+        variables: |
+          org: ${{ github.repository_owner }}
+          project_number: ${{ inputs.github_board_id }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_repo_token }}
+
+    - name: Add to project board
+      if: inputs.github_board_id != '' && steps.resolve-pr.outputs.pull_request_id
+      uses: octokit/graphql-action@51bf543c240dcd14761320e2efc625dc32ec0d32 # v2.3.2
+      with:
+        query: |
+          mutation addPullRequestToProject($projectid: ID!, $prid: ID!){
+            addProjectV2ItemById(input: {projectId: $projectid, contentId: $prid}) {
+              item {
+                id
+              }
+            }
+          }
+        variables: |
+          projectid: ${{ fromJson(steps.get-project-id.outputs.data).organization.projectV2.id }}
+          prid: ${{ steps.resolve-pr.outputs.pull_request_id }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_repo_token }}
+
+    # Gate: approve only if every changed file is a translated locale file.
+    # A Crowdin *download* must never touch en-US (download_sources is false)
+    # and must never touch anything outside the locale trees, so either of
+    # those means something is wrong — fail loudly rather than skip quietly.
+    - name: Approve and automerge PR
+      if: inputs.en_paths != '' && inputs.github_pr_approver_token != '' && steps.resolve-pr.outputs.pull_request_url
+      shell: bash
+      env:
+        # Deliberately the approver token, not github_repo_token: GitHub will
+        # not let an actor approve a PR it opened itself.
+        GITHUB_TOKEN: ${{ inputs.github_pr_approver_token }}
+        PR_URL: ${{ steps.resolve-pr.outputs.pull_request_url }}
+        EN_PATHS: ${{ inputs.en_paths }}
+      run: |
+        set -euo pipefail
+
+        # mapfile, so CHANGED_ARRAY holds every changed file. The loops below
+        # are only a gate if they see all of them.
+        mapfile -t CHANGED_ARRAY < <(gh pr diff --name-only "$PR_URL")
+        IFS=',' read -ra EN_US_ARRAY <<< "$EN_PATHS"
+
+        if [ "${#CHANGED_ARRAY[@]}" -eq 0 ]; then
+          echo "No changed files reported for $PR_URL, refusing to approve"
+          exit 1
+        fi
+
+        is_en_us_file() {
+          local file="$1"
+          for en_us_path in "${EN_US_ARRAY[@]}"; do
+            en_us_path=$(echo "$en_us_path" | xargs)
+            if [[ "$file" == "$en_us_path" ]]; then
+              return 0
+            fi
+          done
+          return 1
+        }
+
+        # Turns src/locales/en-US/x.json into a pattern matching any locale
+        # directory, so the translated siblings of a declared en-US path are
+        # recognised without having to enumerate all 18 of them.
+        is_locale_file() {
+          local file="$1"
+          for en_us_path in "${EN_US_ARRAY[@]}"; do
+            en_us_path=$(echo "$en_us_path" | xargs)
+            locale_pattern=$(echo "$en_us_path" | sed 's|/en-US/|/[a-zA-Z\-]*/|g')
+            if [[ "$file" =~ $locale_pattern ]]; then
+              return 0
+            fi
+          done
+          return 1
+        }
+
+        for file in "${CHANGED_ARRAY[@]}"; do
+          if is_en_us_file "$file"; then
+            echo "en-US change detected ($file), not approving"
+            exit 1
+          fi
+          if ! is_locale_file "$file"; then
+            echo "Non-i18n change detected ($file), not approving"
+            exit 1
+          fi
+        done
+
+        echo "Approving and enabling automerge for $PR_URL"
+        gh pr review "$PR_URL" --approve
+        gh pr merge --auto --squash "$PR_URL"
