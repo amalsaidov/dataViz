@@ -27,7 +27,8 @@ export function addCartesianBarChartOptions(builder: PanelOptionsEditorBuilder<P
     .addRadio({
       path: stackingPath,
       name: 'Stacking',
-      description: 'Stack the bar series. A field can opt out with its own "Stacking" override.',
+      description:
+        'Stack the bar series, and the line and area series of a time axis. A field can opt out with its own "Stacking" override.',
       category,
       defaultValue: StackingMode.None,
       settings: { options: stackingOptions },

@@ -217,8 +217,14 @@ describe('timeSeriesToEChartsOption', () => {
       expect(result.every((series) => (series as LineSeriesOption).stack === undefined)).toBe(true);
     });
 
-    it('never stacks non-bar series even when stacking is on', () => {
+    it('stacks line series in their own group, as core Time series', () => {
       const result = runSeries([wideFrame()], 'line', { stackSeries: true });
+
+      expect(result.every((series) => (series as LineSeriesOption).stack === 'total-line')).toBe(true);
+    });
+
+    it('never stacks scatter series even when stacking is on', () => {
+      const result = runSeries([wideFrame()], 'scatter', { stackSeries: true });
 
       expect(result.every((series) => (series as LineSeriesOption).stack === undefined)).toBe(true);
     });
@@ -238,7 +244,7 @@ describe('timeSeriesToEChartsOption', () => {
       expect((result[1] as LineSeriesOption).stack).toBeUndefined();
     });
 
-    it('only stacks a field whose type override renders it as bar', () => {
+    it('stacks bar and line fields in different groups', () => {
       const frame = toDataFrame({
         fields: [
           { name: 'time', type: FieldType.time, values: [1, 2] },
@@ -247,12 +253,11 @@ describe('timeSeriesToEChartsOption', () => {
         ],
       });
 
-      // Panel default is line; only the bar-overridden field stacks.
+      // A bar does not stack on a line: core keys each stack group by its draw style.
       const result = runSeries([frame], 'line', { stackSeries: true });
 
       expect(result[0]).toMatchObject({ name: 'asBar', type: 'bar', stack: 'total' });
-      expect(result[1]).toMatchObject({ name: 'asLine', type: 'line' });
-      expect((result[1] as LineSeriesOption).stack).toBeUndefined();
+      expect(result[1]).toMatchObject({ name: 'asLine', type: 'line', stack: 'total-line' });
     });
   });
 

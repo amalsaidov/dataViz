@@ -19,7 +19,7 @@ import {
 
 /**
  * Stack series option: panel option path and per-field custom config key share
- * the same name. Only meaningful for `bar` series.
+ * the same name. Only meaningful for `bar` series, and for `line` series on a time axis.
  */
 export const stackSeriesPath = 'stackSeries';
 export const stackSeriesName = 'Stacking';
@@ -29,6 +29,11 @@ export const stackSeriesName = 'Stacking';
  * https://echarts.apache.org/en/option.html#series-bar.stack
  */
 export const STACK_GROUP_ID = 'total';
+/**
+ * ECharts `stack` group id of the stacked line and area series. Core Time series stacks lines and bars
+ * in different groups, so they do not stack on each other.
+ */
+export const LINE_STACK_GROUP_ID = 'total-line';
 
 /**
  * Cartesian time series types that render on a time/value grid and consume the

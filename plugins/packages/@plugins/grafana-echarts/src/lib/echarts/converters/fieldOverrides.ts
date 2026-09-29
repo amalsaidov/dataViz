@@ -29,8 +29,9 @@ export function resolveFieldSeriesType<T>(field: Field, defaultType: T): T | Car
 }
 
 /**
- * Whether a bar field should stack: field override wins over the panel default.
- * Only bar series stack, so callers gate on the resolved render type.
+ * Whether a field should stack: field override wins over the panel default.
+ * Bar series stack, and line series on a time axis (`isTimeSeriesStacked`), so
+ * callers gate on the resolved render type.
  */
 export function resolveFieldStack(field: Field, panelStack = false): boolean {
   const override = getFieldConfigFromField(field).custom?.stackSeries;

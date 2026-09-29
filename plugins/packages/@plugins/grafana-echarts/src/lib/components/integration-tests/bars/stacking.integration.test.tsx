@@ -75,8 +75,9 @@ describe('bar stacking', () => {
   });
 
   it('keeps a line from another query continuous when bars stack, as core', async () => {
-    // Two stacked bar frames at 0 h to 2 h, and a line at 0.5 h to 2.5 h. Only the bars join on
-    // time, so the line gets no null at each bar timestamp and draws one path through its 3 points.
+    // Two stacked bar frames at 0 h to 2 h, and a line at 0.5 h to 2.5 h. The line stacks in its own
+    // group. The time join adds a row at each bar timestamp, and the line connects over those rows,
+    // so it draws one path through its 3 points.
     const line = timeFrame('Line', [0.5, 1.5, 2.5], [5, 6, 7]);
     line.fields[1].config = { custom: { seriesType: 'line' } };
     const frames = [timeFrame('A', [0, 1, 2], [10, 20, 30]), timeFrame('B', [0, 1, 2], [3, 4, 5]), line];

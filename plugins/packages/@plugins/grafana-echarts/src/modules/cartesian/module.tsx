@@ -77,7 +77,8 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
       });
 
       // Per-field stack override. Only meaningful when the field renders as a
-      // bar, so it is shown only when this field's Series type override is `bar`.
+      // bar, or as a line on a time axis, so it is shown only when this field's
+      // Series type override is `bar` or `line`.
       // Grafana field-config `showIf` only sees this field's custom config, not
       // the panel-level series type.
       // No default: Grafana writes a field default into every field, and this
@@ -86,8 +87,8 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
         path: stackSeriesPath,
         name: stackSeriesName,
         category: ['Bar chart'],
-        description: 'Stack this field with other stacked bar series.',
-        showIf: (config) => config.seriesType === 'bar',
+        description: 'Stack this field with the other stacked series of its type: bar, or line on a time axis.',
+        showIf: (config) => config.seriesType === 'bar' || config.seriesType === 'line',
       });
 
       // The standard "Axis" field config of core Time series and Bar chart:

@@ -62,7 +62,9 @@ export interface CartesianValueSource {
   field: Field<number>;
   /** Field values, positioned against the x values or categories. */
   values: Array<number | null>;
-  /** True for a bar series in the stack. */
+  /** The values that the series draws, if they are not the field values: a stack of lines draws 0 for a null. */
+  drawnValues?: Array<number | null>;
+  /** True for a series in a stack: a bar, or a line on a time axis. */
   stacked: boolean;
   isBar: boolean;
 }

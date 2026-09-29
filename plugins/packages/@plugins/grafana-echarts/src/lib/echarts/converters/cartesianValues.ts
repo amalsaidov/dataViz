@@ -40,16 +40,24 @@ import { type PanelOptions } from 'types';
  * and the value labels read it (see `unwrapEChartsValue`).
  */
 
-/** Drawn values of every source: percent of the stack total, then the "Negative Y" transform. */
+/**
+ * Drawn values of every source: the `drawnValues` of a stack of lines, the percent of the stack total,
+ * then the "Negative Y" transform.
+ */
 export function resolveDrawnValues(
   sources: CartesianValueSource[],
   stacking: StackingMode
 ): Array<Array<number | null>> {
-  const drawn = sources.map(({ values }) => values);
+  const drawn = sources.map(({ values, drawnValues }) => drawnValues ?? values);
   if (stacking === StackingMode.Percent) {
-    const stackedIndexes = sources.flatMap((source, index) => (source.stacked ? [index] : []));
-    const shares = toPercentOfTotal(stackedIndexes.map((index) => drawn[index]));
-    stackedIndexes.forEach((index, i) => (drawn[index] = shares[i]));
+    // Bars and lines stack in different groups (see `LINE_STACK_GROUP_ID`), so each has its own total.
+    for (const isBar of [true, false]) {
+      const stackedIndexes = sources.flatMap((source, index) =>
+        source.stacked && source.isBar === isBar ? [index] : []
+      );
+      const shares = toPercentOfTotal(stackedIndexes.map((index) => drawn[index]));
+      stackedIndexes.forEach((index, i) => (drawn[index] = shares[i]));
+    }
   }
   return drawn.map((values, index) =>
     isNegativeY(sources[index].field) ? values.map((value) => (value == null ? null : -value)) : values
@@ -178,7 +186,7 @@ export function resolveSeriesValues(
   const stacking = resolvePanelStacking(options);
   const percent = stacking === StackingMode.Percent;
   const drawn = resolveDrawnValues(sources, stacking);
-  const topStacked = sources.map((source) => source.stacked).lastIndexOf(true);
+  const topStacked = sources.map((source) => source.isBar && source.stacked).lastIndexOf(true);
   const slots = sources.filter((source) => source.isBar && !source.stacked).length + (topStacked >= 0 ? 1 : 0);
 
   const labelTexts = sources.map((source, i) =>

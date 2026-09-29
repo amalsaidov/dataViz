@@ -31,7 +31,7 @@ import {
   multiValueCartesianToEChartsOption,
   resolveMultiValueSources,
 } from 'lib/echarts/converters/multiValueCartesian';
-import { getDrawnRows, timeSeriesToEChartsOption } from 'lib/echarts/converters/timeSeries';
+import { getDrawnSeries, isTimeSeriesStacked, timeSeriesToEChartsOption } from 'lib/echarts/converters/timeSeries';
 import { getCartesianGrid } from 'lib/echarts/grid/grid';
 import { ANNOTATION_LANE_SIZE, buildAnnotationMarkerSeries } from 'lib/echarts/options/annotationMarkers';
 import { buildAnnotationSeries, buildCategoryAnnotationSeries } from 'lib/echarts/options/annotations';
@@ -106,7 +106,7 @@ function buildTimeOption(
     timeZone,
     fallbackFormatter: formatValue,
     zlevel: options.zLevel?.axis,
-    ...getBarFieldSets(fields, ctx),
+    ...getBarFieldSets(fields, ctx, true),
     colorOf: (field) => getCartesianSeriesColor(field, timeCtx.frames, theme),
   });
   const indexedSeries = cartSeries.map((cartesian, i) => ({ ...cartesian, yAxisIndex: axes.seriesYAxisIndex[i] ?? 0 }));
@@ -273,19 +273,26 @@ function getBarLabelSpace(
 
 /**
  * Bar fields for the value axes: every bar field (its axis includes zero) and,
- * in percent stacking, the stacked ones (they share a 0% to 100% axis).
+ * in percent stacking, the stacked ones (they share a 0% to 100% axis). On a
+ * time axis (`stackLines`), stacked line fields share the percent axis too.
  */
-function getBarFieldSets(fields: Field[], ctx: CartesianContext): { barFields: Set<Field>; percentFields: Set<Field> } {
-  const bars = fields.filter((field) => resolveFieldSeriesType(field, ctx.seriesType) === 'bar');
+function getBarFieldSets(
+  fields: Field[],
+  ctx: CartesianContext,
+  stackLines = false
+): { barFields: Set<Field>; percentFields: Set<Field> } {
+  const types = fields.map((field) => resolveFieldSeriesType(field, ctx.seriesType));
   const percent = resolvePanelStacking(ctx.options) === StackingMode.Percent;
+  const stacks = (field: Field, i: number) =>
+    (types[i] === 'bar' || (stackLines && types[i] === 'line')) && resolveFieldStack(field, true);
   return {
-    barFields: new Set(bars),
-    percentFields: new Set(percent ? bars.filter((field) => resolveFieldStack(field, true)) : []),
+    barFields: new Set(fields.filter((_, i) => types[i] === 'bar')),
+    percentFields: new Set(percent ? fields.filter(stacks) : []),
   };
 }
 
 /**
- * The frames of the time path. With stacked bars in several frames, the stacked
+ * The frames of the time path. With stacked bars or lines in several frames, the stacked
  * fields join on time first, so each stack sums the values at one timestamp.
  * Other fields keep their frames (see `joinStackedFieldsOnTime`).
  */
@@ -295,9 +302,8 @@ function cartesianTimeFrames<V, C>(ctx: {
   seriesType: SeriesType;
 }): Array<FieldTypedDataFrame<V, C>> {
   const stackAll = resolvePanelStacking(ctx.options) !== StackingMode.None;
-  return joinStackedFieldsOnTime(
-    ctx.frames,
-    (field) => resolveFieldSeriesType(field, ctx.seriesType) === 'bar' && resolveFieldStack(field, stackAll)
+  return joinStackedFieldsOnTime(ctx.frames, (field) =>
+    isTimeSeriesStacked(field, resolveFieldSeriesType(field, ctx.seriesType), stackAll)
   );
 }
 
@@ -415,14 +421,14 @@ function cartesianSeriesFields(ctx: CartesianContext): Field[] {
  * draws them. `undefined` for a series that draws each row, where the `dataIndex` is the row.
  */
 function cartesianDrawnRows(ctx: CartesianContext): Array<number[] | undefined> {
-  const rows: Array<number[] | undefined> = [];
-  forEachTimeSeriesField(cartesianTimeFrames(ctx), ({ field, timeField }) => {
-    const type = resolveFieldSeriesType(field, ctx.seriesType);
-    rows.push(
-      isSpanNullsThreshold(resolveFieldSpanNulls(field)) ? getDrawnRows(field, timeField.values, type) : undefined
-    );
-  });
-  return rows;
+  const refs: Array<{ field: Field; timeField: Field; type: SeriesType }> = [];
+  forEachTimeSeriesField(cartesianTimeFrames(ctx), ({ field, timeField }) =>
+    refs.push({ field, timeField, type: resolveFieldSeriesType(field, ctx.seriesType) })
+  );
+  const stackAll = resolvePanelStacking(ctx.options) !== StackingMode.None;
+  return getDrawnSeries(refs, stackAll).map(({ rows }, i) =>
+    rows.length === refs[i].field.values.length ? undefined : rows
+  );
 }
 
 /**
