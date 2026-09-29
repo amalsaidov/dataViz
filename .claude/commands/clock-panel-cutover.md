@@ -48,7 +48,7 @@ plugin's code, so they cannot be mechanically ported:
 ## Cutover order
 
 1. **Start now — has human lead time.** Provision Vault secret
-   `ci/repo/grafana/dataViz/grafana-frontend-crowdin-token` and authorize
+   `ci/repo/grafana/dataViz/grafana-clock-panel-crowdin-token` and authorize
    dataViz's OIDC identity. See `grafana-engineering:vault-add-secret`.
 
    **Only Frontend Platform can do this — ask in `#grafana-frontend-platform`.**
@@ -59,10 +59,17 @@ plugin's code, so they cannot be mechanically ported:
    Frontend Platform 1Password vault), named `<repository-name>-github-actions`,
    granted Languages: Read + Projects: Read and write, and scoped by granular
    access to that repo's project only. The shared name
-   `grafana-frontend-crowdin-token` is a convention across ~20 repos, not a
-   shared value — so `get-vault-secrets`' `common_secrets` input
+   `grafana-frontend-crowdin-token` is a convention across ~20 single-plugin
+   repos, not a shared value — so `get-vault-secrets`' `common_secrets` input
    (`ci/data/common/<path>`) is the wrong mechanism here; `repo_secrets` is
    correct.
+
+   **This repo does not use that convention name**, because it cannot: the name
+   identifies the bot account's owning team, so it cannot distinguish one
+   package's project from another's in a monorepo. The `discover` action
+   derives `<plugin id>-crowdin-token` per package instead, and refuses to run
+   if two packages resolve to the same path. So clock-panel's is
+   `grafana-clock-panel-crowdin-token`, and each future import gets its own.
 
    So the ask is a token named `dataViz-github-actions` scoped to the
    **existing** project 36. The doc's procedure assumes a brand-new Crowdin
@@ -72,14 +79,14 @@ plugin's code, so they cannot be mechanically ported:
    truth.
 
    The path is written two ways and both are right: you type
-   `repo/grafana/dataViz/grafana-frontend-crowdin-token` into the `ci` secrets
-   engine in the Vault UI, and KV v2 injects `/data/`, giving the
+   `repo/grafana/dataViz/grafana-clock-panel-crowdin-token` into the `ci`
+   secrets engine in the Vault UI, and KV v2 injects `/data/`, giving the
    `ci/data/repo/...` form that `get-vault-secrets` resolves at run time.
 
    Because tokens are scoped per project, a second i18n package here with a
    different Crowdin project needs its own secret rather than sharing this one.
-   That already works with no workflow change — `x_dataviz.vault_secret_path`
-   and `vault_secret_key` are read per package by the `discover` job.
+   That needs no workflow change: the path is derived from the plugin id, and
+   `x_dataviz.vault_secret_path` / `vault_secret_key` override it per package.
 2. **Make `grafana/dataViz` public.** Every `github.com/grafana/dataViz` URL in
    `src/plugin.json` (`repository`, `license`, `raise issue`) 404s until then.
    Must land before the plugin is next published.
