@@ -11,10 +11,8 @@ import {
   type MarkerValues,
 } from './dimensions';
 import { type LonLat } from './gazetteer';
+import { getLayerFrames, MARKERS_LAYER_TYPE, resolveLayers } from './layers';
 import { getFramePositions, getLocationMatchers } from './location';
-
-/** The layer type of the core markers layer (`MARKERS_LAYER_ID`). */
-export const MARKERS_LAYER_TYPE = 'markers';
 
 /** One marker: the position and the values of its row. */
 export interface GeoMarker extends MarkerValues {
@@ -37,25 +35,21 @@ const wrapLongitude = (lon: number): number =>
   lon >= -180 && lon <= 180 ? lon : ((((lon + 180) % 360) + 360) % 360) - 180;
 
 /**
- * The markers, as core draws them for the first `markers` layer.
- * - Only an unset `layers` option gives the Auto location and the default style (`defaultMarkersConfig`). An empty
- *   list, or a list with no `markers` layer, gives no markers.
- * - Only the first frame gives markers: the frame loop of the core markers layer stops after one frame.
+ * The markers of one markers layer, as core draws them.
+ * - Only the first frame of the layer gives markers: the frame loop of the core markers layer stops after one frame.
+ *   The `filterData` option of the layer picks the frames (`getLayerFrames`).
  * - A row with no position gives no marker. Core skips a marker with the same position, color, size, text and
  *   rotation as an earlier one.
  */
-export function getMarkers(
+function getLayerMarkers(
   frames: DataFrame[],
-  layers: MapLayerOptions[] | undefined,
+  layer: Partial<MapLayerOptions<MarkersConfig>>,
   theme: GrafanaTheme2
 ): GeoMarkers {
-  const layer: Partial<MapLayerOptions<MarkersConfig>> | undefined = layers
-    ? layers.find((l) => l.type === MARKERS_LAYER_TYPE)
-    : {};
-  const styleConfig = layer?.config?.style;
+  const styleConfig = layer.config?.style;
   const style = getMarkerLayerStyle(styleConfig, theme);
-  const frame = frames[0];
-  if (!frame || !layer) {
+  const frame = getLayerFrames(frames, layer)[0];
+  if (!frame) {
     return { markers: [], style };
   }
   const { positions = [] } = getFramePositions(frame, getLocationMatchers(layer.location));
@@ -74,4 +68,19 @@ export function getMarkers(
     }
   });
   return { markers, style };
+}
+
+/**
+ * The markers of each `markers` layer, in the layer order. Core draws the last layer on top.
+ * An unset `layers` option gives one layer of the Auto location and the default style (`defaultMarkersConfig`).
+ * An empty list, or a list with no `markers` layer, gives no markers. The other layer types are not drawn yet.
+ */
+export function getMarkerLayers(
+  frames: DataFrame[],
+  layers: MapLayerOptions[] | undefined,
+  theme: GrafanaTheme2
+): GeoMarkers[] {
+  return resolveLayers(layers)
+    .filter((l) => l.type === MARKERS_LAYER_TYPE)
+    .map((l) => getLayerMarkers(frames, l, theme));
 }

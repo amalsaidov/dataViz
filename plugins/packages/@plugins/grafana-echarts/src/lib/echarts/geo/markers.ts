@@ -12,7 +12,8 @@ import { toGeoView, type ViewSize } from './view';
 
 /** The input of `buildGeoOption`. The colors are CSS colors, from `lib/grafana/geo`. */
 export interface GeoMarkersInput {
-  markers: GeoMarkers;
+  /** The markers of each markers layer, in the core layer order. */
+  layers: GeoMarkers[];
   view: CoreMapView;
   size: ViewSize;
   basemapStyle: BasemapStyle;
@@ -23,8 +24,8 @@ export interface GeoMarkersInput {
  * mouse. "Fit to data" fits the markers.
  * https://echarts.apache.org/en/option.html#geo
  */
-export function buildGeoComponent({ markers, view, size, basemapStyle }: GeoMarkersInput): GeoComponentOption {
-  const positions: LonLat[] = markers.markers.map((m) => m.lonLat);
+export function buildGeoComponent({ layers, view, size, basemapStyle }: GeoMarkersInput): GeoComponentOption {
+  const positions: LonLat[] = layers.flatMap((l) => l.markers.map((m) => m.lonLat));
   return {
     map: BASEMAP_NAME,
     projection: webMercator,
@@ -49,16 +50,18 @@ function getSymbolOffset(align: SymbolAlign, size: number, rotation: number): [n
 // The shared options of the marker series. The markers have no tooltip or hover state yet (#332).
 const markerSeries = { type: 'scatter', coordinateSystem: 'geo', silent: true } as const;
 // ECharts draws a label over the symbols of a series of the same `z`. Core draws the symbols over the text, so the
-// symbol series are one level above the scatter default 2. https://echarts.apache.org/en/option.html#series-scatter.z
-const SYMBOL_Z = 3;
+// symbol series are one level above the text series. Each layer is 2 levels above the layer before it, so a layer
+// draws over each layer before it, as the core layer order. https://echarts.apache.org/en/option.html#series-scatter.z
+const TEXT_Z = 2;
+const Z_PER_LAYER = 2;
 
 /**
- * The basemap and the markers of the core markers layer. Each marker has the size, color, rotation and text of its
- * row. The series order is the core layer order: the text, then the symbols over it.
+ * The series of one core markers layer at the `z` of its text. Each marker has the size, color, rotation and text of
+ * its row. The series order is the core order in a layer: the text, then the symbols over it.
  * https://echarts.apache.org/en/option.html#series-scatter
  */
-export function buildGeoOption(input: GeoMarkersInput): EChartGeoOption {
-  const { markers, style } = input.markers;
+function buildMarkerSeries({ markers, style }: GeoMarkers, textZ: number): ScatterSeriesOption[] {
+  const symbolZ = textZ + 1;
   const { symbol, kind } = getMarkerSymbol(style.symbol);
   // Core turns the shapes and the icons, not the circle.
   const rotation = (deg: number) => (kind === 'circle' ? 0 : deg);
@@ -69,6 +72,7 @@ export function buildGeoOption(input: GeoMarkersInput): EChartGeoOption {
     const { fontSize, fontFamily, textAlign, textBaseline, offsetX, offsetY } = style.text;
     series.push({
       ...markerSeries,
+      z: textZ,
       symbolSize: 0,
       // OpenLayers `Text` at the marker position and the px offset. Core hides the text that overlaps (`declutter`).
       label: {
@@ -90,7 +94,7 @@ export function buildGeoOption(input: GeoMarkersInput): EChartGeoOption {
     // The faint disc that core adds behind each icon.
     series.push({
       ...markerSeries,
-      z: SYMBOL_Z,
+      z: symbolZ,
       symbol: 'circle',
       data: markers.map((m) => ({
         value: m.lonLat,
@@ -104,7 +108,7 @@ export function buildGeoOption(input: GeoMarkersInput): EChartGeoOption {
   if (style.showSymbol) {
     series.push({
       ...markerSeries,
-      z: SYMBOL_Z,
+      z: symbolZ,
       symbol,
       data: markers.map((m) => ({
         value: m.lonLat,
@@ -119,5 +123,11 @@ export function buildGeoOption(input: GeoMarkersInput): EChartGeoOption {
     });
   }
 
+  return series;
+}
+
+/** The basemap and the markers of each core markers layer. A later layer draws over the layers before it. */
+export function buildGeoOption(input: GeoMarkersInput): EChartGeoOption {
+  const series = input.layers.flatMap((layer, i) => buildMarkerSeries(layer, TEXT_Z + i * Z_PER_LAYER));
   return { geo: buildGeoComponent(input), series };
 }

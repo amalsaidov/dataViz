@@ -1,13 +1,18 @@
 import { createDataFrame, createTheme, type DataFrame, FieldType } from '@grafana/data';
 import { FrameGeometrySourceMode, type MapLayerOptions } from '@grafana/schema';
-import { getMarkers, MARKERS_LAYER_TYPE } from './markers';
+import { MARKERS_LAYER_TYPE } from './layers';
+import { getMarkerLayers } from './markers';
 import { getBasemapStyle } from './style';
 
 const theme = createTheme();
 
-/** The `[lon, lat]` of each marker. */
+/** The markers of the first markers layer, or no markers. */
+const getMarkers = (frames: DataFrame[], layers?: MapLayerOptions[]) =>
+  getMarkerLayers(frames, layers, theme)[0]?.markers ?? [];
+
+/** The `[lon, lat]` of each marker of the first markers layer. */
 const getMarkerPositions = (frames: DataFrame[], layers?: MapLayerOptions[]) =>
-  getMarkers(frames, layers, theme).markers.map((m) => m.lonLat);
+  getMarkers(frames, layers).map((m) => m.lonLat);
 
 const coords = (lat: Array<number | null>, lon: Array<number | null>) =>
   createDataFrame({
@@ -48,7 +53,7 @@ describe('getMarkers', () => {
     const layers = [
       { type: MARKERS_LAYER_TYPE, name: 'a', config: { style: { size: { field: 'v', fixed: 5, min: 2, max: 15 } } } },
     ] as MapLayerOptions[];
-    expect(getMarkers([frame], layers, theme).markers.map((m) => m.size)).toEqual([2, 15]);
+    expect(getMarkers([frame], layers).map((m) => m.size)).toEqual([2, 15]);
   });
 
   it('skips a second marker at the same position, as core', () => {
@@ -65,7 +70,7 @@ describe('getMarkers', () => {
     ]);
   });
 
-  it('reads the location of the first markers layer', () => {
+  it('reads the location of the markers layer, not of a layer of an other type', () => {
     const frame = createDataFrame({
       fields: [
         { name: 'lat', type: FieldType.number, values: [1] },
@@ -81,6 +86,34 @@ describe('getMarkers', () => {
     // Wikipedia geohash example: 57.64911, 10.40744.
     expect(marker[0]).toBeCloseTo(10.40744, 4);
     expect(marker[1]).toBeCloseTo(57.64911, 4);
+  });
+
+  it('gives the markers of each markers layer, in the layer order', () => {
+    const frame = coords([1], [2]);
+    const layers = [
+      { type: MARKERS_LAYER_TYPE, name: 'a', config: { style: { color: { fixed: 'red' } } } },
+      { type: 'heatmap', name: 'b' },
+      { type: MARKERS_LAYER_TYPE, name: 'c', config: { style: { color: { fixed: 'blue' } } } },
+    ] as MapLayerOptions[];
+    const result = getMarkerLayers([frame], layers, theme);
+    expect(result.map((l) => l.markers.map((m) => m.color))).toEqual([
+      [theme.visualization.getColorByName('red')],
+      [theme.visualization.getColorByName('blue')],
+    ]);
+  });
+
+  it('gives each layer the first frame of its filterData query, as core', () => {
+    const a = { ...coords([1], [2]), refId: 'A' };
+    const b = { ...coords([3], [4]), refId: 'B' };
+    const byRefId = (refId: string) => ({ id: 'byRefId', options: refId });
+    const layers = [
+      { type: MARKERS_LAYER_TYPE, name: 'a', filterData: byRefId('B') },
+      { type: MARKERS_LAYER_TYPE, name: 'b' },
+    ] as MapLayerOptions[];
+    expect(getMarkerLayers([a, b], layers, theme).map((l) => l.markers.map((m) => m.lonLat))).toEqual([
+      [[4, 3]],
+      [[2, 1]],
+    ]);
   });
 
   it('gives no markers for no frames or no location fields', () => {
