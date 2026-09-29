@@ -45,20 +45,21 @@ const wrapLongitude = (lon: number): number =>
 /**
  * The markers of one markers layer, as core draws them.
  * - Only the first frame of the layer gives markers: the frame loop of the core markers layer stops after one frame.
- *   The `filterData` option of the layer picks the frames (`getLayerFrames`).
+ *   The `filterData` option of the layer picks the frames (`getLayerFrames`, with the refIds of the panel queries).
  * - A row with no position gives no marker. Core skips a marker with the same position, color, size, text and
  *   rotation as an earlier one.
  */
 function getLayerMarkers(
   frames: DataFrame[],
   layer: Partial<MapLayerOptions<MarkersConfig>>,
-  theme: GrafanaTheme2
+  theme: GrafanaTheme2,
+  queryRefIds?: string[]
 ): GeoMarkers {
   const styleConfig = layer.config?.style;
   const style = getMarkerLayerStyle(styleConfig, theme);
   const tooltip = layer.tooltip !== false;
   const name = layer.name || 'Layer 1';
-  const frame = getLayerFrames(frames, layer)[0];
+  const frame = getLayerFrames(frames, layer, queryRefIds)[0];
   if (!frame) {
     return { markers: [], style, tooltip, name };
   }
@@ -88,9 +89,10 @@ function getLayerMarkers(
 export function getMarkerLayers(
   frames: DataFrame[],
   layers: MapLayerOptions[] | undefined,
-  theme: GrafanaTheme2
+  theme: GrafanaTheme2,
+  queryRefIds?: string[]
 ): GeoMarkers[] {
   return resolveLayers(layers)
     .filter((l) => l.type === MARKERS_LAYER_TYPE)
-    .map((l) => getLayerMarkers(frames, l, theme));
+    .map((l) => getLayerMarkers(frames, l, theme, queryRefIds));
 }

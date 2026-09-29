@@ -83,7 +83,8 @@ describe('Geo layers render', () => {
       { ...coordsFrame([[5, 5]]), refId: 'A' },
       { ...coordsFrame([[5, 8]]), refId: 'B' },
     ];
-    const drawn = draw(geoContext(frames, options([withText('a', '#ff0000', 'A'), withText('b', '#0000ff', 'B')])));
+    const layers = options([withText('a', '#ff0000', 'A'), withText('b', '#0000ff', 'B')]);
+    const drawn = draw({ ...geoContext(frames, layers), queryRefIds: ['A', 'B'] });
     // In each layer the text is under the symbols. All of layer `b` is over all of layer `a`.
     expect(drawn.map((d) => `${d.kind} ${d.fill}`)).toEqual([
       'text #ff0000',
@@ -100,12 +101,27 @@ describe('Geo layers render', () => {
       markersLayer('a', '#ff0000'),
       markersLayer('b', '#0000ff', { filterData: { id: 'byRefId', options: 'B' } }),
     ];
-    const [first, second] = draw(geoContext([a, b], options(layers)));
+    const [first, second] = draw({ ...geoContext([a, b], options(layers)), queryRefIds: ['A', 'B'] });
     // Layer `a` has no query: it draws the first frame (A). Layer `b` draws B, up and to the right of A.
     expect(second.x).toBeGreaterThan(first.x);
     expect(second.y).toBeLessThan(first.y);
     // The same layer alone, with no query, draws A at the position of `first`.
     const [alone] = draw(geoContext([a, b], options([markersLayer('b', '#0000ff')])));
     expect([alone.x, alone.y]).toEqual([first.x, first.y]);
+  });
+
+  it('draws no markers for a layer whose query returns no frame, as core applyLayerFilter', () => {
+    const a = { ...coordsFrame([[2, 2]]), refId: 'A' };
+    const layers = [
+      markersLayer('a', '#ff0000'),
+      markersLayer('c', '#0000ff', { filterData: { id: 'byRefId', options: 'C' } }),
+    ];
+    // Query C is in the panel and returns no frame: only layer `a` draws.
+    const drawn = draw({ ...geoContext([a], options(layers)), queryRefIds: ['A', 'C'] });
+    expect(drawn.map((d) => d.fill)).toEqual(['#ff0000']);
+    // Query C is not in the panel: core ignores the filter, so layer `c` draws frame A too.
+    const ignored = draw({ ...geoContext([a], options(layers)), queryRefIds: ['A'] });
+    expect(ignored.map((d) => d.fill)).toEqual(['#ff0000', '#0000ff']);
+    expect([ignored[1].x, ignored[1].y]).toEqual([drawn[0].x, drawn[0].y]);
   });
 });

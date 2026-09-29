@@ -1,7 +1,7 @@
 import { type NestedValueAccess, type PanelOptionsEditorBuilder, type StandardEditorContext } from '@grafana/data';
 import { FrameGeometrySourceMode, type MapLayerOptions } from '@grafana/schema';
 import { COUNTRIES_GAZETTEER_PATH } from 'lib/grafana/geo/gazetteer';
-import { getLayerFrames, MARKERS_LAYER_TYPE, replaceLayer, resolveLayers } from 'lib/grafana/geo/layers';
+import { getLayerEditorFrames, MARKERS_LAYER_TYPE, replaceLayer, resolveLayers } from 'lib/grafana/geo/layers';
 import { type PanelOptions } from 'types';
 import { GeoFrameSelectionEditor } from './GeoFrameSelectionEditor';
 import { GeoLayersEditor } from './GeoLayersEditor';
@@ -53,7 +53,7 @@ function layerValues(layers: MapLayerOptions[], index: number) {
     getContext: (context: StandardEditorContext<unknown>) => ({
       ...context,
       options: layer,
-      data: getLayerFrames(context.data, layer),
+      data: getLayerEditorFrames(context.data, layer),
     }),
   });
 }

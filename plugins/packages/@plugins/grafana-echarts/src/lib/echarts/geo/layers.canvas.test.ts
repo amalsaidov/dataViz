@@ -31,19 +31,49 @@ describe('Geo layers canvas renders', () => {
       refId: 'B',
     };
     const style = (color: string, size: number) => ({ color: { fixed: color }, size: { fixed: size }, opacity: 0.8 });
-    const ctx = geoContext([a, b], {
-      view: { id: 'coords', lat: 5, lon: 5, zoom: 3 },
-      layers: [
-        { type: 'markers', name: 'Layer 1', location: { mode: 'auto' }, config: { style: style('red', 8) } },
-        {
-          type: 'markers',
-          name: 'Layer 2',
-          location: { mode: 'auto' },
-          filterData: { id: 'byRefId', options: 'B' },
-          config: { style: style('blue', 5) },
-        },
-      ],
-    } as Partial<ChartContext['options']>);
+    const ctx: ChartContext = {
+      ...geoContext([a, b], {
+        view: { id: 'coords', lat: 5, lon: 5, zoom: 3 },
+        layers: [
+          { type: 'markers', name: 'Layer 1', location: { mode: 'auto' }, config: { style: style('red', 8) } },
+          {
+            type: 'markers',
+            name: 'Layer 2',
+            location: { mode: 'auto' },
+            filterData: { id: 'byRefId', options: 'B' },
+            config: { style: style('blue', 5) },
+          },
+        ],
+      } as Partial<ChartContext['options']>),
+      queryRefIds: ['A', 'B'],
+    };
+    const option = geoChartModule.buildOption(ctx, { isGrafanaLegend: true, plotWidth: width, plotHeight: height });
+    const { dom, dispose } = renderGeo(option ?? {}, width, height);
+    const events = readCanvasLayer(dom, DEFAULT_LAYER_SELECTOR);
+    dispose();
+
+    expect(normalizeCanvasEvents(events)).toMatchCanvasSnapshot([], { width, height });
+  });
+
+  it('a markers layer whose query returns no frame draws no markers', () => {
+    const a = { ...coordsFrame([[5, 5]]), refId: 'A' };
+    const style = (color: string) => ({ color: { fixed: color }, size: { fixed: 8 }, opacity: 0.8 });
+    const ctx: ChartContext = {
+      ...geoContext([a], {
+        view: { id: 'coords', lat: 5, lon: 5, zoom: 3 },
+        layers: [
+          { type: 'markers', name: 'Layer 1', location: { mode: 'auto' }, config: { style: style('red') } },
+          {
+            type: 'markers',
+            name: 'Layer 2',
+            location: { mode: 'auto' },
+            filterData: { id: 'byRefId', options: 'B' },
+            config: { style: style('blue') },
+          },
+        ],
+      } as Partial<ChartContext['options']>),
+      queryRefIds: ['A', 'B'],
+    };
     const option = geoChartModule.buildOption(ctx, { isGrafanaLegend: true, plotWidth: width, plotHeight: height });
     const { dom, dispose } = renderGeo(option ?? {}, width, height);
     const events = readCanvasLayer(dom, DEFAULT_LAYER_SELECTOR);

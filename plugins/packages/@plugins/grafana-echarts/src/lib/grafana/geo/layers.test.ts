@@ -3,6 +3,7 @@ import { type MapLayerOptions } from '@grafana/schema';
 import {
   addMarkersLayer,
   deleteLayer,
+  getLayerEditorFrames,
   getLayerFrames,
   getNextLayerName,
   isLayerNameFree,
@@ -50,8 +51,33 @@ describe('geo layers', () => {
     const b = createDataFrame({ refId: 'B', fields: [] });
     const filterData = (refId: string) => ({ id: FrameMatcherID.byRefId, options: refId });
     expect(getLayerFrames([a, b], {})).toEqual([a, b]);
-    expect(getLayerFrames([a, b], { filterData: filterData('B') })).toEqual([b]);
-    // No frame of that query: all frames, see `getLayerFrames`.
-    expect(getLayerFrames([a, b], { filterData: filterData('C') })).toEqual([a, b]);
+    expect(getLayerFrames([a, b], { filterData: filterData('B') }, ['A', 'B'])).toEqual([b]);
+  });
+
+  it('gives no frames for a panel query that returns no frame, as core applyLayerFilter', () => {
+    const a = createDataFrame({ refId: 'A', fields: [] });
+    const filterData = { id: FrameMatcherID.byRefId, options: 'C' };
+    expect(getLayerFrames([a], { filterData }, ['A', 'C'])).toEqual([]);
+  });
+
+  it('ignores the filter with no request, as core applyLayerFilter', () => {
+    const a = createDataFrame({ refId: 'A', fields: [] });
+    const b = createDataFrame({ refId: 'B', fields: [] });
+    expect(getLayerFrames([a, b], { filterData: { id: FrameMatcherID.byRefId, options: 'B' } })).toEqual([a, b]);
+  });
+
+  it('gives the location editor the matched frames, else all frames, as core layerEditor', () => {
+    const a = createDataFrame({ refId: 'A', fields: [] });
+    const b = createDataFrame({ refId: 'B', fields: [] });
+    const filterData = (refId: string) => ({ id: FrameMatcherID.byRefId, options: refId });
+    expect(getLayerEditorFrames([a, b], {})).toEqual([a, b]);
+    expect(getLayerEditorFrames([a, b], { filterData: filterData('B') })).toEqual([b]);
+    expect(getLayerEditorFrames([a, b], { filterData: filterData('C') })).toEqual([a, b]);
+  });
+
+  it('ignores the filter of a query that is not in the panel, as core applyLayerFilter', () => {
+    const a = createDataFrame({ refId: 'A', fields: [] });
+    const filterData = { id: FrameMatcherID.byRefId, options: 'C' };
+    expect(getLayerFrames([a], { filterData }, ['A'])).toEqual([a]);
   });
 });

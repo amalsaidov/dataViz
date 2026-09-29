@@ -110,10 +110,20 @@ describe('getMarkers', () => {
       { type: MARKERS_LAYER_TYPE, name: 'a', filterData: byRefId('B') },
       { type: MARKERS_LAYER_TYPE, name: 'b' },
     ] as MapLayerOptions[];
-    expect(getMarkerLayers([a, b], layers, theme).map((l) => l.markers.map((m) => m.lonLat))).toEqual([
+    expect(getMarkerLayers([a, b], layers, theme, ['A', 'B']).map((l) => l.markers.map((m) => m.lonLat))).toEqual([
       [[4, 3]],
       [[2, 1]],
     ]);
+  });
+
+  it('gives no markers to a layer whose query returns no frame, as core', () => {
+    const a = { ...coords([1], [2]), refId: 'A' };
+    const layers = [
+      { type: MARKERS_LAYER_TYPE, name: 'a', filterData: { id: 'byRefId', options: 'B' } },
+    ] as MapLayerOptions[];
+    expect(getMarkerLayers([a], layers, theme, ['A', 'B'])[0].markers).toEqual([]);
+    // Query B is not in the panel: core ignores the filter.
+    expect(getMarkerLayers([a], layers, theme, ['A'])[0].markers.map((m) => m.lonLat)).toEqual([[2, 1]]);
   });
 
   it('gives no markers for no frames or no location fields', () => {

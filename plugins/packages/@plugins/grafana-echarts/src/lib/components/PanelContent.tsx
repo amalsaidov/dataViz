@@ -56,6 +56,9 @@ export const PanelContent: React.FC<Props> = ({
     [data.series, theme, timeZone]
   );
 
+  // The refIds of the panel queries. The geo layers filter by them (`getLayerFrames`).
+  const queryRefIds = useMemo(() => data.request?.targets?.map((t) => t.refId), [data.request]);
+
   // Everything but the time selection. Split out because the selection is only meaningful
   // against the timeline below, so a context carrying both would be circular — and would
   // rebuild the whole stop list on every scrub.
@@ -63,6 +66,7 @@ export const PanelContent: React.FC<Props> = ({
     () => ({
       frames: data.series,
       annotations: data.annotations,
+      queryRefIds,
       theme,
       timeZone,
       timeRange,
@@ -76,6 +80,7 @@ export const PanelContent: React.FC<Props> = ({
     [
       data.series,
       data.annotations,
+      queryRefIds,
       theme,
       timeZone,
       timeRange,

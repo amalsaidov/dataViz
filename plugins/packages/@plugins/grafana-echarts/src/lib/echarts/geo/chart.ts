@@ -11,7 +11,7 @@ import { type ViewSize } from './view';
 /** The markers input of a render, from the frames, the core panel options and the theme. */
 function toMarkersInput(ctx: ChartContext, size: ViewSize): GeoMarkersInput {
   return {
-    layers: getMarkerLayers(ctx.frames, ctx.options.layers, ctx.theme),
+    layers: getMarkerLayers(ctx.frames, ctx.options.layers, ctx.theme, ctx.queryRefIds),
     view: resolveCoreMapView(ctx.options.view),
     size,
     basemapStyle: getBasemapStyle(ctx.theme),

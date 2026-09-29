@@ -43,7 +43,7 @@ markers layer. The map view, the basemap and the marker style have no editor yet
 | Tooltip of markers at the same position | ECharts shows the top marker only. Core lists each marker in a collapsed row (#512).                                                                                                                | Different     |
 | More than one markers layer             | Each `markers` layer draws in the list order, and the last layer is on top, as core ([layers.ts](../../lib/grafana/geo/layers.ts)).                                                                 | Supported     |
 | Other layer types                       | none: a layer that is not `markers` is not drawn (#333 to #337)                                                                                                                                     | Not supported |
-| Filter data by query (`filterData`)     | The layer uses the frames of that query. Core ignores a query that is not in the panel. This panel ignores a query that returns no frame.                                                           | Different     |
+| Filter data by query (`filterData`)     | The layer uses the frames of that query. A query that returns no frame gives no markers. A query that is not in the panel is ignored, as core.                                                      | Supported     |
 
 ## Editor
 

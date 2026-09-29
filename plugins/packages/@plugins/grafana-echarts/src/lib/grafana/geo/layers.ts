@@ -62,12 +62,32 @@ export const replaceLayer = (layers: MapLayerOptions[], index: number, layer: Ma
   layers.map((l, i) => (i === index ? layer : l));
 
 /**
- * The frames of a layer. A `filterData` matcher keeps the frames that it matches, as core `applyLayerFilter`.
- * With no `filterData`, the layer gets all frames.
- * Core applies the filter only when the panel has a query of that refId. The chart context has no queries, so a
- * filter that matches no frame gives all frames. Thus a query that returns no frame gives all frames, not none.
+ * The frames of a layer, as core `applyLayerFilter` in
+ * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/utils/layers.ts
+ * - Core applies `filterData` only when the panel has a query of that refId (`queryRefIds`). Then a query that
+ *   returns no frame gives no frames.
+ * - With no `filterData`, no request (no `queryRefIds`) or a query that is not in the panel, the layer gets all frames.
  */
-export function getLayerFrames(frames: DataFrame[], layer: Pick<MapLayerOptions, 'filterData'>): DataFrame[] {
+export function getLayerFrames(
+  frames: DataFrame[],
+  layer: Pick<MapLayerOptions, 'filterData'>,
+  queryRefIds?: string[]
+): DataFrame[] {
+  const { filterData } = layer;
+  // The byRefId matcher of the core editor saves the refId as `options`, as core compares it.
+  const refId: unknown = filterData?.options;
+  if (!filterData || !queryRefIds?.some((id) => id === refId)) {
+    return frames;
+  }
+  return frames.filter(getFrameMatchers(filterData));
+}
+
+/**
+ * The frames of the location editor of a layer, as core `layerEditor`: the frames that `filterData` matches. If it
+ * matches no frame, all frames.
+ * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/editor/layerEditor.tsx
+ */
+export function getLayerEditorFrames(frames: DataFrame[], layer: Pick<MapLayerOptions, 'filterData'>): DataFrame[] {
   if (!layer.filterData) {
     return frames;
   }

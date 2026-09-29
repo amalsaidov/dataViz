@@ -72,6 +72,11 @@ export interface ChartContext<T = SeriesType, C = EChartsFieldConfig, V = EChart
    */
   annotations?: DataFrame[];
   /**
+   * The refIds of the panel queries (`PanelData.request.targets`). Unset when there is no request.
+   * https://github.com/grafana/grafana/blob/main/packages/grafana-data/src/types/panel.ts
+   */
+  queryRefIds?: string[];
+  /**
    * The one timestamp the marks are read at, instead of reducing their rows away — the
    * relations time slider's selection (`ChartTimeSlider`). `null`/absent is the reducing
    * reading, which is every other family and every instant response. Panel-local transient
