@@ -53,6 +53,8 @@ export type HeatmapSeriesType = Extract<SeriesType, 'heatmap'>;
 export type HierarchySeriesType = Extract<SeriesType, 'treemap' | 'sunburst'>;
 /** Funnel render type of the part-to-whole family. Reuses the pie slice model. */
 export type FunnelSeriesType = Extract<SeriesType, 'funnel'>;
+/** The routing token of the geo family. */
+export type GeoSeriesType = Extract<SeriesType, 'map'>;
 /**
  * Single-axis stream charts. `themeRiver` is the only ECharts series that
  * *requires* the `singleAxis` coordinate system (its `dependencies` are

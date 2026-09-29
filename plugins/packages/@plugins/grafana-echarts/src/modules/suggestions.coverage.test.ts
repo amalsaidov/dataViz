@@ -1,6 +1,7 @@
 import { createDataFrame, type DataFrame, DataFrameType, FieldType, getPanelDataSummary } from '@grafana/data';
 import { supportedChartSeriesTypes } from 'lib/echarts/charts/registry';
 import { cartesianSuggestionsSupplier } from 'modules/cartesian/suggestions';
+import { geoSuggestionsSupplier } from 'modules/geo/suggestions';
 import { heatmapSuggestionsSupplier } from 'modules/heatmap/suggestions';
 import { hierarchySuggestionsSupplier } from 'modules/hierarchy/suggestions';
 import { multivariateSuggestionsSupplier } from 'modules/multivariate/suggestions';
@@ -22,6 +23,7 @@ import { streamSuggestionsSupplier } from 'modules/stream/suggestions';
  */
 const SUPPLIERS = [
   cartesianSuggestionsSupplier,
+  geoSuggestionsSupplier,
   heatmapSuggestionsSupplier,
   hierarchySuggestionsSupplier,
   multivariateSuggestionsSupplier,
@@ -117,6 +119,14 @@ const FIXTURES: Record<string, DataFrame[]> = {
         { name: 'value', type: FieldType.number, values: [100, 40] },
         { name: 'self', type: FieldType.number, values: [60, 40] },
         { name: 'label', type: FieldType.string, values: ['root', 'child'] },
+      ],
+    }),
+  ],
+  'lat/lon table': [
+    createDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [42.5, 23.4] },
+        { name: 'lon', type: FieldType.number, values: [1.6, 53.8] },
       ],
     }),
   ],
