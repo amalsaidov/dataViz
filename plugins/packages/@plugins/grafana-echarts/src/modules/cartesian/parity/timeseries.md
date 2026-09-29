@@ -18,35 +18,36 @@ styling defaults, exposing only a small set of per-field overrides.
 
 ## Panel options
 
-| Core Grafana option                                | ECharts equivalent                                                                                          | Status        |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
-| Tooltip: mode (Single/All/Hidden)                  | `tooltip.mode`                                                                                              | Supported     |
-| Tooltip: hover sort, hide zeros, max width         | none (ECharts renders its own box)                                                                          | Not supported |
-| Legend: visibility, mode, placement, width, values | Grafana legend via `addLegendOptions`                                                                       | Supported     |
-| Legend: series show/hide + color (interactive)     | `VizLegend` writes `hideFrom`/color field-config overrides                                                  | Supported     |
-| Axis: time zone editor                             | none (timeZone from panel context)                                                                          | Not supported |
-| Annotations: points and regions                    | `data.annotations` drawn as a dashed `markLine` (points, region edges) and a `markArea` band (regions)      | Partial       |
-| Annotations: markers and tooltip                   | A `custom` series draws the markers under the plot; its item tooltip shows the annotation                   | Partial       |
-| Annotations: add from the chart                    | Tooltip "Add annotation" button, ctrl/cmd + click (point), ctrl/cmd + drag (region), editor form            | Partial       |
-| Annotations: Hide lines and areas                  | Custom switch on `options.annotations`: `lines.width` and `regions.opacity`                                 | Supported     |
-| Annotations: Enable multi-row annotations          | `options.annotations.multiLane`: a row of markers for each annotation frame                                 | Supported     |
-| Annotations: Enable annotation clustering          | none                                                                                                        | Not supported |
-| —                                                  | `editorMode` radio (Default / Advanced editor tiers)                                                        | ECharts-only  |
-| —                                                  | Advanced: `performance.showPoints`, `performance.downsampling` (LTTB), `animation.enabled` (off by default) | Advanced      |
+| Core Grafana option                                | ECharts equivalent                                                                                     | Status        |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------- |
+| Tooltip: mode (Single/All/Hidden)                  | `tooltip.mode`                                                                                         | Supported     |
+| Tooltip: hover sort, hide zeros, max width         | none (ECharts renders its own box)                                                                     | Not supported |
+| Legend: visibility, mode, placement, width, values | Grafana legend via `addLegendOptions`                                                                  | Supported     |
+| Legend: series show/hide + color (interactive)     | `VizLegend` writes `hideFrom`/color field-config overrides                                             | Supported     |
+| Axis: time zone editor                             | none (timeZone from panel context)                                                                     | Not supported |
+| Annotations: points and regions                    | `data.annotations` drawn as a dashed `markLine` (points, region edges) and a `markArea` band (regions) | Partial       |
+| Annotations: markers and tooltip                   | A `custom` series draws the markers under the plot; its item tooltip shows the annotation              | Partial       |
+| Annotations: add from the chart                    | Tooltip "Add annotation" button, ctrl/cmd + click (point), ctrl/cmd + drag (region), editor form       | Partial       |
+| Annotations: Hide lines and areas                  | Custom switch on `options.annotations`: `lines.width` and `regions.opacity`                            | Supported     |
+| Annotations: Enable multi-row annotations          | `options.annotations.multiLane`: a row of markers for each annotation frame                            | Supported     |
+| Annotations: Enable annotation clustering          | none                                                                                                   | Not supported |
+| —                                                  | `editorMode` radio (Default / Advanced editor tiers)                                                   | ECharts-only  |
+| —                                                  | Advanced: `performance.downsampling` (LTTB), `animation.enabled` (off by default)                      | Advanced      |
 
 ## Graph styles (core custom field config)
 
-| Core Grafana option                                    | ECharts equivalent                                                                      | Status        |
-| ------------------------------------------------------ | --------------------------------------------------------------------------------------- | ------------- |
-| Style (lines/bars/points), line interpolation          | `seriesType` (line/bar/scatter)                                                         | Partial       |
-| Line width, fill opacity, gradient mode, line style    | none (ECharts defaults)                                                                 | Not supported |
-| Connect null values, disconnect values                 | none                                                                                    | Not supported |
-| Show points, point size                                | `performance.showPoints` (Advanced) -> `series.showSymbol`; point size not exposed      | Partial       |
-| Stack series                                           | panel `stacking` (none/normal/percent) plus per-field `stackSeries` override (bar only) | Partial       |
-| Axis placement                                         | per-field `axisPlacement`                                                               | Supported     |
-| Axis: label, width, soft min/max, scale, centered zero | none                                                                                    | Not supported |
-| Show thresholds (thresholds style)                     | per-field `thresholdsStyle.mode`                                                        | Supported     |
-| Hide in area (viz/legend/tooltip)                      | `custom.hideFrom` (via `addHideFrom`)                                                   | Partial       |
+| Core Grafana option                                    | ECharts equivalent                                                                                 | Status        |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | ------------- |
+| Style (lines/bars/points), line interpolation          | `seriesType` (line/bar/scatter)                                                                    | Partial       |
+| Line width, fill opacity                               | `lineWidth`, `fillOpacity` (panel options, Default tier) -> `lineStyle.width`, `areaStyle.opacity` | Partial       |
+| Gradient mode, line style                              | none (ECharts defaults)                                                                            | Not supported |
+| Connect null values, disconnect values                 | none                                                                                               | Not supported |
+| Show points, point size                                | `performance.showPoints` -> `series.showSymbol`, `pointSize` -> `symbolSize` (Default tier)        | Partial       |
+| Stack series                                           | panel `stacking` (none/normal/percent) plus per-field `stackSeries` override (bar only)            | Partial       |
+| Axis placement                                         | per-field `axisPlacement`                                                                          | Supported     |
+| Axis: label, width, soft min/max, scale, centered zero | none                                                                                               | Not supported |
+| Show thresholds (thresholds style)                     | per-field `thresholdsStyle.mode`                                                                   | Supported     |
+| Hide in area (viz/legend/tooltip)                      | `custom.hideFrom` (via `addHideFrom`)                                                              | Partial       |
 
 ## Standard (field-config) options
 

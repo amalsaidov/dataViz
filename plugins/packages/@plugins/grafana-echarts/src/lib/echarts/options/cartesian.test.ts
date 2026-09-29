@@ -490,10 +490,7 @@ describe('applyCartesianEditorModeDefaults', () => {
     ({ editorMode, ...extra }) as PanelOptions;
 
   it('forces advanced options back to their defaults in Default mode', () => {
-    const resolved = applyCartesianEditorModeDefaults(
-      withMode('default', { barWidth: 60, valueLabelPosition: 'inside' })
-    );
-    expect(resolved.barWidth).toBe(ADVANCED_CARTESIAN_DEFAULTS.barWidth);
+    const resolved = applyCartesianEditorModeDefaults(withMode('default', { valueLabelPosition: 'inside' }));
     expect(resolved.valueLabelPosition).toBe(ADVANCED_CARTESIAN_DEFAULTS.valueLabelPosition);
   });
 
@@ -510,8 +507,26 @@ describe('applyCartesianEditorModeDefaults', () => {
     expect(resolved.showValues).toBe('always');
   });
 
+  // #404: the options with core parity, or with a core mapping (#130), are Default tier and never reset.
+  // Explicit 0 values are kept too: the check is not a truthiness test.
+  const coreParity: Partial<PanelOptions> = {
+    lineWidth: 0,
+    fillOpacity: 40,
+    pointSize: 0,
+    barWidth: 60,
+    barRadius: 4,
+    barFillOpacity: 0,
+    xTickRotate: -45,
+    xTickLabelMaxLength: 8,
+    performance: { showPoints: 'never' },
+  };
+  it.each([undefined, 'default', 'advanced', 'api'] as const)('keeps each core-parity option in %s mode', (mode) => {
+    const resolved = applyCartesianEditorModeDefaults(withMode(mode, coreParity));
+    expect(resolved).toMatchObject(coreParity);
+  });
+
   it('passes stored advanced values through untouched in Advanced mode', () => {
-    const options = withMode('advanced', { barWidth: 60, fillOpacity: 40 });
+    const options = withMode('advanced', { valueLabelPosition: 'inside', animation: { enabled: true } });
     expect(applyCartesianEditorModeDefaults(options)).toBe(options);
   });
 });

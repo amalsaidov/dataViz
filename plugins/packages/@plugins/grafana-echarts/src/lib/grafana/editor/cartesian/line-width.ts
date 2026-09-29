@@ -1,15 +1,15 @@
 import { type PanelOptionsEditorBuilder } from '@grafana/data';
-import { CARTESIAN_LINE_WIDTH_DEFAULT, lineWidthPath } from 'editor/cartesian';
-import { addAdvancedNumberInput } from 'lib/grafana/editor/common/advanced-options';
+import { CARTESIAN_LINE_WIDTH_DEFAULT, cartesianGraphStylesCategoryName, lineWidthPath } from 'editor/cartesian';
 import { type PanelOptions } from 'types';
 
 /**
- * Register the Advanced cartesian "Line width" input (px; ECharts
+ * Register the Default-tier cartesian "Line width" input (px; ECharts
  * `lineStyle.width`). Only affects `line` series; empty uses ECharts' default.
  * Rendered by `getCartesianLineStyle`.
  */
 export function addCartesianLineWidthOptions(builder: PanelOptionsEditorBuilder<PanelOptions>) {
-  addAdvancedNumberInput(builder, {
+  builder.addNumberInput({
+    category: [cartesianGraphStylesCategoryName],
     path: lineWidthPath,
     name: 'Line width',
     description: 'Stroke width of line series (px). Empty uses the default.',

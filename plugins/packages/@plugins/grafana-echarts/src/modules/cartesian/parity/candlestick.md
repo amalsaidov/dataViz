@@ -54,7 +54,7 @@ Color), matching core Candlestick which uses the timeseries graph field config.
 - The defining Candlestick features (OHLC field mapping, candle mode/style,
   up/down colors) are not exposed. Making candlestick usable would require a
   panel-level render-type selector and OHLC mapping options.
-- The Advanced **Show points** and **Downsampling** options are registered for the
+- The **Show points** and Advanced **Downsampling** options are registered for the
   whole cartesian panel, so they appear here, but they do nothing: candlestick
   renders through `converters/multiValueCartesian.ts`, which never calls
   `getSeriesPerfOptions`. ECharts does support `large`/`largeThreshold` on

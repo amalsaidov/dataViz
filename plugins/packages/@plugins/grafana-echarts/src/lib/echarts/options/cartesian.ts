@@ -12,17 +12,7 @@ import {
   type XAXisOption,
   type YAXisOption,
 } from 'echarts/types/src/coord/cartesian/AxisModel';
-import {
-  CARTESIAN_ANIMATION_ENABLED_DEFAULT,
-  CARTESIAN_BAR_FILL_OPACITY_DEFAULT,
-  CARTESIAN_BAR_RADIUS_DEFAULT,
-  CARTESIAN_BAR_WIDTH_DEFAULT,
-  CARTESIAN_FILL_OPACITY_DEFAULT,
-  CARTESIAN_LINE_WIDTH_DEFAULT,
-  CARTESIAN_POINT_SIZE_DEFAULT,
-  CARTESIAN_VALUE_LABEL_POSITION_DEFAULT,
-  CARTESIAN_X_TICK_ROTATE_DEFAULT,
-} from 'editor/cartesian';
+import { CARTESIAN_ANIMATION_ENABLED_DEFAULT, CARTESIAN_VALUE_LABEL_POSITION_DEFAULT } from 'editor/cartesian';
 import { type CartesianSingleValueSeriesType } from 'editor/types';
 import { AXIS_FONT_SIZE, createBaseOptions, getUPlotGridColor } from 'lib/echarts/options/base';
 import { applyAdvancedDefaults } from 'lib/echarts/options/editorMode';
@@ -272,7 +262,7 @@ export function isSymbolSeriesType(type: string | undefined): type is 'line' | '
 }
 
 /**
- * Compose the Advanced "Point size" symbol keys with the Performance layer's
+ * Compose the "Point size" symbol keys with the Performance layer's
  * density-resolved `showSymbol`.
  *
  * The two options own different halves of the same ECharts surface: Point size
@@ -299,11 +289,11 @@ function resolveCartesianSymbol(
 }
 
 /**
- * Build one cartesian series with its Advanced value-label / geometry / style
+ * Build one cartesian series with its value-label / geometry / style
  * options, dispatching on the resolved render type. Each branch returns a
  * concrete series literal with a literal `type`, so the result assigns to
  * ECharts' discriminated `series` union with no cast (a shared object carrying
- * `barWidth` *and* `areaStyle` could not). Every Advanced key is omitted at its
+ * `barWidth` *and* `areaStyle` could not). Every style key is omitted at its
  * default (see the per-option builders), so an untouched panel emits exactly the
  * color-only series it did before. Shared by both cartesian converters.
  */
@@ -388,20 +378,13 @@ export function buildCartesianSeries(
  * Default values for every Advanced-gated cartesian option, keyed by its
  * `PanelOptions` path. Spread over the stored options in Default editor mode (see
  * `applyCartesianEditorModeDefaults`) so a panel with Advanced values configured
- * and then hidden renders exactly like an untouched cartesian panel. The
- * Default-tier `showValues` is intentionally absent (it is never hidden, so it is
- * not reset). `animation` is included (the shared `@internal animation.enabled`)
- * so Default mode restores animation too. Mirrors `ADVANCED_PIE_DEFAULTS`.
+ * and then hidden renders exactly like an untouched cartesian panel. Options with
+ * core parity, or with a core mapping in `modules/cartesian/compat/` (#130), are
+ * Default tier and are not in this set (#404). `animation` is the shared
+ * `@internal animation.enabled`. Mirrors `ADVANCED_PIE_DEFAULTS`.
  */
 export const ADVANCED_CARTESIAN_DEFAULTS: Partial<PanelOptions> = {
   valueLabelPosition: CARTESIAN_VALUE_LABEL_POSITION_DEFAULT,
-  barWidth: CARTESIAN_BAR_WIDTH_DEFAULT,
-  barRadius: CARTESIAN_BAR_RADIUS_DEFAULT,
-  barFillOpacity: CARTESIAN_BAR_FILL_OPACITY_DEFAULT,
-  lineWidth: CARTESIAN_LINE_WIDTH_DEFAULT,
-  fillOpacity: CARTESIAN_FILL_OPACITY_DEFAULT,
-  pointSize: CARTESIAN_POINT_SIZE_DEFAULT,
-  xTickRotate: CARTESIAN_X_TICK_ROTATE_DEFAULT,
   animation: { enabled: CARTESIAN_ANIMATION_ENABLED_DEFAULT },
 };
 

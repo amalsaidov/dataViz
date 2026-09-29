@@ -2,6 +2,7 @@ import { type PanelOptionsEditorBuilder } from '@grafana/data';
 import { StackingMode } from '@grafana/schema';
 import {
   CARTESIAN_ORIENTATION_DEFAULT,
+  cartesianBarChartCategoryName,
   colorByFieldPath,
   fullHighlightPath,
   orientationOptions,
@@ -13,7 +14,7 @@ import { resolvePanelStacking } from 'lib/echarts/options/bars';
 import { type PanelOptions } from 'types';
 
 /** Editor category of the core Bar chart options. */
-const category = ['Bar chart'];
+const category = [cartesianBarChartCategoryName];
 
 /**
  * Register the core Bar chart panel options: Stacking, Orientation, "Highlight

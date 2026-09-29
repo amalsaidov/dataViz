@@ -1,15 +1,20 @@
 import { type PanelOptionsEditorBuilder } from '@grafana/data';
-import { xTickLabelMaxLengthPath, xTickLabelSpacingOptions, xTickLabelSpacingPath } from 'editor/cartesian';
-import { addAdvancedNumberInput } from 'lib/grafana/editor/common/advanced-options';
+import {
+  cartesianAxisCategoryName,
+  xTickLabelMaxLengthPath,
+  xTickLabelSpacingOptions,
+  xTickLabelSpacingPath,
+} from 'editor/cartesian';
 import { type PanelOptions } from 'types';
 
 /**
- * Register the core Bar chart x tick label options: the Advanced "X-axis tick
+ * Register the core Bar chart x tick label options: the "X-axis tick
  * label max length" (only with rotated labels, as core) and the "X-axis labels
  * minimum spacing". Category x-axis only. Rendered by `getCategoryTickLabel`.
  */
 export function addCartesianXTickLabelOptions(builder: PanelOptionsEditorBuilder<PanelOptions>) {
-  addAdvancedNumberInput(builder, {
+  builder.addNumberInput({
+    category: [cartesianAxisCategoryName],
     path: xTickLabelMaxLengthPath,
     name: 'X-axis tick label max length',
     description: 'X-axis labels longer than this are cut, with an ellipsis. Rotated labels only.',
@@ -19,7 +24,7 @@ export function addCartesianXTickLabelOptions(builder: PanelOptionsEditorBuilder
   builder.addRadio({
     path: xTickLabelSpacingPath,
     name: 'X-axis labels minimum spacing',
-    category: ['Axis'],
+    category: [cartesianAxisCategoryName],
     defaultValue: 0,
     settings: { options: xTickLabelSpacingOptions },
   });

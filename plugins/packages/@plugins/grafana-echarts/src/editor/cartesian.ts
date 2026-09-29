@@ -120,10 +120,18 @@ export const thresholdsStyleModePath = 'thresholdsStyle.mode';
 export const thresholdsStyleModeName = 'Show thresholds';
 
 /* --- Categorical multi-axis parity uplift: value labels + geometry/style ------
- * Curated Bar-chart-parity / ECharts options grouped Default (value labels) vs
- * Advanced (position, geometry, stroke). Each render helper (see
+ * Curated Bar-chart-parity / ECharts options. The options with core parity (value
+ * labels, geometry, stroke) are Default tier (#404); the label position is Advanced. Each render helper (see
  * `options/cartesian.ts`) omits its ECharts key at the default so untouched
  * panels render identically. */
+
+/**
+ * Editor categories of the Default-tier cartesian style options. The names are
+ * the core Time series / Bar chart section names, because each option has core parity.
+ */
+export const cartesianGraphStylesCategoryName = 'Graph styles';
+export const cartesianBarChartCategoryName = 'Bar chart';
+export const cartesianAxisCategoryName = 'Axis';
 
 /**
  * Editor category for the cartesian "Value labels" control. Its Default-tier
@@ -161,7 +169,7 @@ export const CARTESIAN_VALUE_LABEL_POSITION_DEFAULT: CartesianValueLabelPosition
 
 /**
  * Panel option path for the bar width as a percentage of the category band
- * (ECharts `series.barWidth`). Advanced-only; only affects `bar` series. Unset
+ * (ECharts `series.barWidth`). Default tier; only affects `bar` series. Unset
  * uses ECharts' auto width. See `getBarWidth`.
  */
 export const barWidthPath = 'barWidth';
@@ -170,7 +178,7 @@ export const CARTESIAN_BAR_WIDTH_DEFAULT: number | undefined = undefined;
 
 /**
  * Panel option path for the bar corner radius in px (ECharts
- * `itemStyle.borderRadius`). Advanced-only; `bar` series. `0` (square) omits the
+ * `itemStyle.borderRadius`). Default tier; `bar` series. `0` (square) omits the
  * key. See `getBarRadius` / `getCartesianItemStyle`.
  */
 export const barRadiusPath = 'barRadius';
@@ -179,7 +187,7 @@ export const CARTESIAN_BAR_RADIUS_DEFAULT = 0;
 
 /**
  * Panel option path for the line width in px (ECharts `lineStyle.width`).
- * Advanced-only; `line` series. Unset uses ECharts' default. See `getCartesianLineStyle`.
+ * Default tier; `line` series. Unset uses ECharts' default. See `getCartesianLineStyle`.
  */
 export const lineWidthPath = 'lineWidth';
 /** Default line width: unset (ECharts default, 2px), so no `width` is written. */
@@ -187,7 +195,7 @@ export const CARTESIAN_LINE_WIDTH_DEFAULT: number | undefined = undefined;
 
 /**
  * Panel option path for the line fill opacity 0–100 (ECharts `areaStyle.opacity`;
- * a non-zero value turns a line into an area chart). Advanced-only; `line`
+ * a non-zero value turns a line into an area chart). Default tier; `line`
  * series. `0` omits the area fill. See `getCartesianAreaStyle`.
  */
 export const fillOpacityPath = 'fillOpacity';
@@ -196,7 +204,7 @@ export const CARTESIAN_FILL_OPACITY_DEFAULT = 0;
 
 /**
  * Panel option path for the point (symbol) size in px (ECharts `symbolSize`);
- * `0` hides the points (`showSymbol: false`). Advanced-only; line/scatter
+ * `0` hides the points (`showSymbol: false`). Default tier; line/scatter
  * series. Unset uses ECharts' default symbol. See `getCartesianSymbol`.
  */
 export const pointSizePath = 'pointSize';
@@ -205,7 +213,7 @@ export const CARTESIAN_POINT_SIZE_DEFAULT: number | undefined = undefined;
 
 /**
  * Panel option path for the x-axis tick label rotation in degrees (ECharts
- * `xAxis.axisLabel.rotate`). Advanced-only. `0` omits the key. See `getXTickRotate`.
+ * `xAxis.axisLabel.rotate`). Default tier. `0` omits the key. See `getXTickRotate`.
  */
 export const xTickRotatePath = 'xTickRotate';
 /** Default x tick rotation: 0 (horizontal labels; omitted). */
@@ -232,7 +240,7 @@ export const orientationOptions: Array<SelectableValue<VizOrientation>> = [
 /** Default orientation: `auto`, as core Bar chart. */
 export const CARTESIAN_ORIENTATION_DEFAULT = VizOrientation.Auto;
 
-/** Panel option path for the bar fill opacity, 0 to 100. Advanced-only. */
+/** Panel option path for the bar fill opacity, 0 to 100. Default tier. */
 export const barFillOpacityPath = 'barFillOpacity';
 /** Default bar fill opacity: 80, the core Bar chart `fillOpacity` default. */
 export const CARTESIAN_BAR_FILL_OPACITY_DEFAULT = 80;

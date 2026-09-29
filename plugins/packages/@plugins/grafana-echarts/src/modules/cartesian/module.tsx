@@ -145,9 +145,9 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
   .setPanelOptions((builder) => {
     // Editor mode (Default / Advanced) — tiers the editor surface. Registered
     // first so it renders at the top. The core-parity controls below are always
-    // shown; ECharts-only options (bar/line geometry, value-label position, tick
-    // rotation) and the Performance overrides gate on Advanced via
-    // `showIf: isAdvancedEditorMode`. See docs/options-modes.md.
+    // shown, including the bar/line geometry, tick rotation and Show points (#404).
+    // The ECharts-only options (value-label position, Downsampling, Animation) gate
+    // on Advanced via `showIf: isAdvancedEditorMode`. See docs/options-modes.md.
     addEditorModeOption(builder);
 
     // Panel-level series type: the base render type applied to every field (the
@@ -182,9 +182,8 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
     // placement. Rendered by `getCartesianValueLabel`.
     addCartesianValueLabelOptions(builder);
 
-    // Advanced ECharts geometry / style options. Each builder gates its control
-    // behind Advanced editor mode and omits its ECharts key at the default so
-    // untouched panels render identically.
+    // Core-parity geometry / style options (Default tier). Each builder omits its
+    // ECharts key at the default so untouched panels render identically.
     addCartesianBarWidthOptions(builder); // series.barWidth (bar)
     addCartesianBarRadiusOptions(builder); // itemStyle.borderRadius (bar)
     addCartesianBarFillOpacityOptions(builder); // itemStyle color alpha (bar)
@@ -200,8 +199,8 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
     // "Text size > Value" sets the bar value label size; unset fits the bars.
     commonOptionsBuilder.addTextSizeOptions(builder, { withTitle: false, withValue: true });
 
-    // Advanced-gated performance overrides (Show points / Downsampling /
-    // Animation). ECharts' big-data levers are auto-tuned above density
+    // Performance overrides: Show points (Default tier, core parity), and the
+    // Advanced-gated Downsampling / Animation. ECharts' big-data levers are auto-tuned above density
     // thresholds; these let power users override the auto behavior. Cartesian
     // only — the time-series fast path doesn't apply to the other families, which
     // register the shared animation switch on its own via `addAnimationOption`.

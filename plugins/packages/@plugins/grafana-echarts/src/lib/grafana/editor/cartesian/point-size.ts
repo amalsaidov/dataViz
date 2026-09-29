@@ -1,15 +1,15 @@
 import { type PanelOptionsEditorBuilder } from '@grafana/data';
-import { CARTESIAN_POINT_SIZE_DEFAULT, pointSizePath } from 'editor/cartesian';
-import { addAdvancedNumberInput } from 'lib/grafana/editor/common/advanced-options';
+import { CARTESIAN_POINT_SIZE_DEFAULT, cartesianGraphStylesCategoryName, pointSizePath } from 'editor/cartesian';
 import { type PanelOptions } from 'types';
 
 /**
- * Register the Advanced cartesian "Point size" input (px; ECharts `symbolSize`).
+ * Register the Default-tier cartesian "Point size" input (px; ECharts `symbolSize`).
  * `0` hides the points; empty uses ECharts' default symbol. Affects line/scatter
  * series. Rendered by `getCartesianSymbol`.
  */
 export function addCartesianPointSizeOptions(builder: PanelOptionsEditorBuilder<PanelOptions>) {
-  addAdvancedNumberInput(builder, {
+  builder.addNumberInput({
+    category: [cartesianGraphStylesCategoryName],
     path: pointSizePath,
     name: 'Point size',
     description: 'Marker size for line/scatter points (px). 0 hides the points.',
