@@ -395,7 +395,7 @@ runs:
 
         # Turns src/locales/en-US/x.json into a pattern matching any locale
         # directory, so the translated siblings of a declared en-US path are
-        # recognised without having to enumerate all 18 of them.
+        # recognized without having to enumerate all 18 of them.
         #
         # Escape first, then anchor. Both matter: an unescaped '.' is a regex
         # wildcard, and an unanchored pattern matches any path that merely

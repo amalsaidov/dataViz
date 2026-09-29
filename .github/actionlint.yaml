@@ -6,7 +6,7 @@ paths:
     ignore:
       # The i18n workflows reference this repo's own actions as
       # `$/.github/actions/<name>`, GitHub's self-repository syntax. actionlint
-      # only recognises `./`, `docker://` and `{owner}/{repo}@{ref}`, so it
+      # only recognizes `./`, `docker://` and `{owner}/{repo}@{ref}`, so it
       # reads the `$/` form as a reference with a missing ref.
       #
       # Not a version problem — v1.7.12 is the newest release and its master
