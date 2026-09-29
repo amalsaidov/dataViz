@@ -1,25 +1,5 @@
 // The fixed styles of the geo panel, from the Grafana theme.
-import { colorManipulator, type GrafanaTheme2 } from '@grafana/data';
-
-/** The colors and size of a marker, as CSS colors and px. */
-export interface MarkerStyle {
-  fill: string;
-  stroke: string;
-  lineWidth: number;
-  /** The circle radius in px. */
-  radius: number;
-}
-
-/**
- * The fixed style of core `defaultStyleConfig`: a circle of radius 5, `dark-green` at opacity 0.4, with a stroke of
- * width 1. Core `circleMarker` applies the opacity to the fill only.
- * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/style/types.ts
- * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/style/markers.ts
- */
-export function getDefaultMarkerStyle(theme: GrafanaTheme2): MarkerStyle {
-  const color = theme.visualization.getColorByName('dark-green');
-  return { fill: colorManipulator.alpha(color, 0.4), stroke: color, lineWidth: 1, radius: 5 };
-}
+import { type GrafanaTheme2 } from '@grafana/data';
 
 /** The colors of the country shapes, as CSS colors. */
 export interface BasemapStyle {

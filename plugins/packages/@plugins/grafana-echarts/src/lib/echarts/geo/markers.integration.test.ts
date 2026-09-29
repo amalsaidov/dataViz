@@ -95,10 +95,11 @@ describe('Geo markers render', () => {
     });
   });
 
-  it('draws the core default style: radius 5, dark-green fill at 0.4, full stroke', () => {
+  it('draws the core default style: radius 5, dark-green at the alpha 0.4 * 0.4, no stroke', () => {
     const [marker] = drawMarkers(geoContext([coordsFrame(points)], europe), width, height);
 
-    expect(marker).toMatchObject({ radius: 5, fill: 'rgba(55, 135, 45, 0.4)', stroke: '#37872d', alpha: 1 });
+    // Core WebGL applies the opacity 0.4 two times, and its stroke has the fill color.
+    expect(marker).toMatchObject({ radius: 5, fill: 'rgba(55, 135, 45, 0.16)', stroke: '', alpha: 1 });
   });
 
   it('fits the markers in the panel for the "Fit to data" view', () => {

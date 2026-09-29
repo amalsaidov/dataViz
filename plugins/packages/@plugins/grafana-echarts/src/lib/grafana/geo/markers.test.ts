@@ -1,7 +1,13 @@
-import { createDataFrame, createTheme, FieldType } from '@grafana/data';
+import { createDataFrame, createTheme, type DataFrame, FieldType } from '@grafana/data';
 import { FrameGeometrySourceMode, type MapLayerOptions } from '@grafana/schema';
-import { getMarkerPositions, MARKERS_LAYER_TYPE } from './markers';
-import { getBasemapStyle, getDefaultMarkerStyle } from './style';
+import { getMarkers, MARKERS_LAYER_TYPE } from './markers';
+import { getBasemapStyle } from './style';
+
+const theme = createTheme();
+
+/** The `[lon, lat]` of each marker. */
+const getMarkerPositions = (frames: DataFrame[], layers?: MapLayerOptions[]) =>
+  getMarkers(frames, layers, theme).markers.map((m) => m.lonLat);
 
 const coords = (lat: Array<number | null>, lon: Array<number | null>) =>
   createDataFrame({
@@ -11,7 +17,7 @@ const coords = (lat: Array<number | null>, lon: Array<number | null>) =>
     ],
   });
 
-describe('getMarkerPositions', () => {
+describe('getMarkers', () => {
   it('gives one [lon, lat] marker for each row with a position', () => {
     expect(getMarkerPositions([coords([51, null, -33.9], [0, 10, 151.2])])).toEqual([
       [0, 51],
@@ -29,6 +35,20 @@ describe('getMarkerPositions', () => {
     expect(getMarkerPositions(frames, undefined)).toEqual([[2, 1]]);
     expect(getMarkerPositions(frames, [])).toEqual([]);
     expect(getMarkerPositions(frames, [heatmap])).toEqual([]);
+  });
+
+  it('keeps a second marker at the same position with a different size, as core', () => {
+    const frame = createDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [1, 1] },
+        { name: 'lon', type: FieldType.number, values: [2, 2] },
+        { name: 'v', type: FieldType.number, values: [1, 2] },
+      ],
+    });
+    const layers = [
+      { type: MARKERS_LAYER_TYPE, name: 'a', config: { style: { size: { field: 'v', fixed: 5, min: 2, max: 15 } } } },
+    ] as MapLayerOptions[];
+    expect(getMarkers([frame], layers, theme).markers.map((m) => m.size)).toEqual([2, 15]);
   });
 
   it('skips a second marker at the same position, as core', () => {
@@ -72,13 +92,6 @@ describe('getMarkerPositions', () => {
 });
 
 describe('geo styles', () => {
-  const theme = createTheme();
-
-  it('gives the core default marker: dark-green, fill opacity 0.4, radius 5, stroke 1', () => {
-    // `#37872D` is `dark-green`; `66` is the alpha 0.4.
-    expect(getDefaultMarkerStyle(theme)).toEqual({ fill: '#37872D66', stroke: '#37872D', lineWidth: 1, radius: 5 });
-  });
-
   it('gives the basemap theme colors', () => {
     expect(getBasemapStyle(theme)).toEqual({
       area: theme.colors.background.secondary,
