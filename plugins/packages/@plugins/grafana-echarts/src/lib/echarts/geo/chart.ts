@@ -15,6 +15,7 @@ function toMarkersInput(ctx: ChartContext, size: ViewSize): GeoMarkersInput {
     view: resolveCoreMapView(ctx.options.view),
     size,
     basemapStyle: getBasemapStyle(ctx.theme),
+    tooltip: { theme: ctx.theme, timeZone: ctx.timeZone, tooltipSink: ctx.tooltipSink },
   };
 }
 

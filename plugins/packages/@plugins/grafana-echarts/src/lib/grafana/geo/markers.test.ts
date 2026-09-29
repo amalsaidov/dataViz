@@ -132,3 +132,34 @@ describe('geo styles', () => {
     });
   });
 });
+
+const getFirstLayer = (frames: DataFrame[], layers?: MapLayerOptions[]) => getMarkerLayers(frames, layers, theme)[0];
+describe('getMarkers tooltip data', () => {
+  it('gives the frame row of each marker, after the rows with no position', () => {
+    const frame = coords([51, null, -33.9], [0, 10, 151.2]);
+    const { markers, frame: markerFrame } = getFirstLayer([frame], undefined);
+    expect(markers.map((m) => m.rowIndex)).toEqual([0, 2]);
+    expect(markerFrame).toBe(frame);
+  });
+
+  it('shows the tooltip unless the layer sets tooltip false, as core', () => {
+    const layer = (tooltip?: boolean) =>
+      ({
+        type: MARKERS_LAYER_TYPE,
+        name: 'a',
+        tooltip,
+        location: { mode: FrameGeometrySourceMode.Auto },
+      }) as MapLayerOptions;
+    const frames = [coords([1], [2])];
+    expect(getFirstLayer(frames, undefined).tooltip).toBe(true);
+    expect(getFirstLayer(frames, [layer()]).tooltip).toBe(true);
+    expect(getFirstLayer(frames, [layer(false)]).tooltip).toBe(false);
+  });
+
+  it('gives the layer name, or Layer 1 for a layer with no name, as core', () => {
+    const frames = [coords([1], [2])];
+    const named = { type: MARKERS_LAYER_TYPE, name: 'Cities', location: { mode: FrameGeometrySourceMode.Auto } };
+    expect(getFirstLayer(frames, [named as MapLayerOptions]).name).toBe('Cities');
+    expect(getFirstLayer(frames, undefined).name).toBe('Layer 1');
+  });
+});

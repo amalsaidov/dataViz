@@ -2,12 +2,13 @@ import { type GeoComponentOption, type ScatterSeriesOption } from 'echarts';
 import { type EChartGeoOption } from 'lib/echarts/charts/types';
 import { type LonLat } from 'lib/grafana/geo/gazetteer';
 import { type SymbolAlign } from 'lib/grafana/geo/dimensions';
-import { type GeoMarkers } from 'lib/grafana/geo/markers';
+import { type GeoMarker, type GeoMarkers } from 'lib/grafana/geo/markers';
 import { type BasemapStyle } from 'lib/grafana/geo/style';
 import { type CoreMapView } from 'lib/grafana/geo/view';
 import { BASEMAP_NAME } from './basemap';
 import { WORLD_BOUNDING_COORDS, webMercator } from './projection';
 import { getMarkerSymbol } from './symbols';
+import { geoMarkerTooltip, type GeoTooltipContext } from './tooltip';
 import { toGeoView, type ViewSize } from './view';
 
 /** The input of `buildGeoOption`. The colors are CSS colors, from `lib/grafana/geo`. */
@@ -17,6 +18,8 @@ export interface GeoMarkersInput {
   view: CoreMapView;
   size: ViewSize;
   basemapStyle: BasemapStyle;
+  /** The theme, time zone and sink of the marker tooltip. */
+  tooltip: GeoTooltipContext;
 }
 
 /**
@@ -47,8 +50,25 @@ function getSymbolOffset(align: SymbolAlign, size: number, rotation: number): [n
   return [x * Math.cos(angle) - y * Math.sin(angle), x * Math.sin(angle) + y * Math.cos(angle)];
 }
 
-// The shared options of the marker series. The markers have no tooltip or hover state yet (#332).
+// The shared options of the marker series.
 const markerSeries = { type: 'scatter', coordinateSystem: 'geo', silent: true } as const;
+
+/**
+ * The mouse options of a series of the markers in `data`. A layer with a tooltip reacts to the mouse and shows the
+ * tooltip of the marker row. Core draws no hover state, so the emphasis is off.
+ * https://echarts.apache.org/en/option.html#series-scatter.emphasis.disabled
+ */
+function markerMouse(
+  layer: GeoMarkers,
+  data: GeoMarker[],
+  ctx: GeoTooltipContext
+): Pick<ScatterSeriesOption, 'silent' | 'emphasis' | 'tooltip'> {
+  if (!layer.tooltip) {
+    return { silent: true };
+  }
+  return { silent: false, emphasis: { disabled: true }, tooltip: geoMarkerTooltip(layer, data, ctx) };
+}
+
 // ECharts draws a label over the symbols of a series of the same `z`. Core draws the symbols over the text, so the
 // symbol series are one level above the text series. Each layer is 2 levels above the layer before it, so a layer
 // draws over each layer before it, as the core layer order. https://echarts.apache.org/en/option.html#series-scatter.z
@@ -60,7 +80,8 @@ const Z_PER_LAYER = 2;
  * its row. The series order is the core order in a layer: the text, then the symbols over it.
  * https://echarts.apache.org/en/option.html#series-scatter
  */
-function buildMarkerSeries({ markers, style }: GeoMarkers, textZ: number): ScatterSeriesOption[] {
+function buildMarkerSeries(layer: GeoMarkers, textZ: number, tooltip: GeoTooltipContext): ScatterSeriesOption[] {
+  const { markers, style } = layer;
   const symbolZ = textZ + 1;
   const { symbol, kind } = getMarkerSymbol(style.symbol);
   // Core turns the shapes and the icons, not the circle.
@@ -70,8 +91,10 @@ function buildMarkerSeries({ markers, style }: GeoMarkers, textZ: number): Scatt
 
   if (style.text) {
     const { fontSize, fontFamily, textAlign, textBaseline, offsetX, offsetY } = style.text;
+    const withText = markers.filter((m) => m.text);
     series.push({
       ...markerSeries,
+      ...markerMouse(layer, withText, tooltip),
       z: textZ,
       symbolSize: 0,
       // OpenLayers `Text` at the marker position and the px offset. Core hides the text that overlaps (`declutter`).
@@ -86,7 +109,7 @@ function buildMarkerSeries({ markers, style }: GeoMarkers, textZ: number): Scatt
         fontWeight: 'normal',
       },
       labelLayout: { hideOverlap: true },
-      data: markers.filter((m) => m.text).map((m) => ({ name: m.text, value: m.lonLat, label: { color: m.color } })),
+      data: withText.map((m) => ({ name: m.text, value: m.lonLat, label: { color: m.color } })),
     });
   }
 
@@ -108,6 +131,7 @@ function buildMarkerSeries({ markers, style }: GeoMarkers, textZ: number): Scatt
   if (style.showSymbol) {
     series.push({
       ...markerSeries,
+      ...markerMouse(layer, markers, tooltip),
       z: symbolZ,
       symbol,
       data: markers.map((m) => ({
@@ -128,6 +152,6 @@ function buildMarkerSeries({ markers, style }: GeoMarkers, textZ: number): Scatt
 
 /** The basemap and the markers of each core markers layer. A later layer draws over the layers before it. */
 export function buildGeoOption(input: GeoMarkersInput): EChartGeoOption {
-  const series = input.layers.flatMap((layer, i) => buildMarkerSeries(layer, TEXT_Z + i * Z_PER_LAYER));
+  const series = input.layers.flatMap((layer, i) => buildMarkerSeries(layer, TEXT_Z + i * Z_PER_LAYER, input.tooltip));
   return { geo: buildGeoComponent(input), series };
 }

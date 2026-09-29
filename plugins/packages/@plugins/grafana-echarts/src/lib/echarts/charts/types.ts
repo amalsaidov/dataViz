@@ -40,7 +40,7 @@ import {
 // renders on) is declared in ECharts' shared types but not re-exported from the
 // `echarts` barrel, so it is imported from there directly (as `ECBasicOption` and
 // `TooltipOption` are elsewhere in this codebase).
-import { type SingleAxisOption } from 'echarts/types/dist/shared';
+import { type SingleAxisOption, type TooltipOption } from 'echarts/types/dist/shared';
 import { type LineSeriesOption } from 'echarts/types/src/chart/line/LineSeries';
 import {
   type CartesianSingleValueSeriesType,
@@ -438,6 +438,13 @@ export interface ChartModule {
    * {@link TooltipModelOptions.multiValueDimensions}.
    */
   getTooltipDimensions?(ctx: ChartContext): string[] | undefined;
+
+  /**
+   * The panel `tooltip` of the family, in place of the one of `buildPanelTooltip`. Only the geo family sets it:
+   * its tooltip modes are the core Geomap modes, not the Single, All and Hidden modes of the other panels.
+   * https://echarts.apache.org/en/option.html#tooltip
+   */
+  getTooltipOption?(ctx: ChartContext): TooltipOption;
 
   /**
    * The family has no meaningful "All" tooltip, so a persisted

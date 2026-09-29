@@ -127,7 +127,7 @@ export function buildPanelChartOption(
   return {
     ...echartOption,
     ...(previewSeries ? { series: previewSeries } : {}),
-    tooltip: isPreview ? { show: false } : tooltipOption,
+    tooltip: isPreview ? { show: false } : (chartModule.getTooltipOption?.(ctx) ?? tooltipOption),
     // Animation is opt-in and off by default for every family — density thresholds
     // were tried and could not fire early enough to help. See `resolveAnimation`.
     animation: isPreview ? false : resolveAnimation(ctx.options),

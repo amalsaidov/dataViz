@@ -17,12 +17,20 @@ import { getFramePositions, getLocationMatchers } from './location';
 /** One marker: the position and the values of its row. */
 export interface GeoMarker extends MarkerValues {
   lonLat: LonLat;
+  /** The row of the marker in `GeoMarkers.frame`. */
+  rowIndex: number;
 }
 
 /** The markers of a layer, and the style that all of them share. */
 export interface GeoMarkers {
   markers: GeoMarker[];
   style: MarkerLayerStyle;
+  /** The frame of the markers. */
+  frame?: DataFrame;
+  /** The layer shows a tooltip: core layer option `tooltip`, true when unset. */
+  tooltip: boolean;
+  /** The layer name. Core names a layer with no name `Layer 1` (`getNextLayerName`). */
+  name: string;
 }
 
 /** The core markers layer config (`MarkersConfig`). */
@@ -48,9 +56,11 @@ function getLayerMarkers(
 ): GeoMarkers {
   const styleConfig = layer.config?.style;
   const style = getMarkerLayerStyle(styleConfig, theme);
+  const tooltip = layer.tooltip !== false;
+  const name = layer.name || 'Layer 1';
   const frame = getLayerFrames(frames, layer)[0];
   if (!frame) {
-    return { markers: [], style };
+    return { markers: [], style, tooltip, name };
   }
   const { positions = [] } = getFramePositions(frame, getLocationMatchers(layer.location));
   const values = getMarkerValues(frame, styleConfig, theme);
@@ -60,14 +70,14 @@ function getLayerMarkers(
     if (!position) {
       return;
     }
-    const marker: GeoMarker = { lonLat: [wrapLongitude(position[0]), position[1]], ...values(row) };
+    const marker: GeoMarker = { lonLat: [wrapLongitude(position[0]), position[1]], rowIndex: row, ...values(row) };
     const key = [marker.lonLat, marker.color, marker.size, marker.text, marker.rotation].join('|');
     if (!seen.has(key)) {
       seen.add(key);
       markers.push(marker);
     }
   });
-  return { markers, style };
+  return { markers, style, frame, tooltip, name };
 }
 
 /**
