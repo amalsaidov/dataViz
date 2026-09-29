@@ -2,7 +2,7 @@
 # package. This is the only thing that ever updates the non-en-US locale files;
 # they are Crowdin's output, not hand-edited.
 #
-# This uses the LOCAL ./.github/actions/crowdin-download, not
+# This uses the LOCAL .github/actions/crowdin-download, not
 # grafana/grafana-github-actions/crowdin-download. The upstream composite
 # hardcodes the branch `i18n_crowdin_translations` in all three places that do
 # git work and exposes no input to change them, so with two or more packages
@@ -12,7 +12,7 @@
 # branch, derived from its plugin id.
 #
 # Packages are discovered at run time — the rule lives in
-# ./.github/actions/discover-i18n-packages, shared by every i18n-* workflow.
+# .github/actions/discover-i18n-packages, shared by every i18n-* workflow.
 name: i18n Crowdin download
 
 on:
@@ -35,17 +35,16 @@ jobs:
     outputs:
       packages: ${{ steps.find.outputs.packages }}
     steps:
-      # Sparse: this job reads three files per package and the local action
-      # below. Without `.github/actions` the `uses:` path would not resolve.
+      # Sparse: all this job reads is three files per package. The action
+      # below needs no checkout of its own — `$/` is resolved by the runner
+      # from this repo at the workflow's ref, not from the workspace.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: |
-            .github/actions
-            plugins/packages/@plugins
+          sparse-checkout: plugins/packages/@plugins
 
       - id: find
-        uses: ./.github/actions/discover-i18n-packages
+        uses: $/.github/actions/discover-i18n-packages
 
   download:
     name: Download ${{ matrix.pkg }} translations from Crowdin
@@ -100,7 +99,7 @@ jobs:
           cat crowdin.yml
 
       - name: Download from Crowdin
-        uses: ./.github/actions/crowdin-download
+        uses: $/.github/actions/crowdin-download
         with:
           # One branch per plugin id. Sharing a branch across packages loses
           # translations — see the action's header.

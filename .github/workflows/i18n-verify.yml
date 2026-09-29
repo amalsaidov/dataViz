@@ -9,7 +9,7 @@
 #
 # Packages are discovered at run time rather than named here, so a plugin that
 # gains i18n needs no change to this file. The rule lives in
-# ./.github/actions/discover-i18n-packages, shared by every i18n-* workflow.
+# .github/actions/discover-i18n-packages, shared by every i18n-* workflow.
 name: i18n verify
 
 on:
@@ -43,17 +43,16 @@ jobs:
     outputs:
       packages: ${{ steps.find.outputs.packages }}
     steps:
-      # Sparse: this job reads three files per package and the local action
-      # below. Without `.github/actions` the `uses:` path would not resolve.
+      # Sparse: all this job reads is three files per package. The action
+      # below needs no checkout of its own — `$/` is resolved by the runner
+      # from this repo at the workflow's ref, not from the workspace.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: |
-            .github/actions
-            plugins/packages/@plugins
+          sparse-checkout: plugins/packages/@plugins
 
       - id: find
-        uses: ./.github/actions/discover-i18n-packages
+        uses: $/.github/actions/discover-i18n-packages
 
   verify:
     name: Verify i18n markup has been committed (${{ matrix.pkg }})

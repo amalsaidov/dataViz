@@ -5,9 +5,12 @@
 # copies identical. That failed the first time it was tested: a change went into
 # three of them and i18n-verify silently kept the old rule. Hence one action.
 #
-# The caller must check out the repo first (a local `uses:` path only resolves
-# against a checked-out tree), and needs `.github/actions` plus the package root
-# present if it uses sparse-checkout.
+# This action itself needs no checkout — callers reference it as
+# `$/.github/actions/discover-i18n-packages`, which the runner resolves from
+# this repo at the workflow's ref rather than from the workspace. But it reads
+# each package's crowdin.yml, package.json and src/plugin.json off disk, so the
+# caller does have to check the package root out, and a sparse-checkout has to
+# include it.
 name: Discover i18n packages
 description: Emit a JSON matrix of the packages that opt into i18n CI.
 

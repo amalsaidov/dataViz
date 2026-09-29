@@ -3,7 +3,7 @@
 # is what guarantees it is up to date at that point.
 #
 # Packages are discovered at run time — the rule lives in
-# ./.github/actions/discover-i18n-packages, shared by every i18n-* workflow.
+# .github/actions/discover-i18n-packages, shared by every i18n-* workflow.
 name: i18n Crowdin upload
 
 on:
@@ -33,17 +33,16 @@ jobs:
     outputs:
       packages: ${{ steps.find.outputs.packages }}
     steps:
-      # Sparse: this job reads three files per package and the local action
-      # below. Without `.github/actions` the `uses:` path would not resolve.
+      # Sparse: all this job reads is three files per package. The action
+      # below needs no checkout of its own — `$/` is resolved by the runner
+      # from this repo at the workflow's ref, not from the workspace.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: |
-            .github/actions
-            plugins/packages/@plugins
+          sparse-checkout: plugins/packages/@plugins
 
       - id: find
-        uses: ./.github/actions/discover-i18n-packages
+        uses: $/.github/actions/discover-i18n-packages
 
   upload:
     name: Upload ${{ matrix.pkg }} sources to Crowdin
