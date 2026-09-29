@@ -1,4 +1,5 @@
 import { PanelPlugin } from '@grafana/data';
+import { initPluginTranslations } from '@grafana/i18n';
 import { commonOptionsBuilder } from '@grafana/ui';
 import { cartesianOverrideOptions } from 'editor/cartesian';
 import { heatmapLegendCategoryName, seriesCategoryName } from 'editor/constants';
@@ -10,6 +11,13 @@ import { heatmapColorSchemeDefault, heatmapLayoutDefault } from 'lib/echarts/opt
 import { heatmapColorSchemeOptions, heatmapLayoutOptions } from 'modules/heatmap/constants';
 import { type PanelOptions } from 'types';
 import { heatmapSuggestionsSupplier } from './suggestions';
+
+// Initialize i18n before the option builders below call `t()`. Every module is
+// its own webpack entry (see getEntries in .config/bundler/utils.ts), so
+// Grafana can load this panel without any other module having run.
+declare const __PLUGIN_ID__: string;
+
+initPluginTranslations(__PLUGIN_ID__);
 
 // Heatmap family panel: renders Grafana heatmap frames as ECharts
 // cells. The family is fixed to `heatmap`; the shared Panel resolves the

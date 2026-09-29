@@ -1,4 +1,5 @@
 import { PanelPlugin } from '@grafana/data';
+import { initPluginTranslations } from '@grafana/i18n';
 import { commonOptionsBuilder } from '@grafana/ui';
 import { type EChartsFieldConfig } from 'editor/types';
 import { makeLazyPanel } from 'lib/components/LazyPanel';
@@ -15,6 +16,13 @@ import { addStreamLayerSourceOptions } from 'lib/grafana/editor/stream/layer-sou
 import { addStreamRibbonStyleOptions } from 'lib/grafana/editor/stream/ribbon-style';
 import { type PanelOptions } from 'types';
 import { streamSuggestionsSupplier } from './suggestions';
+
+// Initialize i18n before the option builders below call `t()`. Every module is
+// its own webpack entry (see getEntries in .config/bundler/utils.ts), so
+// Grafana can load this panel without any other module having run.
+declare const __PLUGIN_ID__: string;
+
+initPluginTranslations(__PLUGIN_ID__);
 
 // Stream family panel: a theme river — stacked ribbons on the ECharts `singleAxis`
 // coordinate system — showing how a composition changes over time. One layer per

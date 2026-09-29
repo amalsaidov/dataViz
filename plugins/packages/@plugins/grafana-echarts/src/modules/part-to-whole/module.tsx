@@ -40,8 +40,16 @@ import { addPieZeroSumOptions } from 'lib/grafana/editor/pie/zero-sum';
 import { type PanelOptions } from 'types';
 import { partToWholeSuggestionsSupplier } from './suggestions';
 
-// Needs to be called at each top-level module to prevent panels from breaking when calling grafana/i18n methods (like t())
-initPluginTranslations('grafana-echarts-app');
+// Initialize i18n before the option builders below call `t()`. Every module is
+// its own webpack entry (see getEntries in .config/bundler/utils.ts), so
+// Grafana can load this panel without any other module having run.
+//
+// __PLUGIN_ID__ rather than a literal: webpack sets it to the plugin this build
+// ships as, which is the app for the bundled panels and the panel's own id for a
+// standalone build. A literal is correct only for the app build.
+declare const __PLUGIN_ID__: string;
+
+initPluginTranslations(__PLUGIN_ID__);
 
 // Part-to-whole family panel: pie and funnel built from the shared categorical
 // slice model (one value per category). The panel-level `seriesType` picks the

@@ -1,4 +1,5 @@
 import { PanelPlugin } from '@grafana/data';
+import { initPluginTranslations } from '@grafana/i18n';
 import { commonOptionsBuilder } from '@grafana/ui';
 import { seriesTypePath } from 'editor/constants';
 import { MULTIVARIATE_SERIES_TYPE_OPTIONS } from 'editor/radar';
@@ -19,6 +20,13 @@ import { addRadarSplitNumberOptions } from 'lib/grafana/editor/radar/split-numbe
 import { addRadarSymbolSizeOptions } from 'lib/grafana/editor/radar/symbol-size';
 import { type PanelOptions } from 'types';
 import { multivariateSuggestionsSupplier } from './suggestions';
+
+// Initialize i18n before the option builders below call `t()`. Every module is
+// its own webpack entry (see getEntries in .config/bundler/utils.ts), so
+// Grafana can load this panel without any other module having run.
+declare const __PLUGIN_ID__: string;
+
+initPluginTranslations(__PLUGIN_ID__);
 
 // Multivariate family panel: radar and parallel coordinates, both built from the
 // shared categorical model (categories -> axes, each numeric field -> one series).
