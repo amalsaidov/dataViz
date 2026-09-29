@@ -1,18 +1,9 @@
 # Pulls completed translations back from Crowdin once a week and opens a PR per
-# package. This is the only thing that ever updates the non-en-US locale files;
-# they are Crowdin's output, not hand-edited.
+# Crowdin project. This is the only thing that ever updates the non-en-US locale
+# files; they are Crowdin's output, not hand-edited.
 #
-# This uses the LOCAL .github/actions/crowdin-download, not
-# grafana/grafana-github-actions/crowdin-download. The upstream composite
-# hardcodes the branch `i18n_crowdin_translations` in all three places that do
-# git work and exposes no input to change them, so with two or more packages
-# the matrix jobs force-push the same ref and all but one package's
-# translations are silently lost. See that action's header for the full
-# rationale and the list of other differences. Each package here gets its own
-# branch, derived from its plugin id.
-#
-# Packages are discovered at run time — the rule lives in
-# .github/actions/discover-i18n-packages, shared by every i18n-* workflow.
+# Uses the local .github/actions/crowdin-download so each plugin gets its own
+# branch. Design notes: .github/actions/README.md.
 name: i18n Crowdin download
 
 on:

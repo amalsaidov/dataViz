@@ -1,8 +1,7 @@
 # Creates monthly translation tasks in Crowdin, so pending strings get assigned
 # to translators instead of sitting untranslated.
 #
-# Packages are discovered at run time — the rule lives in
-# .github/actions/discover-i18n-packages, shared by every i18n-* workflow.
+# Packages are discovered at run time. Design notes: .github/actions/README.md.
 name: i18n Crowdin create tasks
 
 on:

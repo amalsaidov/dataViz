@@ -7,9 +7,7 @@
 # package's own `i18n-extract:ci` script, so it travels with the package if it
 # is ever ejected back out to a standalone repo.
 #
-# Packages are discovered at run time rather than named here, so a plugin that
-# gains i18n needs no change to this file. The rule lives in
-# .github/actions/discover-i18n-packages, shared by every i18n-* workflow.
+# Packages are discovered at run time. Design notes: .github/actions/README.md.
 name: i18n verify
 
 on:

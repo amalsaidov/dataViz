@@ -1,30 +1,7 @@
-# Local reimplementation of grafana/grafana-github-actions/crowdin-download.
-#
-# WHY THIS EXISTS: the upstream composite hardcodes the branch
-# `i18n_crowdin_translations` in the three places that do git work — the
-# signed-commit github-script, `gh pr view --head`, and `gh pr create --head`.
-# It exposes no input to change them, and nothing about them is overridable
-# from the caller. With two or more i18n packages, every matrix job builds its
-# tree from main and force-pushes the same ref, so the last job to finish wins
-# and the others' translations are silently dropped. Serializing the matrix
-# does not help: the clobber is deterministic, not a race.
-#
-# (Upstream's `localization_branch_name: i18n_crowdin_translations` is NOT one
-# of those three. crowdin/github-action reads that input only inside
-# push_to_branch(), gated on push_translations — which upstream sets to false.
-# The vendored action never touches git here; it only writes files into the
-# workspace.)
-#
-# HOW IT DIFFERS from upstream, beyond branch_name:
-#   - PR title and commit message are inputs, so per-package PRs are
-#     distinguishable. Defaults match upstream's strings.
-#   - The PR id is read from `gh pr view --json url,id` in one call rather than
-#     reconstructed from `gh pr create` stdout, dropping upstream's
-#     quote-stripping sed.
-#
-# Automerge is OFF here, and has always been off for clock-panel — upstream
-# grafana/clock-panel passed neither en_paths nor github_pr_approver_token. To
-# turn it on, supply github_pr_approver_token; en_paths is already wired up.
+# Local version of grafana/grafana-github-actions/crowdin-download that takes a
+# branch_name, so each plugin downloads onto its own branch. Upstream hardcodes
+# one branch, and with several plugins every job overwrites the others'
+# translations. See ../README.md for this and the other differences.
 name: Crowdin download (local)
 description: Download translations from Crowdin and open a pull request on a caller-chosen branch.
 

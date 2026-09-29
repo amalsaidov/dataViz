@@ -2,8 +2,7 @@
 # translators see new strings. Runs after en-US lands on main; i18n-verify.yml
 # is what guarantees it is up to date at that point.
 #
-# Packages are discovered at run time — the rule lives in
-# .github/actions/discover-i18n-packages, shared by every i18n-* workflow.
+# Packages are discovered at run time. Design notes: .github/actions/README.md.
 name: i18n Crowdin upload
 
 on:

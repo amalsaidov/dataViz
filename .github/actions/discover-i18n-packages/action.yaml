@@ -1,69 +1,11 @@
-# Finds what opts into i18n CI, and emits two matrices: one per published
-# plugin, and one per workspace package.
+# Finds what opts into i18n CI. Emits `plugins` (one entry per published
+# plugin, for the Crowdin workflows) and `packages` (one per workspace package,
+# for extraction). Config shapes, defaults and the validation below are
+# explained in ../README.md.
 #
-# Both are needed because the two units are not the same thing. Extraction is a
-# package-level pnpm script, so i18n-verify wants one job per package. Crowdin
-# work is per project, and a project belongs to a published plugin — so upload,
-# download and create-tasks want one job per plugin.
-#
-# A package like grafana-echarts publishes several plugins from one directory:
-# `src/plugin.json` is the app and each `src/modules/*/plugin.json` is a panel,
-# with the standalone Relations build registering its own translation namespace
-# (see `activePluginId` in that package's webpack.config.ts). Each published
-# plugin therefore needs its own namespace file, because `initPluginTranslations`
-# resolves translations by plugin id at run time.
-#
-# DEFAULT SHAPE: one Crowdin project per package, one namespace per plugin.
-# Declare only the project id and list a `files[]` entry per published plugin:
-#
-#   x_dataviz:
-#     crowdin_project_id: 'NN'
-#   files:
-#     - source: src/locales/en-US/grafana-echarts-app.json
-#       translation: src/locales/%locale%/%original_file_name%
-#     - source: src/locales/en-US/grafana-relations-panel.json
-#       translation: src/locales/%locale%/%original_file_name%
-#
-# This is the right default because most of a container package's strings come
-# from code shared by every build — in grafana-echarts, 19 of 21 `t()` calls
-# live in `src/lib`, which compiles into all of them. Those strings appear in
-# every namespace file, so they must be translated once and shared. Crowdin can
-# link identical source strings WITHIN a project (the "Duplicate strings"
-# project setting), and cannot across projects. One project per plugin would
-# mean translating the same shared string once per plugin per locale, with an
-# independent chance of divergence each time.
-#
-# SPLIT SHAPE: separate projects, for the rarer case where published plugins
-# have genuinely disjoint strings or must be owned by different teams. Then
-# declare them, since which strings belong to which project is not derivable:
-#
-#   x_dataviz:
-#     plugins:
-#       - id: grafana-echarts-app
-#         crowdin_project_id: 'NN'
-#         sources: ['src/locales/en-US/grafana-echarts-app.json']
-#       - id: grafana-relations-panel
-#         crowdin_project_id: 'MM'
-#         sources: ['src/locales/en-US/grafana-relations-panel.json']
-#
-# Two entries may not share a `crowdin_project_id` — that is two base_paths
-# writing into one project — so the one-project shape has to be the single
-# entry above, not two entries pointing at the same id.
-#
-# A single-plugin package declares only `crowdin_project_id` and gets the id
-# from `src/plugin.json` with every `files[].source` assigned to it.
-#
-# All four i18n-* workflows need this list, and they used to each carry their
-# own copy of the logic with a comment asking future editors to keep the copies
-# identical. That failed the first time it was tested: a change went into three
-# of them and i18n-verify silently kept the old rule. Hence one action.
-#
-# This action itself needs no checkout — callers reference it as
-# `$/.github/actions/discover-i18n-packages`, which the runner resolves from
-# this repo at the workflow's ref rather than from the workspace. But it reads
-# each package's crowdin.yml, package.json and plugin.json files off disk, so
-# the caller does have to check the package root out, and a sparse-checkout has
-# to include it.
+# Needs no checkout of its own — callers use `$/` — but it reads each package's
+# crowdin.yml, package.json and plugin.json off disk, so the caller must check
+# out the package root.
 name: Discover i18n packages
 description: Emit JSON matrices of the plugins and packages that opt into i18n CI.
 
