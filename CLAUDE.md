@@ -135,6 +135,16 @@ Differences worth knowing:
   `src/modules/relations/plugin.json` (`build:relations` publishes it standalone as
   `grafana-relations-panel`). Both use the reserved link names from `plugin-metadata.md`. The other
   `src/modules/*/plugin.json` ship only inside the app.
+- **It is not yet in i18n CI, and when it opts in it gets ONE Crowdin project, not one per published
+  plugin.** A package opts in by having a `crowdin.yml`; echarts has none, no locales, and no
+  `i18n-extract:ci` script, so `.github/actions/discover-i18n-packages` ignores it. It does already
+  call `initPluginTranslations` and use `t()`, so the runtime half is wired. When it does opt in:
+  `files[]` needs one namespace entry per published plugin, because `initPluginTranslations` resolves
+  translations by plugin id at run time and each plugin's dist must carry its own
+  `<plugin-id>.json` — but all of it belongs to a single project, because 19 of its 21 `t()` calls are
+  in `src/lib`, which compiles into every build. Crowdin links identical source strings only *within*
+  a project, so splitting by plugin would re-translate every shared string per plugin per locale.
+  Full reasoning and both config shapes are in the discover action's header.
 - Its `AGENTS.md` / `CLAUDE.md` / `.config/AGENTS/` carry package-local agent rules (canvas snapshot
   workflow, one-kind-of-test-per-file naming enforced by `src/test/suiteShape.test.ts`). They apply
   inside the package.
