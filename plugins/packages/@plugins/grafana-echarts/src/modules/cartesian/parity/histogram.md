@@ -52,7 +52,9 @@ gdev Histogram dashboard next to a core Histogram twin. The tests are
 - With a bucket offset, core puts the x ticks on multiples of the bucket size. ECharts starts the ticks at the
   lower bound of the first bucket.
 - Buckets with names (heatmap-rows `le` buckets) need an ordinal x axis. The panel shows a data issue for them.
-- The panel shows an error view for a bucket option that is not valid: a negative count or size, or a value that
-  is not a finite number. Core does not check the options. For a negative size, core uses the automatic size.
+- A bucket option that is not valid does not show an error, as core. A negative size, or a size that is not a
+  finite number, uses the automatic size, as core. A negative count, or a count that is not a finite number, uses
+  the default count. For a negative count, core uses the smallest bucket size that is not less than the smallest
+  gap between two values. An offset that is not a finite number is removed. Core gives `NaN` buckets for it.
 - The panel shows an error view for more than 10000 buckets (`MAX_HISTOGRAM_BUCKETS`). Core has no limit.
 - The x axis has 50 ticks or fewer before the plot width is known.

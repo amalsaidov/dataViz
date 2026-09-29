@@ -187,7 +187,8 @@ function getXAxisRange(model: HistogramModel): { min?: number; max?: number } {
 
 /**
  * Put the x ticks on the bucket bounds, as core `xSplits`: one tick every `skip` buckets, so the labels are
- * at least `X_TICK_MIN_SPACE` px apart, and there are no more than `MAX_X_TICKS` ticks. Only buckets of one size get this. Else ECharts selects the ticks.
+ * at least `X_TICK_MIN_SPACE` px apart, and there are no more than `MAX_X_TICKS` ticks. Only buckets of one size
+ * get this. Else ECharts selects the ticks.
  * https://echarts.apache.org/en/option.html#xAxis.interval
  */
 function getXTickInterval(model: HistogramModel, plotWidth: number | undefined): { interval?: number } {

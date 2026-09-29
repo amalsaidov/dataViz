@@ -52,6 +52,21 @@ describe('histogram mode against the core buckets', () => {
     bars.forEach((bar, i) => expect(bar.height).toBeCloseTo(counts[i] * pxPerCount, 0));
   });
 
+  // Core uses the automatic size for a negative size (`if (!bucketSize || bucketSize < 0)` in `buildHistogram`).
+  // The panel also uses the automatic buckets for a negative count and for a value that is not finite.
+  // https://github.com/grafana/grafana/blob/main/packages/grafana-data/src/transformations/transformers/histogram.ts
+  it.each<[string, Partial<PanelOptions>]>([
+    ['a negative bucket size', { bucketSize: -1 }],
+    ['a negative bucket count', { bucketCount: -1 }],
+    ['a negative size and count', { bucketSize: -1, bucketCount: -1 }],
+    ['a bucket offset that is not finite', { bucketSize: Infinity, bucketOffset: Number.NaN }],
+  ])('draws the same bars as the automatic buckets for %s', async (_, options) => {
+    const automatic = sortedBars(barRects((await renderHistogram([heights])).series));
+    const bars = sortedBars(barRects((await renderHistogram([heights], options)).series));
+    expect(bars.length).toBeGreaterThan(0);
+    expect(bars).toEqual(automatic);
+  });
+
   it('keeps the gap of an empty bucket on the x axis', async () => {
     const bars = sortedBars(barRects((await renderHistogram([values('A', [1, 2, 35])], { bucketSize: 10 })).series));
     expect(bars).toHaveLength(2);

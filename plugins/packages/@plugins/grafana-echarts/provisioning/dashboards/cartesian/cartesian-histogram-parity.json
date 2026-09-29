@@ -747,7 +747,7 @@
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"
       },
-      "description": "A negative bucket size. Core uses the automatic size. ECharts shows an error view (#486).",
+      "description": "A negative bucket size. Core and ECharts use the automatic size (#519).",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -788,7 +788,7 @@
           "refId": "A"
         }
       ],
-      "title": "Core: bucket size -1 (not valid)",
+      "title": "Core: bucket size -1 (automatic size)",
       "type": "histogram",
       "transformations": []
     },
@@ -797,7 +797,7 @@
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"
       },
-      "description": "A negative bucket size. Core uses the automatic size. ECharts shows an error view (#486).",
+      "description": "A negative bucket size. Core and ECharts use the automatic size (#519).",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -839,7 +839,108 @@
           "refId": "A"
         }
       ],
-      "title": "ECharts: bucket size -1 (not valid)",
+      "title": "ECharts: bucket size -1 (automatic size)",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A negative bucket count. Core uses the smallest bucket size that fits the data. ECharts uses the default count (#519).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 64
+      },
+      "id": 17,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketCount": -1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n1\n2\n3\n17\n40",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: bucket count -1",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A negative bucket count. Core uses the smallest bucket size that fits the data. ECharts uses the default count (#519).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 64
+      },
+      "id": 18,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true,
+        "bucketCount": -1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n1\n2\n3\n17\n40",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: bucket count -1",
       "type": "grafana-echartscartesian-panel",
       "transformations": []
     }

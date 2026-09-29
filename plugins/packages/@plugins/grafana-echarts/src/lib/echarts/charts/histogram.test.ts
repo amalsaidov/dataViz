@@ -23,20 +23,15 @@ describe('getHistogramDataIssue', () => {
     expect(getHistogramDataIssue(contextOf([1, 2, 11], { bucketSize: 10 }))).toBeUndefined();
   });
 
-  it.each<[Record<string, unknown>, string]>([
-    [
-      { bucketSize: -1 },
-      'Bucket size -1 is not valid. Use a number greater than 0, or clear it for the automatic size.',
-    ],
-    [
-      { bucketCount: -3 },
-      'Bucket count -3 is not valid. Use a number greater than 0, or clear it for the default count.',
-    ],
-    [{ bucketOffset: Infinity }, 'Bucket offset Infinity is not valid. Use a number, or clear it for no offset.'],
-  ])('reports the bucket option that is not valid, for %p', (options, message) => {
+  it.each<Record<string, unknown>>([
+    { bucketSize: -1 },
+    { bucketCount: -3 },
+    { bucketSize: -1, bucketCount: -1 },
+    { bucketOffset: Infinity },
+  ])('gives no issue and draws the chart for %p, as core', (options) => {
     const ctx = contextOf([1, 2, 11], options);
-    expect(getHistogramDataIssue(ctx)).toEqual({ reason: 'histogram-invalid-bucket-option', message });
-    expect(buildHistogramChartOption(ctx, parts)).toBeNull();
+    expect(getHistogramDataIssue(ctx)).toBeUndefined();
+    expect(buildHistogramChartOption(ctx, parts)).not.toBeNull();
   });
 
   it('reports more buckets than the limit, and draws no bars', () => {
