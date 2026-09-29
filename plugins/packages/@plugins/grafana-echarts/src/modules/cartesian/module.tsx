@@ -1,4 +1,5 @@
 import { PanelPlugin, type SelectFieldConfigSettings } from '@grafana/data';
+import { initPluginTranslations } from '@grafana/i18n';
 import { GraphThresholdsStyleMode } from '@grafana/schema';
 import { commonOptionsBuilder, getGraphFieldOptions } from '@grafana/ui';
 import {
@@ -28,6 +29,13 @@ import { addCommonLegendAndTooltip } from 'lib/grafana/editor/common/legend-and-
 import { addPerformanceOptions } from 'lib/grafana/editor/common/performance-options';
 import { type PanelOptions } from 'types';
 import { cartesianSuggestionsSupplier } from './suggestions';
+
+// Initialize i18n before the option builders below call `t()`. Every module is
+// its own webpack entry (see getEntries in .config/bundler/utils.ts), so
+// Grafana can load this panel without any other module having run.
+declare const __PLUGIN_ID__: string;
+
+initPluginTranslations(__PLUGIN_ID__);
 
 // Cartesian family panel: line/bar/scatter on a time/value grid.
 // The family is fixed by this nested plugin's identity, so the panel-level
