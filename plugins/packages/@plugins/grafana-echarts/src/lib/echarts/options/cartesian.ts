@@ -303,7 +303,20 @@ export function buildCartesianSeries(
   options: PanelOptions,
   theme: GrafanaTheme2
 ): CartesianSeriesEntry {
-  const { name, data, color, zlevel, stack, formatValue, labelTexts, labelFontSize, barGaps, perf, hover } = input;
+  const {
+    name,
+    data,
+    color,
+    zlevel,
+    stack,
+    formatValue,
+    labelTexts,
+    labelFontSize,
+    barGaps,
+    perf,
+    hover,
+    connectNulls,
+  } = input;
   const label = getCartesianValueLabel(
     {
       showValues: options.showValues,
@@ -356,6 +369,8 @@ export function buildCartesianSeries(
         itemStyle: { color },
         lineStyle: getCartesianLineStyle(color, options.lineWidth),
         ...(areaStyle ? { areaStyle } : {}),
+        // https://echarts.apache.org/en/option.html#series-line.connectNulls
+        ...(connectNulls ? { connectNulls } : {}),
         ...symbol,
         ...emphasis,
       };

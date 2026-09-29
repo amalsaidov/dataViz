@@ -73,4 +73,6 @@ export interface CartesianSeriesInput {
    * point. Category-axis charts do not opt in (see `categoryCartesianToEChartsOption`).
    */
   hover?: boolean;
+  /** Line series: connect the line over null values (ECharts `connectNulls`). See `spanNulls.ts`. */
+  connectNulls?: boolean;
 }

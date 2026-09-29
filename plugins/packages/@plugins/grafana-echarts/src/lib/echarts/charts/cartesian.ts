@@ -15,13 +15,23 @@ import { buildCartesianYAxes, getAxisGridSpacing } from 'lib/echarts/axes/yAxes'
 import { isCartesianSingleValueSeriesType, isMultiValueSeriesType } from 'lib/echarts/charts/narrowing';
 import { categoryCartesianToEChartsOption } from 'lib/echarts/converters/categoryCartesian';
 import { categoryCartesianFields } from 'lib/echarts/converters/categoryCartesianModel';
-import { resolveFieldSeriesType, resolveFieldStack } from 'lib/echarts/converters/fieldOverrides';
-import { collectTimeSeriesFields, framesHaveTimeField, joinStackedFieldsOnTime } from 'lib/echarts/converters/frames';
+import {
+  resolveFieldSeriesType,
+  resolveFieldSpanNulls,
+  resolveFieldStack,
+} from 'lib/echarts/converters/fieldOverrides';
+import {
+  collectTimeSeriesFields,
+  forEachTimeSeriesField,
+  framesHaveTimeField,
+  joinStackedFieldsOnTime,
+} from 'lib/echarts/converters/frames';
+import { isSpanNullsThreshold } from 'lib/echarts/converters/spanNulls';
 import {
   multiValueCartesianToEChartsOption,
   resolveMultiValueSources,
 } from 'lib/echarts/converters/multiValueCartesian';
-import { timeSeriesToEChartsOption } from 'lib/echarts/converters/timeSeries';
+import { getDrawnRows, timeSeriesToEChartsOption } from 'lib/echarts/converters/timeSeries';
 import { getCartesianGrid } from 'lib/echarts/grid/grid';
 import { ANNOTATION_LANE_SIZE, buildAnnotationMarkerSeries } from 'lib/echarts/options/annotationMarkers';
 import { buildAnnotationSeries, buildCategoryAnnotationSeries } from 'lib/echarts/options/annotations';
@@ -63,6 +73,7 @@ import {
   type CartesianContext,
   type ChartContext,
   type ChartModule,
+  type ChartNotice,
   type EChartCartesianSeriesOption,
   type EChartMultiValueCartesianSeriesOption,
 } from './types';
@@ -400,6 +411,45 @@ function cartesianSeriesFields(ctx: CartesianContext): Field[] {
 }
 
 /**
+ * The frame row of each point of each time-axis series, in series order, as `timeSeriesToEChartsOption`
+ * draws them. `undefined` for a series that draws each row, where the `dataIndex` is the row.
+ */
+function cartesianDrawnRows(ctx: CartesianContext): Array<number[] | undefined> {
+  const rows: Array<number[] | undefined> = [];
+  forEachTimeSeriesField(cartesianTimeFrames(ctx), ({ field, timeField }) => {
+    const type = resolveFieldSeriesType(field, ctx.seriesType);
+    rows.push(
+      isSpanNullsThreshold(resolveFieldSpanNulls(field)) ? getDrawnRows(field, timeField.values, type) : undefined
+    );
+  });
+  return rows;
+}
+
+/**
+ * A notice for each numeric "Connect null values" that the chart cannot draw. A threshold needs the
+ * x distance between two values, so on a category axis the line breaks at each null.
+ */
+function getSpanNullsNotices(ctx: CartesianContext): ChartNotice[] {
+  if (isMultiValueSeriesType(ctx.seriesType) || framesHaveTimeField(ctx.frames)) {
+    return [];
+  }
+  const count = categoryCartesianFields(ctx.frames, ctx.theme).filter(
+    (field) =>
+      resolveFieldSeriesType(field, ctx.seriesType) === 'line' && isSpanNullsThreshold(resolveFieldSpanNulls(field))
+  ).length;
+  if (count === 0) {
+    return [];
+  }
+  const series = count === 1 ? '1 series' : `${count} series`;
+  return [
+    {
+      severity: 'warning',
+      text: `Connect null values: a threshold needs a time axis. ${series} break at each null value.`,
+    },
+  ];
+}
+
+/**
  * Threshold line/region overlays for the panel, derived from the first field
  * with an active threshold display. Thresholds render once on the shared value
  * axis, so callers attach the result to a single series. Returns `undefined`
@@ -435,6 +485,10 @@ export const cartesianChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
   sharedCategoryAxis: true,
 
+  getNotices(ctx: CartesianContext) {
+    return getSpanNullsNotices(ctx);
+  },
+
   getTooltipValueFormatter(ctx: CartesianContext) {
     const formatters = getFieldValueFormatters(cartesianSeriesFields(ctx), ctx.theme, ctx.timeZone);
     return indexedFormatterResolver(formatters, ctx.formatValue, 'seriesIndex');
@@ -461,12 +515,17 @@ export const cartesianChartModule: ChartModule = {
     // hovered item's `seriesIndex` selects its source field and `dataIndex` its
     // row — the tooltip footer reads that field's data links / labels.
     const fields = cartesianSeriesFields(ctx);
+    // On a time axis, a numeric "Connect null values" leaves null rows out of a line series, so
+    // each series maps its `dataIndex` back to the frame row (see `getDrawnRows`).
+    const drawnRows = framesHaveTimeField(ctx.frames) ? cartesianDrawnRows(ctx) : undefined;
     return (item) => {
       if (item.seriesIndex == null) {
         return undefined;
       }
       const field = fields[item.seriesIndex];
-      return field ? { field, rowIndex: item.dataIndex ?? 0 } : undefined;
+      const dataIndex = item.dataIndex ?? 0;
+      const rowIndex = drawnRows?.[item.seriesIndex]?.[dataIndex] ?? dataIndex;
+      return field ? { field, rowIndex } : undefined;
     };
   },
 

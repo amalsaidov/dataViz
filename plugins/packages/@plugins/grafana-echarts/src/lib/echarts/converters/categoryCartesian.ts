@@ -4,7 +4,11 @@ import { STACK_GROUP_ID } from 'editor/cartesian';
 import { type CartesianSingleValueSeriesType } from 'editor/types';
 import { type CartesianOption, type ChartContext } from 'lib/echarts/charts/types';
 import { fallbackCategories, framesToCategoryCartesian } from 'lib/echarts/converters/categoryCartesianModel';
-import { resolveFieldSeriesType, resolveFieldStack } from 'lib/echarts/converters/fieldOverrides';
+import {
+  resolveFieldSeriesType,
+  resolveFieldSpanNulls,
+  resolveFieldStack,
+} from 'lib/echarts/converters/fieldOverrides';
 import { findColorByField, resolveSeriesValues } from 'lib/echarts/converters/cartesianValues';
 import { type CartesianLayout, type CategoryCartesianData } from 'lib/echarts/converters/types';
 import { resolvePanelStacking } from 'lib/echarts/options/bars';
@@ -90,6 +94,9 @@ export function categoryCartesianToEChartsOption(
         // overridden field on the wrong fast path.
         perf: getSeriesPerfOptions({ type: resolvedType, density, options, values }),
         ...(stacked ? { stack: STACK_GROUP_ID } : {}),
+        // A category axis has no x distance, so only `true` connects. The chart module reports a
+        // numeric threshold here as not supported (see `getSpanNullsNotices`).
+        ...(resolvedType === 'line' && resolveFieldSpanNulls(sources[i].field) === true ? { connectNulls: true } : {}),
       },
       resolvedType,
       options,

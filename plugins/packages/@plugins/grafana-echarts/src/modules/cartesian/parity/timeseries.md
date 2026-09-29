@@ -36,18 +36,26 @@ styling defaults, exposing only a small set of per-field overrides.
 
 ## Graph styles (core custom field config)
 
-| Core Grafana option                                    | ECharts equivalent                                                                                 | Status        |
-| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | ------------- |
-| Style (lines/bars/points), line interpolation          | `seriesType` (line/bar/scatter)                                                                    | Partial       |
-| Line width, fill opacity                               | `lineWidth`, `fillOpacity` (panel options, Default tier) -> `lineStyle.width`, `areaStyle.opacity` | Partial       |
-| Gradient mode, line style                              | none (ECharts defaults)                                                                            | Not supported |
-| Connect null values, disconnect values                 | none                                                                                               | Not supported |
-| Show points, point size                                | `performance.showPoints` -> `series.showSymbol`, `pointSize` -> `symbolSize` (Default tier)        | Partial       |
-| Stack series                                           | panel `stacking` (none/normal/percent) plus per-field `stackSeries` override (bar only)            | Partial       |
-| Axis placement                                         | per-field `axisPlacement`                                                                          | Supported     |
-| Axis: label, width, soft min/max, scale, centered zero | none                                                                                               | Not supported |
-| Show thresholds (thresholds style)                     | per-field `thresholdsStyle.mode`                                                                   | Supported     |
-| Hide in area (viz/legend/tooltip)                      | `custom.hideFrom` (via `addHideFrom`)                                                              | Partial       |
+| Core Grafana option                                    | ECharts equivalent                                                                                  | Status        |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------- |
+| Style (lines/bars/points), line interpolation          | `seriesType` (line/bar/scatter)                                                                     | Partial       |
+| Line width, fill opacity                               | `lineWidth`, `fillOpacity` (panel options, Default tier) -> `lineStyle.width`, `areaStyle.opacity`  | Partial       |
+| Gradient mode, line style                              | none (ECharts defaults)                                                                             | Not supported |
+| Connect null values                                    | per-field `spanNulls` (Default tier): `true` -> `connectNulls`; a threshold (ms) spans shorter gaps | Supported     |
+| Disconnect values                                      | none                                                                                                | Not supported |
+| Show points, point size                                | `performance.showPoints` -> `series.showSymbol`, `pointSize` -> `symbolSize` (Default tier)         | Partial       |
+| Stack series                                           | panel `stacking` (none/normal/percent) plus per-field `stackSeries` override (bar only)             | Partial       |
+| Axis placement                                         | per-field `axisPlacement`                                                                           | Supported     |
+| Axis: label, width, soft min/max, scale, centered zero | none                                                                                                | Not supported |
+| Show thresholds (thresholds style)                     | per-field `thresholdsStyle.mode`                                                                    | Supported     |
+| Hide in area (viz/legend/tooltip)                      | `custom.hideFrom` (via `addHideFrom`)                                                               | Partial       |
+
+Connect null values follows core `nullToUndefThreshold`. A threshold leaves the connected null rows out of the
+ECharts series data, and the tooltip maps each point back to its frame row. The frame values do not change. On a
+category axis, a threshold is not supported: the line breaks at each null, and the panel shows a warning notice.
+Line and area series do not stack in this module, so stacking has no effect on Connect null values. Dashboard:
+[cartesian-span-nulls.json](../../../../provisioning/dashboards/cartesian/cartesian-span-nulls.json) (ECharts and
+core pairs). Tests: `span-nulls.canvas.test.tsx`, `span-nulls.integration.test.tsx`, `spanNulls.test.ts`.
 
 ## Standard (field-config) options
 

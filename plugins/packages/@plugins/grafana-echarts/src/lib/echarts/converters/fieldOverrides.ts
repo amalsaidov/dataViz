@@ -1,6 +1,7 @@
 import { type Field } from '@grafana/data';
 import { type CartesianSingleValueSeriesType } from 'editor/types';
 import { isCartesianSingleValueSeriesType } from 'lib/echarts/charts/narrowing';
+import { type SpanNulls } from 'lib/echarts/converters/spanNulls';
 import { getFieldConfigFromField } from 'lib/grafana/fields/fieldConfig';
 
 /**
@@ -34,4 +35,16 @@ export function resolveFieldSeriesType<T>(field: Field, defaultType: T): T | Car
 export function resolveFieldStack(field: Field, panelStack = false): boolean {
   const override = getFieldConfigFromField(field).custom?.stackSeries;
   return override ?? panelStack;
+}
+
+/**
+ * The "Connect null values" setting of a field (core `custom.spanNulls`, default `false`). A value
+ * that is not a boolean or a finite number reads as `false`. See `spanNulls.ts`.
+ */
+export function resolveFieldSpanNulls(field: Field): SpanNulls {
+  const spanNulls = getFieldConfigFromField(field).custom?.spanNulls;
+  if (typeof spanNulls === 'boolean' || (typeof spanNulls === 'number' && Number.isFinite(spanNulls))) {
+    return spanNulls;
+  }
+  return false;
 }

@@ -24,6 +24,7 @@ import { addCartesianBarWidthOptions } from 'lib/grafana/editor/cartesian/bar-wi
 import { addCartesianFillOpacityOptions } from 'lib/grafana/editor/cartesian/fill-opacity';
 import { addCartesianLineWidthOptions } from 'lib/grafana/editor/cartesian/line-width';
 import { addCartesianPointSizeOptions } from 'lib/grafana/editor/cartesian/point-size';
+import { addCartesianSpanNullsFieldConfig } from 'lib/grafana/editor/cartesian/span-nulls';
 import { addCartesianValueLabelOptions } from 'lib/grafana/editor/cartesian/value-labels';
 import { addCartesianXTickLabelOptions } from 'lib/grafana/editor/cartesian/x-tick-labels';
 import { addCartesianXTickRotateOptions } from 'lib/grafana/editor/cartesian/x-tick-rotate';
@@ -114,6 +115,9 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
         },
         hideFromDefaults: true,
       });
+
+      // Core "Connect null values" of line series: Never, Always or a gap threshold.
+      addCartesianSpanNullsFieldConfig(builder);
 
       // Threshold display (writes the custom `thresholdsStyle.mode` field
       // config; read back in `cartesianThresholdMarks`). The standard Thresholds

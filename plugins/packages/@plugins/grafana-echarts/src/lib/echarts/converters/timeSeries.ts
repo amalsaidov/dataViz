@@ -1,11 +1,16 @@
-import { getFieldDisplayName } from '@grafana/data';
+import { type Field, getFieldDisplayName } from '@grafana/data';
 import { StackingMode } from '@grafana/schema';
 import { STACK_GROUP_ID } from 'editor/cartesian';
-import { type CartesianSingleValueSeriesType, type HeatmapSeriesType } from 'editor/types';
+import { type CartesianSingleValueSeriesType, type HeatmapSeriesType, type SeriesType } from 'editor/types';
 import { type CartesianContextWithOverlay, type EChartSingleValueCartesianSeries } from 'lib/echarts/charts/types';
-import { resolveFieldSeriesType, resolveFieldStack } from 'lib/echarts/converters/fieldOverrides';
+import {
+  resolveFieldSeriesType,
+  resolveFieldSpanNulls,
+  resolveFieldStack,
+} from 'lib/echarts/converters/fieldOverrides';
 import { findColorByField, resolveSeriesValues } from 'lib/echarts/converters/cartesianValues';
 import { forEachTimeSeriesField, type TimeSeriesFieldRef } from 'lib/echarts/converters/frames';
+import { isSpanNullsThreshold, spannedRows } from 'lib/echarts/converters/spanNulls';
 import { type CartesianLayout } from 'lib/echarts/converters/types';
 import { resolvePanelStacking } from 'lib/echarts/options/bars';
 import { buildCartesianSeries } from 'lib/echarts/options/cartesian';
@@ -44,12 +49,15 @@ export function timeSeriesToEChartsOption(
   // converter; a heatmap-overlay field has no source.
   const sources = refs.map(({ frame, field, timeField, type }) => {
     const isBar = type === 'bar';
+    // The frame rows that the series draws: all rows, or the rows that a numeric "Connect null
+    // values" keeps (see `getDrawnRows`). The field keeps its values.
+    const rows = getDrawnRows(field, timeField.values, type);
     return {
       field,
-      values: Array.from(field.values, (value) => value ?? null),
-      rows: Array.from(field.values, (_, row) => row),
+      values: rows.map((row) => field.values[row] ?? null),
+      rows,
       color: getCartesianSeriesColor(field, frames, theme),
-      xs: timeField.values,
+      xs: rows.map((row) => timeField.values[row]),
       isBar,
       // Only bar supports stacking.
       stacked: isBar && resolveFieldStack(field, stackAll),
@@ -96,7 +104,14 @@ export function timeSeriesToEChartsOption(
     // no line, which would otherwise render as nothing at all. `hover` arms the
     // tooltip seam — `triggerEvent` plus, on symbol types, the scaled emphasis
     // marker the `highlight` dispatch drives.
-    const perf = getSeriesPerfOptions({ type, density, options, values: field.values });
+    const connectNulls = type === 'line' && resolveFieldSpanNulls(field) === true;
+    const perf = getSeriesPerfOptions({
+      type,
+      density,
+      options,
+      // A connected line draws a segment between each two values, so the symbol check skips the nulls.
+      values: connectNulls ? sources[i].values.filter((value) => value != null) : sources[i].values,
+    });
     return buildCartesianSeries(
       {
         name,
@@ -107,12 +122,26 @@ export function timeSeriesToEChartsOption(
         perf,
         hover: true,
         ...(sources[i].stacked ? { stack: STACK_GROUP_ID } : {}),
+        ...(connectNulls ? { connectNulls } : {}),
       },
       type,
       options,
       theme
     );
   });
+}
+
+/**
+ * The frame rows that the series of a field draws, in order. Each row, except for a `line` series
+ * with a numeric "Connect null values": then the nulls that the line connects over are left out
+ * (see `spannedRows`). The tooltip maps an ECharts `dataIndex` back to its frame row with this list.
+ */
+export function getDrawnRows(field: Field, xs: ArrayLike<unknown>, type: SeriesType): number[] {
+  const spanNulls = resolveFieldSpanNulls(field);
+  if (type === 'line' && isSpanNullsThreshold(spanNulls)) {
+    return spannedRows(xs, field.values, spanNulls);
+  }
+  return Array.from(field.values, (_, row) => row);
 }
 
 /**

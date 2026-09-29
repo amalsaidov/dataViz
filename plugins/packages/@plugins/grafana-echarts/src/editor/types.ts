@@ -297,6 +297,9 @@ export interface EChartsFieldConfig extends HideableFieldConfig {
   axisPlacement?: AxisPlacement;
   // Core "Transform". The cartesian family draws a `negative-Y` field below zero.
   transform?: GraphTransform;
+  // Core "Connect null values" of line series: `true`, `false`, or the longest gap (x units, ms on a
+  // time axis) to connect over. See `lib/echarts/converters/spanNulls.ts`.
+  spanNulls?: boolean | number;
 }
 export interface EChartsGraphFieldConfig extends GraphFieldConfig, EChartsFieldConfig {}
 /** Field config of the timeline family: core's state timeline `custom.*` keys. */
