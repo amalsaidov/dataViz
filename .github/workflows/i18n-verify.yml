@@ -139,5 +139,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
 
+      # matrix.pkg goes through env rather than being interpolated into the
+      # command. It comes from the package.json of the code under test, which on
+      # a pull_request is the contributor's, so `${{ }}` here would splice
+      # attacker-chosen text into this shell. Nothing is gained today — this job
+      # already runs that code via pnpm lifecycle scripts with a read-only token
+      # — but it would become exploitable the moment this workflow gains a
+      # secret or moves to pull_request_target.
       - name: Verify i18n extraction is up to date
-        run: pnpm --filter ${{ matrix.pkg }} run i18n-extract:ci
+        env:
+          PKG: ${{ matrix.pkg }}
+        run: pnpm --filter "$PKG" run i18n-extract:ci

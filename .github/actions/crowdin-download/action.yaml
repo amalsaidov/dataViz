@@ -235,8 +235,16 @@ runs:
       run: |
         set -euo pipefail
 
-        if gh pr view --head "$BRANCH_NAME" --json url -q .url >/dev/null 2>&1; then
-          echo "A pull request is already open for $BRANCH_NAME; the force-push above updated it."
+        # The isCrossRepository filter is load-bearing, not tidiness: a
+        # head-branch lookup matches pull requests from forks too, so without it
+        # anyone who forks this repo and opens a PR from a branch of this name
+        # is taken for "our" translation PR. Ours is always same-repo.
+        existing="$(gh pr list --head "$BRANCH_NAME" --state open \
+          --json url,isCrossRepository \
+          --jq '[.[] | select(.isCrossRepository == false)][0].url // empty')"
+
+        if [ -n "$existing" ]; then
+          echo "A pull request is already open for $BRANCH_NAME ($existing); the force-push above updated it."
           exit 0
         fi
 
@@ -270,7 +278,9 @@ runs:
 
     # Read back by branch rather than parsing `gh pr create` output, so the
     # url and node id are correct whether this run created the PR or reused an
-    # already-open one.
+    # already-open one. Same isCrossRepository filter as above — everything
+    # downstream (project board, automerge gate) acts on what this resolves to,
+    # so a fork's PR must never land here.
     - name: Resolve pull request
       id: resolve-pr
       if: steps.signed-commit.outputs.has_commit == 'true'
@@ -280,7 +290,15 @@ runs:
         BRANCH_NAME: ${{ inputs.branch_name }}
       run: |
         set -euo pipefail
-        pr="$(gh pr view --head "$BRANCH_NAME" --json url,id)"
+        pr="$(gh pr list --head "$BRANCH_NAME" --state open \
+          --json url,id,isCrossRepository \
+          --jq '[.[] | select(.isCrossRepository == false)][0] // empty')"
+
+        if [ -z "$pr" ]; then
+          echo "::error::no same-repo pull request found for $BRANCH_NAME after pushing to it"
+          exit 1
+        fi
+
         {
           echo "pull_request_url=$(jq -r .url <<<"$pr")"
           echo "pull_request_id=$(jq -r .id <<<"$pr")"
@@ -364,11 +382,17 @@ runs:
         # Turns src/locales/en-US/x.json into a pattern matching any locale
         # directory, so the translated siblings of a declared en-US path are
         # recognised without having to enumerate all 18 of them.
+        #
+        # Escape first, then anchor. Both matter: an unescaped '.' is a regex
+        # wildcard, and an unanchored pattern matches any path that merely
+        # CONTAINS it — so `attacker/src/locales/de-DE/x.json` would pass a gate
+        # meant to allow only `src/locales/*/x.json`.
         is_locale_file() {
           local file="$1"
           for en_us_path in "${EN_US_ARRAY[@]}"; do
             en_us_path=$(echo "$en_us_path" | xargs)
-            locale_pattern=$(echo "$en_us_path" | sed 's|/en-US/|/[a-zA-Z\-]*/|g')
+            escaped=$(printf '%s' "$en_us_path" | sed 's/[][(){}.*+?^$|\\]/\\&/g')
+            locale_pattern="^$(printf '%s' "$escaped" | sed 's|/en-US/|/[a-zA-Z-]*/|g')\$"
             if [[ "$file" =~ $locale_pattern ]]; then
               return 0
             fi
