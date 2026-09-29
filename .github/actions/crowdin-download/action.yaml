@@ -172,15 +172,29 @@ runs:
             path: line.substring(3),
           }));
 
+          // A tree entry can carry `content` directly instead of a pre-created
+          // blob sha, which turns N+1 API calls into 1. But `content` is sent
+          // as a JSON string, so it is only safe for text that survives a
+          // UTF-8 round trip — anything else has to go through createBlob with
+          // base64. Locale files are JSON and always take the fast path; the
+          // fallback is here so a stray binary cannot be silently mangled.
           const tree = [];
           for (const { status: st, path: filePath } of files) {
             if (st === 'D') {
               tree.push({ path: filePath, mode: '100644', type: 'blob', sha: null });
+              continue;
+            }
+
+            const bytes = fs.readFileSync(path.join(ws, filePath));
+            const text = bytes.toString('utf8');
+
+            if (Buffer.from(text, 'utf8').equals(bytes)) {
+              tree.push({ path: filePath, mode: '100644', type: 'blob', content: text });
             } else {
-              const content = fs.readFileSync(path.join(ws, filePath));
+              core.info(`${filePath} is not valid UTF-8, uploading it as a blob`);
               const { data: blob } = await github.rest.git.createBlob({
                 owner, repo,
-                content: content.toString('base64'),
+                content: bytes.toString('base64'),
                 encoding: 'base64',
               });
               tree.push({ path: filePath, mode: '100644', type: 'blob', sha: blob.sha });
