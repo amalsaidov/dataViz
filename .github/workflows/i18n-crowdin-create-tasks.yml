@@ -23,7 +23,7 @@ jobs:
     permissions:
       contents: read # checkout only
     outputs:
-      packages: ${{ steps.find.outputs.packages }}
+      plugins: ${{ steps.find.outputs.plugins }}
     steps:
       # Sparse: all this job reads is three files per package. The action
       # below needs no checkout of its own — `$/` is resolved by the runner
@@ -37,9 +37,9 @@ jobs:
         uses: $/.github/actions/discover-i18n-packages
 
   create-tasks:
-    name: Create ${{ matrix.pkg }} tasks in Crowdin
+    name: Create ${{ matrix.slug }} tasks in Crowdin
     needs: discover
-    if: needs.discover.outputs.packages != '[]'
+    if: needs.discover.outputs.plugins != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -47,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.discover.outputs.packages) }}
+        include: ${{ fromJson(needs.discover.outputs.plugins) }}
     steps:
       # No checkout, and no crowdin.yml: the composite checks out
       # grafana/grafana-github-actions into the workspace itself with no `path:`,

@@ -1,18 +1,43 @@
-# Finds the packages that opt into i18n CI, and emits one matrix entry each.
+# Finds what opts into i18n CI, and emits two matrices: one per published
+# plugin, and one per workspace package.
 #
-# All four i18n-* workflows need exactly this list, and they used to each carry
-# their own copy of the logic with a comment asking future editors to keep the
-# copies identical. That failed the first time it was tested: a change went into
-# three of them and i18n-verify silently kept the old rule. Hence one action.
+# Both are needed because the two units are not the same thing. Extraction is a
+# package-level pnpm script, so i18n-verify wants one job per package. Crowdin
+# work is per project, and a project belongs to a published plugin — so upload,
+# download and create-tasks want one job per plugin.
+#
+# A package like grafana-echarts publishes several plugins from one directory:
+# `src/plugin.json` is the app and each `src/modules/*/plugin.json` is a panel,
+# with the standalone Relations build registering its own translation namespace
+# (see `activePluginId` in that package's webpack.config.ts). So "one package,
+# one plugin, one Crowdin project" does not hold, and a package declares its
+# plugins explicitly when it has more than one:
+#
+#   x_dataviz:
+#     plugins:
+#       - id: grafana-echarts-app
+#         crowdin_project_id: 'NN'
+#         sources: ['src/locales/en-US/grafana-echarts-app.json']
+#       - id: grafana-relations-panel
+#         crowdin_project_id: 'MM'
+#         sources: ['src/locales/en-US/grafana-relations-panel.json']
+#
+# A single-plugin package declares only `crowdin_project_id` and gets the id
+# from `src/plugin.json` with every `files[].source` assigned to it.
+#
+# All four i18n-* workflows need this list, and they used to each carry their
+# own copy of the logic with a comment asking future editors to keep the copies
+# identical. That failed the first time it was tested: a change went into three
+# of them and i18n-verify silently kept the old rule. Hence one action.
 #
 # This action itself needs no checkout — callers reference it as
 # `$/.github/actions/discover-i18n-packages`, which the runner resolves from
 # this repo at the workflow's ref rather than from the workspace. But it reads
-# each package's crowdin.yml, package.json and src/plugin.json off disk, so the
-# caller does have to check the package root out, and a sparse-checkout has to
-# include it.
+# each package's crowdin.yml, package.json and plugin.json files off disk, so
+# the caller does have to check the package root out, and a sparse-checkout has
+# to include it.
 name: Discover i18n packages
-description: Emit a JSON matrix of the packages that opt into i18n CI.
+description: Emit JSON matrices of the plugins and packages that opt into i18n CI.
 
 inputs:
   root:
@@ -33,14 +58,18 @@ inputs:
     default: i18n
 
 outputs:
+  plugins:
+    description: |
+      One entry per published plugin, for the Crowdin workflows. Fields:
+      dir, pkg, slug, en_paths, sources, project_id, vault_path, vault_key,
+      board_id, pr_labels. `dir` is the owning package (Crowdin's base_path);
+      `sources` is that plugin's package-relative source list, used to filter
+      the materialized crowdin.yml down to this project's files.
+    value: ${{ steps.find.outputs.plugins }}
   packages:
     description: |
-      JSON array of matrix entries, one per detected package, each with:
-      dir, pkg, slug, en_paths, project_id, vault_path, vault_key, board_id,
-      pr_labels.
-      `[]` when nothing opts in — callers should guard their matrix job with
-      `if: needs.discover.outputs.packages != '[]'`, because a matrix over an
-      empty include list is an error, not a skip.
+      One entry per workspace package, for extraction. Fields: dir, pkg.
+      A package publishing several plugins appears once.
     value: ${{ steps.find.outputs.packages }}
 
 runs:
@@ -61,19 +90,14 @@ runs:
       run: |
         set -euo pipefail
         shopt -s nullglob # must precede the glob, or `set -u` sees the literal pattern
-        entries='[]'
+
+        plugins='[]'
+        packages='[]'
+
         for cfg in "$ROOT"/*/crowdin.yml; do
           dir="$(dirname "$cfg")"
           pkg="$(jq -r '.name' "$dir/package.json")"
-          slug="$(jq -r '.id // ""' "$dir/src/plugin.json")"
           meta="$(yq -o=json '.x_dataviz // {}' "$cfg")"
-
-          # Every source, not just files[0]: a package may split its strings
-          # over several namespaces, and a gate that only knows about the first
-          # one would treat the rest as non-i18n files.
-          srcs="$(yq -o=json '[.files[].source]' "$cfg")"
-          jq -e 'length > 0' <<<"$srcs" >/dev/null \
-            || { echo "::error file=$cfg::files[] is empty, so there are no sources to translate"; exit 1; }
 
           # Having a crowdin.yml and having a working extraction pipeline are
           # two different facts. `pnpm --filter` exits 0 on a missing script,
@@ -81,61 +105,89 @@ runs:
           jq -e '.scripts["i18n-extract:ci"]' "$dir/package.json" >/dev/null \
             || { echo "::error file=$dir/package.json::has crowdin.yml but no i18n-extract:ci script"; exit 1; }
 
-          # dir and en_paths are repo-root-relative: dir is used as Crowdin's
-          # base_path, and en_paths is the comma-separated list the download
-          # workflow's automerge gate matches `gh pr diff --name-only` against.
-          #
-          # slug is the plugin id, which is what the download workflow builds
-          # its per-package branch name from. It comes from src/plugin.json
-          # rather than package.json (whose name is scoped —
-          # @plugins/grafana-clock-panel — so unusable in a git ref) and
-          # rather than the directory name (which is only required to equal
-          # the id for app plugins, not panels).
-          #
-          # vault_path defaults to <plugin id>-crowdin-token. Every package
-          # needs its OWN Crowdin token, because tokens are granular-scoped to
-          # one project, and deriving the name from the id makes that structural
-          # rather than a thing each import has to remember. The upstream
-          # convention name (grafana-frontend-crowdin-token) is a single-plugin
-          # repo's name: it identifies the bot account's owning team, not which
-          # project the token opens, so it cannot distinguish N packages here.
-          entry="$(jq -nc \
-            --arg dir "$dir" --arg pkg "$pkg" --arg slug "$slug" \
-            --argjson srcs "$srcs" --argjson meta "$meta" \
-            --arg board "$DEFAULT_BOARD_ID" --arg labels "$DEFAULT_PR_LABELS" \
-            '{dir:$dir, pkg:$pkg, slug:$slug,
-              en_paths: ([$srcs[] | $dir + "/" + .] | join(",")),
-              project_id: ($meta.crowdin_project_id // null | tostring),
-              vault_path: ($meta.vault_secret_path // ($slug + "-crowdin-token")),
-              vault_key:  ($meta.vault_secret_key // "access_token"),
-              board_id:   ($meta.github_board_id // $board | tostring),
-              pr_labels:  ($meta.pr_labels // $labels)}')"
+          packages="$(jq -c --arg dir "$dir" --arg pkg "$pkg" '. + [{dir:$dir, pkg:$pkg}]' <<<"$packages")"
 
-          jq -e '.project_id != "null"' <<<"$entry" >/dev/null \
-            || { echo "::error file=$cfg::x_dataviz.crowdin_project_id is required"; exit 1; }
+          # Every source the CLI config declares. Used to desugar the
+          # single-plugin case and to validate the multi-plugin one.
+          all_srcs="$(yq -o=json '[.files[].source]' "$cfg")"
+          jq -e 'length > 0' <<<"$all_srcs" >/dev/null \
+            || { echo "::error file=$cfg::files[] is empty, so there are no sources to translate"; exit 1; }
 
-          # Grafana's own validator already restricts plugin ids to this
-          # shape, so this is a tripwire, not a sanitizer: fail loudly here
-          # rather than force-push a ref with a surprising name. It also has to
-          # hold for vault_path, which is derived from it.
-          [[ "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
-            || { echo "::error file=$dir/src/plugin.json::id '$slug' is empty or not a usable branch-name component"; exit 1; }
+          # A package with one plugin names nothing: the id comes from
+          # src/plugin.json and takes every source. A package that publishes
+          # several must list them, because which strings belong to which
+          # Crowdin project is not derivable from the tree.
+          declared="$(jq -c '.plugins // empty' <<<"$meta")"
+          if [ -z "$declared" ]; then
+            root_id="$(jq -r '.id // ""' "$dir/src/plugin.json" 2>/dev/null || echo "")"
+            [ -n "$root_id" ] \
+              || { echo "::error file=$cfg::no x_dataviz.plugins and no id in src/plugin.json, so this package has no plugin identity"; exit 1; }
+            declared="$(jq -nc --arg id "$root_id" --argjson srcs "$all_srcs" --argjson m "$meta" \
+              '[{id:$id, crowdin_project_id:($m.crowdin_project_id // null), sources:$srcs}]')"
+          fi
 
-          entries="$(jq -c --argjson e "$entry" '. + [$e]' <<<"$entries")"
+          while IFS= read -r one; do
+            id="$(jq -r '.id // ""' <<<"$one")"
+            srcs="$(jq -c '.sources // []' <<<"$one")"
+
+            # Grafana's own validator already restricts plugin ids to this
+            # shape, so this is a tripwire, not a sanitizer: fail loudly here
+            # rather than force-push a ref with a surprising name. It also has
+            # to hold for vault_path, which is derived from it.
+            [[ "$id" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
+              || { echo "::error file=$cfg::plugin id '$id' is empty or not a usable branch-name component"; exit 1; }
+
+            jq -e 'length > 0' <<<"$srcs" >/dev/null \
+              || { echo "::error file=$cfg::plugin '$id' lists no sources"; exit 1; }
+
+            # A source that is not in files[] would be filtered out of the
+            # materialized config, leaving the job uploading nothing at all.
+            missing="$(jq -r --argjson all "$all_srcs" '[.[] | select(IN($all[]) | not)] | join(", ")' <<<"$srcs")"
+            [ -z "$missing" ] \
+              || { echo "::error file=$cfg::plugin '$id' lists sources absent from files[]: $missing"; exit 1; }
+
+            entry="$(jq -nc \
+              --arg dir "$dir" --arg pkg "$pkg" --arg slug "$id" \
+              --argjson srcs "$srcs" --argjson one "$one" --argjson meta "$meta" \
+              --arg board "$DEFAULT_BOARD_ID" --arg labels "$DEFAULT_PR_LABELS" \
+              '{dir:$dir, pkg:$pkg, slug:$slug,
+                sources: $srcs,
+                en_paths: ([$srcs[] | $dir + "/" + .] | join(",")),
+                project_id: ($one.crowdin_project_id // null | tostring),
+                vault_path: ($one.vault_secret_path // $meta.vault_secret_path // ($slug + "-crowdin-token")),
+                vault_key:  ($one.vault_secret_key  // $meta.vault_secret_key  // "access_token"),
+                board_id:   ($one.github_board_id   // $meta.github_board_id   // $board | tostring),
+                pr_labels:  ($one.pr_labels         // $meta.pr_labels         // $labels)}')"
+
+            jq -e '.project_id != "null"' <<<"$entry" >/dev/null \
+              || { echo "::error file=$cfg::plugin '$id' has no crowdin_project_id"; exit 1; }
+
+            plugins="$(jq -c --argjson e "$entry" '. + [$e]' <<<"$plugins")"
+          done < <(jq -c '.[]' <<<"$declared")
+
+          # Every source has to belong to exactly one plugin. A source assigned
+          # to none is simply never uploaded, which looks like translators just
+          # not getting to those strings.
+          claimed="$(jq -c --arg dir "$dir" '[.[] | select(.dir == $dir) | .sources[]] | unique' <<<"$plugins")"
+          orphans="$(jq -r --argjson claimed "$claimed" '[.[] | select(IN($claimed[]) | not)] | join(", ")' <<<"$all_srcs")"
+          [ -z "$orphans" ] \
+            || { echo "::error file=$cfg::files[] sources not assigned to any plugin: $orphans"; exit 1; }
         done
 
-        # Collisions between packages, which no single package's config can
-        # see. Each of these fails in a way that is easy to misread:
-        #   slug        — two packages force-push the same translation branch
+        # Collisions across everything discovered, which no single config can
+        # see. Each fails in a way that is easy to misread:
+        #   slug        — two jobs force-push the same translation branch
         #   project_id  — two base_paths in one Crowdin project orphan files
         #   vault_path  — both read one token, scoped to only one of the
-        #                 projects, so one package works and the other 403s
+        #                 projects, so one works and the other 403s
         for field in slug project_id vault_path; do
           dupes="$(jq -r --arg f "$field" \
-            '[.[][$f]] | group_by(.) | map(select(length > 1) | .[0]) | join(", ")' <<<"$entries")"
+            '[.[][$f]] | group_by(.) | map(select(length > 1) | .[0]) | join(", ")' <<<"$plugins")"
           [ -z "$dupes" ] \
-            || { echo "::error::two or more i18n packages share the same $field: $dupes"; exit 1; }
+            || { echo "::error::two or more i18n plugins share the same $field: $dupes"; exit 1; }
         done
 
-        echo "Detected: $entries"
-        echo "packages=$entries" >> "$GITHUB_OUTPUT"
+        echo "Plugins:  $plugins"
+        echo "Packages: $packages"
+        echo "plugins=$plugins" >> "$GITHUB_OUTPUT"
+        echo "packages=$packages" >> "$GITHUB_OUTPUT"

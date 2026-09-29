@@ -33,7 +33,7 @@ jobs:
     permissions:
       contents: read # checkout only
     outputs:
-      packages: ${{ steps.find.outputs.packages }}
+      plugins: ${{ steps.find.outputs.plugins }}
     steps:
       # Sparse: all this job reads is three files per package. The action
       # below needs no checkout of its own — `$/` is resolved by the runner
@@ -47,9 +47,9 @@ jobs:
         uses: $/.github/actions/discover-i18n-packages
 
   download:
-    name: Download ${{ matrix.pkg }} translations from Crowdin
+    name: Download ${{ matrix.slug }} translations from Crowdin
     needs: discover
-    if: needs.discover.outputs.packages != '[]'
+    if: needs.discover.outputs.plugins != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: read # repo writes go through the App token, not GITHUB_TOKEN
@@ -57,7 +57,7 @@ jobs:
     strategy:
       fail-fast: false # one package's Crowdin outage must not cancel another's
       matrix:
-        include: ${{ fromJson(needs.discover.outputs.packages) }}
+        include: ${{ fromJson(needs.discover.outputs.plugins) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -86,11 +86,25 @@ jobs:
       - name: Materialize root crowdin.yml
         env:
           PKG_DIR: ${{ matrix.dir }}
+          PLUGIN_SOURCES: ${{ toJSON(matrix.sources) }}
         run: |
           set -euo pipefail
-          yq 'del(.x_dataviz) | .base_path = strenv(PKG_DIR)' \
-            "$PKG_DIR/crowdin.yml" > crowdin.yml
+          # Also filters files[] down to this plugin's sources. A package that
+          # publishes several plugins has one crowdin.yml but several Crowdin
+          # projects, and each job must send only its own project's files —
+          # otherwise every project ends up holding every plugin's strings.
+          #
+          # Emitted as JSON, which is valid YAML, so crowdin-cli reads it the
+          # same. $srcs/$base below are jq variables, not shell ones.
+          # shellcheck disable=SC2016
+          yq -o=json 'del(.x_dataviz)' "$PKG_DIR/crowdin.yml" \
+            | jq --argjson srcs "$PLUGIN_SOURCES" --arg base "$PKG_DIR" \
+                '.base_path = $base | .files = [.files[] | select(.source | IN($srcs[]))]' \
+            > crowdin.yml
           cat crowdin.yml
+
+          jq -e '.files | length > 0' crowdin.yml >/dev/null \
+            || { echo "::error::no files[] entry matched this plugin's sources"; exit 1; }
 
       - name: Download from Crowdin
         uses: $/.github/actions/crowdin-download
