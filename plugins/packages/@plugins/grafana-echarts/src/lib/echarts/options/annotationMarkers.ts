@@ -16,12 +16,16 @@ export const ANNOTATION_MARKER_SERIES_ID = '__annotation_markers';
 // Core marker size: a 10 px wide, 5 px high triangle, and a 5 px high region bar.
 const MARKER_HALF_WIDTH = 5;
 const MARKER_HEIGHT = 5;
+/** Core `ANNOTATION_LANE_SIZE`: the px between two lanes of markers (`plugins/utils.ts`). */
+export const ANNOTATION_LANE_SIZE = 7;
 
 interface MarkerOptions {
   /** The tooltip content of the mark at this index of `marks`. */
   tooltip?: (markIndex: number) => TooltipModel;
   sink?: TooltipSink;
   zlevel?: number;
+  /** Put the markers of each mark `lane` in their own row, as core "Enable multi-row annotations". */
+  multiLane?: boolean;
 }
 
 /**
@@ -36,7 +40,7 @@ interface MarkerOptions {
 export function buildAnnotationMarkerSeries(
   marks: AnnotationMark[],
   range: { min: number; max: number },
-  { tooltip, sink, zlevel }: MarkerOptions = {}
+  { tooltip, sink, zlevel, multiLane }: MarkerOptions = {}
 ): CustomSeriesOption | undefined {
   // The index in `marks` of each drawn marker, in data order.
   const markIndexes: number[] = [];
@@ -62,7 +66,8 @@ export function buildAnnotationMarkerSeries(
     if (!mark || !isRect(params.coordSys)) {
       return;
     }
-    const bottom = params.coordSys.y + params.coordSys.height;
+    const bottom =
+      params.coordSys.y + params.coordSys.height + (multiLane ? (mark.lane ?? 0) * ANNOTATION_LANE_SIZE : 0);
     const x = api.coord([api.value(0), 0])[0];
     const style = { fill: mark.color };
     if (mark.timeEnd == null) {

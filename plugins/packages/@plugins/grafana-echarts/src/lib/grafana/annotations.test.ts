@@ -1,6 +1,6 @@
 import { createTheme, DataTopic, FieldType, toDataFrame } from '@grafana/data';
 import { DEFAULT_ANNOTATION_COLOR } from '@grafana/ui';
-import { readAnnotations } from 'lib/grafana/annotations';
+import { countAnnotationLanes, readAnnotationDisplay, readAnnotations } from 'lib/grafana/annotations';
 
 const theme = createTheme();
 
@@ -21,14 +21,16 @@ describe('readAnnotations', () => {
       theme
     );
     expect(annotations).toEqual([
-      { time: 100, color: theme.visualization.getColorByName('red') },
-      { time: 200, timeEnd: 300, color: '#123456' },
+      { time: 100, color: theme.visualization.getColorByName('red'), lane: 0 },
+      { time: 200, timeEnd: 300, color: '#123456', lane: 0 },
     ]);
   });
 
   it('uses the default annotation color when an event has no color', () => {
     const annotations = readAnnotations([frame([{ name: 'time', type: FieldType.time, values: [100] }])], theme);
-    expect(annotations).toEqual([{ time: 100, color: theme.visualization.getColorByName(DEFAULT_ANNOTATION_COLOR) }]);
+    expect(annotations).toEqual([
+      { time: 100, color: theme.visualization.getColorByName(DEFAULT_ANNOTATION_COLOR), lane: 0 },
+    ]);
   });
 
   it('reads a timeEnd as a point when isRegion is not true, as core', () => {
@@ -41,7 +43,7 @@ describe('readAnnotations', () => {
       ],
       theme
     );
-    expect(annotations).toEqual([{ time: 100, color: expect.any(String) }]);
+    expect(annotations).toEqual([{ time: 100, color: expect.any(String), lane: 0 }]);
   });
 
   it('skips exemplar and xymark frames, and frames with no time field', () => {
@@ -76,9 +78,55 @@ describe('readAnnotations tooltip content', () => {
       theme
     );
     expect(annotations).toEqual([
-      { time: 100, color: expect.any(String), title: 'Deploy', text: '<b>v1.2</b>', tags: ['release', 'api'] },
-      { time: 200, color: expect.any(String), tags: [] },
+      { time: 100, color: expect.any(String), title: 'Deploy', text: '<b>v1.2</b>', tags: ['release', 'api'], lane: 0 },
+      { time: 200, color: expect.any(String), tags: [], lane: 0 },
     ]);
+  });
+});
+
+describe('annotation lanes', () => {
+  const point = (time: number) => frame([{ name: 'time', type: FieldType.time, values: [time] }]);
+
+  it('gives each event the index of its frame in the frames that draw', () => {
+    const annotations = readAnnotations([point(100), frame([], 'empty'), point(200)], theme);
+    expect(annotations.map(({ lane }) => lane)).toEqual([0, 1]);
+  });
+
+  it('counts one lane for each frame that draws, as core `getXAnnotationFrames`', () => {
+    const exemplar = frame([{ name: 'time', type: FieldType.time, values: [300] }], 'exemplar');
+    expect(countAnnotationLanes([point(100), frame([]), point(200), exemplar])).toBe(2);
+    expect(countAnnotationLanes(undefined)).toBe(0);
+  });
+});
+
+describe('readAnnotationDisplay', () => {
+  it('keeps the chart defaults when the panel has no annotation options', () => {
+    expect(readAnnotationDisplay(undefined)).toEqual({ multiLane: false });
+  });
+
+  it('reads the line width and the band opacity', () => {
+    expect(readAnnotationDisplay({ lines: { width: 4 }, regions: { opacity: 0.3 } })).toEqual({
+      lineWidth: 4,
+      regionOpacity: 0.3,
+      multiLane: false,
+    });
+  });
+
+  it('hides the lines and the bands when the width or the opacity is 0, as core', () => {
+    const hidden = { lineWidth: 0, regionOpacity: 0, multiLane: false };
+    expect(readAnnotationDisplay({ lines: { width: 0 }, regions: { opacity: 0 } })).toEqual(hidden);
+    // Core draws a band only in its line pass, so a width of 0 also hides the bands.
+    expect(readAnnotationDisplay({ lines: { width: 0 }, regions: { opacity: 0.5 } })).toEqual(hidden);
+    expect(readAnnotationDisplay({ regions: { opacity: 0 } })).toEqual(hidden);
+  });
+
+  it('hides the lines and the bands of multi-lane annotations until the panel sets them, as core', () => {
+    expect(readAnnotationDisplay({ multiLane: true })).toEqual({ lineWidth: 0, regionOpacity: 0, multiLane: true });
+    expect(readAnnotationDisplay({ multiLane: true, lines: { width: 2 }, regions: { opacity: 0.1 } })).toEqual({
+      lineWidth: 2,
+      regionOpacity: 0.1,
+      multiLane: true,
+    });
   });
 });
 

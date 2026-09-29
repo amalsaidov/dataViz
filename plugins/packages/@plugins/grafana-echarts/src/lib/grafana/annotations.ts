@@ -1,4 +1,5 @@
 import { type DataFrame, type Field, FieldType, type GrafanaTheme2 } from '@grafana/data';
+import { type VizAnnotations } from '@grafana/schema';
 import { DEFAULT_ANNOTATION_COLOR } from '@grafana/ui';
 
 // Reads the annotation frames of `PanelData.annotations` into a chart-agnostic model that the
@@ -24,6 +25,17 @@ export interface ResolvedAnnotation {
    * https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/VizTooltip/utils.ts
    */
   links?: { fields: Field[]; rowIndex: number };
+  /** The index of the frame of the event in the frames that draw: its row of multi-lane markers. */
+  lane?: number;
+}
+
+/** The annotation panel options (`options.annotations`) as the chart draws them. */
+export interface AnnotationDisplay {
+  /** `undefined` uses the default of the chart. 0 draws no line. */
+  lineWidth?: number;
+  /** `undefined` uses the default of the chart. 0 draws no band. */
+  regionOpacity?: number;
+  multiLane: boolean;
 }
 
 /**
@@ -34,7 +46,7 @@ export interface ResolvedAnnotation {
  * true and it has a `timeEnd`.
  */
 export function readAnnotations(frames: DataFrame[] | undefined, theme: GrafanaTheme2): ResolvedAnnotation[] {
-  return (frames ?? []).filter(isTimeAnnotationFrame).flatMap((frame) => {
+  return (frames ?? []).filter(isTimeAnnotationFrame).flatMap((frame, lane) => {
     const time = fieldByName(frame, 'time');
     const timeEnd = fieldByName(frame, 'timeEnd');
     const isRegion = fieldByName(frame, 'isRegion');
@@ -67,10 +79,34 @@ export function readAnnotations(frames: DataFrame[] | undefined, theme: GrafanaT
         text: asText(text?.values[i]),
         tags: asTags(tags?.values[i]),
         ...(linkFields.length > 0 ? { links: { fields: linkFields, rowIndex: i } } : {}),
+        lane,
       });
     }
     return events;
   });
+}
+
+/** The number of marker lanes: one for each annotation frame that draws (core `annotationLanes`). */
+export function countAnnotationLanes(frames: DataFrame[] | undefined): number {
+  return (frames ?? []).filter(isTimeAnnotationFrame).length;
+}
+
+/**
+ * Read the core annotation panel options (`VizAnnotations` in @grafana/schema).
+ * Core draws the lines and the bands only when both the line width and the band opacity are more than 0.
+ * With `multiLane` and no width or opacity, core draws no lines and no bands.
+ * Core reference: `shouldRenderAnnotationLine` and `shouldRenderAnnotationRegion` in
+ * public/app/plugins/panel/timeseries/plugins/utils.ts, and the `draw` hook of `AnnotationsPlugin.tsx`.
+ */
+export function readAnnotationDisplay(options: VizAnnotations | undefined): AnnotationDisplay {
+  const multiLane = options?.multiLane === true;
+  const width = options?.lines?.width;
+  const opacity = options?.regions?.opacity;
+  const isOn = (value: number | undefined) => (value === undefined ? !multiLane : value > 0);
+  if (!isOn(width) || !isOn(opacity)) {
+    return { lineWidth: 0, regionOpacity: 0, multiLane };
+  }
+  return { lineWidth: width, regionOpacity: opacity, multiLane };
 }
 
 /** Core's filter of the frames that draw on the x axis (`getXAnnotationFrames`). */

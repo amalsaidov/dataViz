@@ -16,6 +16,7 @@ import { seriesTypePath } from 'editor/constants';
 import { type EChartsGraphFieldConfig, type SeriesTypeOption } from 'editor/types';
 import { makeLazyPanel } from 'lib/components/LazyPanel';
 import { framesLookMultiValue } from 'lib/echarts/converters/multiValueCartesian';
+import { addCartesianAnnotationOptions } from 'lib/grafana/editor/cartesian/annotations';
 import { addCartesianBarChartOptions } from 'lib/grafana/editor/cartesian/bar-chart';
 import { addCartesianBarFillOpacityOptions } from 'lib/grafana/editor/cartesian/bar-fill-opacity';
 import { addCartesianBarRadiusOptions } from 'lib/grafana/editor/cartesian/bar-radius';
@@ -205,6 +206,9 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
     // only — the time-series fast path doesn't apply to the other families, which
     // register the shared animation switch on its own via `addAnimationOption`.
     addPerformanceOptions(builder);
+
+    // Core "Annotations" options: multi-row markers, and hide the lines and bands.
+    addCartesianAnnotationOptions(builder);
 
     return builder;
   })

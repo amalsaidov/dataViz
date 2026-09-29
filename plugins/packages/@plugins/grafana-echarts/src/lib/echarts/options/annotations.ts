@@ -12,6 +12,16 @@ export interface AnnotationMark {
   time: number;
   timeEnd?: number;
   color: string;
+  /** The lane of the marker under the plot, from 0. Only the markers use it. */
+  lane?: number;
+}
+
+/** The style of the lines and bands. A width or an opacity of 0 draws no line or no band. */
+export interface AnnotationStyle {
+  /** Default 2. */
+  lineWidth?: number;
+  /** Default 0.1. */
+  regionOpacity?: number;
 }
 
 /** The id and name of the annotation series. A name is necessary: ECharts names an unnamed series `series\0<index>`. */
@@ -28,27 +38,32 @@ const REGION_OPACITY = 0.1;
  *
  * The marks are not attached to a data series (as thresholds are), because a legend click that
  * hides that series would remove the marks too. Marks out of the axis range `[min, max]` are
- * dropped, and regions are clipped to it, so no mark draws out of the grid. Returns `undefined`
- * when no mark is in the range.
+ * dropped, and regions are clipped to it, so no mark draws out of the grid. `style` sets the line
+ * width and the band opacity (https://echarts.apache.org/en/option.html#series-line.markLine.lineStyle).
+ * Returns `undefined` when no line or band draws.
  */
 export function buildAnnotationSeries(
   marks: AnnotationMark[],
   range: { min: number; max: number },
-  zlevel?: number
+  zlevel?: number,
+  { lineWidth = LINE_WIDTH, regionOpacity = REGION_OPACITY }: AnnotationStyle = {}
 ): LineSeriesOption | undefined {
   const lines: NonNullable<MarkLineComponentOption['data']> = [];
   const areas: MarkArea2DDataItemOption[] = [];
   const inRange = (time: number) => time >= range.min && time <= range.max;
   const line = (time: number, color: string) => ({
     xAxis: time,
-    lineStyle: { color, width: LINE_WIDTH, type: LINE_DASH },
+    lineStyle: { color, width: lineWidth, type: LINE_DASH },
   });
+  const addLine = (time: number, color: string) => {
+    if (lineWidth > 0 && inRange(time)) {
+      lines.push(line(time, color));
+    }
+  };
 
   for (const mark of marks) {
     if (mark.timeEnd == null) {
-      if (inRange(mark.time)) {
-        lines.push(line(mark.time, mark.color));
-      }
+      addLine(mark.time, mark.color);
       continue;
     }
     const start = Math.max(mark.time, range.min);
@@ -57,13 +72,11 @@ export function buildAnnotationSeries(
       continue;
     }
     // An edge that the range clips has no line, as core clips its lines to the plot.
-    if (inRange(mark.time)) {
-      lines.push(line(mark.time, mark.color));
+    addLine(mark.time, mark.color);
+    addLine(mark.timeEnd, mark.color);
+    if (regionOpacity > 0) {
+      areas.push([{ xAxis: start, itemStyle: { color: mark.color, opacity: regionOpacity } }, { xAxis: end }]);
     }
-    if (inRange(mark.timeEnd)) {
-      lines.push(line(mark.timeEnd, mark.color));
-    }
-    areas.push([{ xAxis: start, itemStyle: { color: mark.color, opacity: REGION_OPACITY } }, { xAxis: end }]);
   }
 
   if (lines.length === 0 && areas.length === 0) {
@@ -95,7 +108,8 @@ export function buildAnnotationSeries(
 export function buildCategoryAnnotationSeries(
   marks: AnnotationMark[],
   categoryTimes: number[],
-  zlevel?: number
+  zlevel?: number,
+  style?: AnnotationStyle
 ): LineSeriesOption | undefined {
   if (categoryTimes.length === 0) {
     return undefined;
@@ -106,7 +120,7 @@ export function buildCategoryAnnotationSeries(
     time: toIndex(mark.time),
     timeEnd: mark.timeEnd == null ? undefined : toIndex(mark.timeEnd),
   }));
-  return buildAnnotationSeries(indexed, { min: 0, max: categoryTimes.length - 1 }, zlevel);
+  return buildAnnotationSeries(indexed, { min: 0, max: categoryTimes.length - 1 }, zlevel, style);
 }
 
 /** The index of the category nearest to `time`: -1 before the first category, `length` after the last. */

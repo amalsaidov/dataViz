@@ -28,6 +28,9 @@ styling defaults, exposing only a small set of per-field overrides.
 | Annotations: points and regions                    | `data.annotations` drawn as a dashed `markLine` (points, region edges) and a `markArea` band (regions)      | Partial       |
 | Annotations: markers and tooltip                   | A `custom` series draws the markers under the plot; its item tooltip shows the annotation                   | Partial       |
 | Annotations: add from the chart                    | Tooltip "Add annotation" button, ctrl/cmd + click (point), ctrl/cmd + drag (region), editor form            | Partial       |
+| Annotations: Hide lines and areas                  | Custom switch on `options.annotations`: `lines.width` and `regions.opacity`                                 | Supported     |
+| Annotations: Enable multi-row annotations          | `options.annotations.multiLane`: a row of markers for each annotation frame                                 | Supported     |
+| Annotations: Enable annotation clustering          | none                                                                                                        | Not supported |
 | —                                                  | `editorMode` radio (Default / Advanced editor tiers)                                                        | ECharts-only  |
 | —                                                  | Advanced: `performance.showPoints`, `performance.downsampling` (LTTB), `animation.enabled` (off by default) | Advanced      |
 
@@ -64,13 +67,29 @@ byValue + bySeries).
   effect. Clicking a legend item toggles the same `viz` state.
 - **Annotations** draw on the time axis (line, bar and scatter) and on the candlestick
   axis ([candlestick.md](./candlestick.md)). A point is a
-  dashed vertical line. A region is a band with a dashed line at each edge. The line
-  width (2 px), the dash (5 px) and the band opacity (0.1) are the core defaults. Each
+  dashed vertical line. A region is a band with a dashed line at each edge. The dash is
+  5 px, as core. Each
   event has its own color (`getColorByName`, default `DEFAULT_ANNOTATION_COLOR`). Marks
   out of the time range do not draw, and regions are clipped to it. A legend click that
   hides a series keeps the marks. Tests: [canvas baseline](../../../lib/components/annotations.canvas.test.tsx),
   [integration](../../../lib/components/annotations.integration.test.tsx). Dashboard:
   `provisioning/dashboards/cartesian/cartesian-annotations.json`.
+- **Annotation options** use the core paths of `options.annotations` (`VizAnnotations`
+  in `@grafana/schema`), so the fallback map copies them unchanged (viz contract 10.4).
+  `lines.width` sets the line width (default 2 px), and `regions.opacity` sets the band
+  opacity (default 0.1). As core, the lines and the bands draw only when both values are
+  more than 0. The "Hide lines and areas" switch sets both to 0, or back to the defaults.
+  Unlike core, the switch keeps `multiLane` and `clustering`. "Enable multi-row
+  annotations" (`multiLane`) draws the markers of each annotation frame in its own row,
+  7 px under the row before it. With 2 or more frames, the time labels move down by 7 px
+  for each frame, as core. Core also draws the grid lines down through the marker rows.
+  This panel does not. As core, multi-row hides the lines and the bands until the panel
+  sets them. The editors
+  show only when the panel has annotation frames (multi-row: two or more), as core.
+  Tested on Grafana 13.2.0. Tests:
+  [canvas baseline](../../../lib/components/annotation-options.canvas.test.tsx),
+  [integration](../../../lib/components/annotation-options.integration.test.tsx).
+  Dashboard: `provisioning/dashboards/cartesian/cartesian-annotations.json`.
 - **Annotation markers** draw under the plot, as core `AnnotationMarker`: a 10 x 5 px
   triangle at a point, and a 5 px bar under a region, in the event color. A hover on a
   marker shows the annotation tooltip in Single and All mode: the time (a range for a
@@ -95,9 +114,10 @@ byValue + bySeries).
   annotations. Tests:
   [integration](../../../lib/components/annotation-create.integration.test.tsx). Tested
   on Grafana 13.2.0. Dashboard: `provisioning/dashboards/cartesian/cartesian-annotations.json`.
-- Annotations: not supported yet. The `options.annotations` editor (`lines.width`,
-  `regions.opacity`, `clustering`, `multiLane`), and edit and delete of an
-  annotation. The marker tooltip follows the cursor (core puts it under the marker),
+- Annotations: not supported yet. Clustering (`annotations.clustering`): core joins the
+  point markers that are near each other into one region marker. The panel has no
+  clustering switch, and it draws each marker. Edit and delete of an annotation. The
+  marker tooltip follows the cursor (core puts it under the marker),
   has no data links, and does not show when the tooltip mode is Hidden (core shows it).
   Its tags are in one theme color, and its time is in the font of the data tooltip header.
   Core `Tag` colors and the monospace time would put the viz bundle over its size limit.

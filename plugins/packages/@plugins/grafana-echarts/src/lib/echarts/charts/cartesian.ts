@@ -23,7 +23,7 @@ import {
 } from 'lib/echarts/converters/multiValueCartesian';
 import { timeSeriesToEChartsOption } from 'lib/echarts/converters/timeSeries';
 import { getCartesianGrid } from 'lib/echarts/grid/grid';
-import { buildAnnotationMarkerSeries } from 'lib/echarts/options/annotationMarkers';
+import { ANNOTATION_LANE_SIZE, buildAnnotationMarkerSeries } from 'lib/echarts/options/annotationMarkers';
 import { buildAnnotationSeries, buildCategoryAnnotationSeries } from 'lib/echarts/options/annotations';
 import { AXIS_FONT_SIZE } from 'lib/echarts/options/base';
 import { isHorizontalBars, resolvePanelStacking } from 'lib/echarts/options/bars';
@@ -55,7 +55,7 @@ import {
 } from 'lib/grafana/fields/thresholds';
 import { isNumberField } from 'lib/grafana/narrowing';
 import { getTimeAxisLabelFormatter } from 'lib/grafana/timeAxisFormat';
-import { readAnnotations } from 'lib/grafana/annotations';
+import { countAnnotationLanes, readAnnotationDisplay, readAnnotations } from 'lib/grafana/annotations';
 import { type FieldTypedDataFrame } from 'lib/grafana/types';
 import { type PanelOptions } from 'types';
 import {
@@ -103,13 +103,15 @@ function buildTimeOption(
   // The annotation series go last, so the index of each data series stays its field index
   // (see `cartesianSeriesFields`): the lines and bands, then the markers under the plot.
   const annotations = readAnnotations(ctx.annotations, theme);
+  const annotationDisplay = readAnnotationDisplay(options.annotations);
   const annotationRange = getTimeAxisBounds(ctx.timeRange);
   const annotationSeries = [
-    buildAnnotationSeries(annotations, annotationRange, options.zLevel?.series),
+    buildAnnotationSeries(annotations, annotationRange, options.zLevel?.series, annotationDisplay),
     buildAnnotationMarkerSeries(annotations, annotationRange, {
       tooltip: (index) => buildAnnotationTooltipModel(annotations[index], timeZone),
       sink: ctx.tooltipSink,
       zlevel: options.zLevel?.series,
+      multiLane: annotationDisplay.multiLane,
     }),
   ].filter((entry) => entry != null);
   const series = [...thresholdSeries, ...annotationSeries];
@@ -123,6 +125,7 @@ function buildTimeOption(
     axisLabel: {
       formatter: getTimeAxisLabelFormatter(ctx.timeRange, ctx.timeZone),
       ...getXTickRotate(options.xTickRotate),
+      ...getAnnotationLaneMargin(annotationDisplay.multiLane, countAnnotationLanes(ctx.annotations)),
     },
   });
 
@@ -353,6 +356,15 @@ function buildMultiValueOption(
 }
 
 /**
+ * Multi-lane markers move the time labels down by one lane for each annotation frame. As core
+ * `getXAxisConfig`, only 2 or more lanes move them. 8 is the ECharts default margin.
+ * https://echarts.apache.org/en/option.html#xAxis.axisLabel.margin
+ */
+function getAnnotationLaneMargin(multiLane: boolean, lanes: number): { margin?: number } {
+  return multiLane && lanes > 1 ? { margin: 8 + lanes * ANNOTATION_LANE_SIZE } : {};
+}
+
+/**
  * The annotation series of a candlestick with a time field, as core Candlestick (it is built on
  * the Time series panel). Each category label is the ISO time of its row (see
  * `multiValueCartesian`). Boxplot has no core panel with annotations, so it draws none.
@@ -364,7 +376,8 @@ function candlestickAnnotationSeries(ctx: ChartContext<MultiValueSeriesType>, ca
   return buildCategoryAnnotationSeries(
     readAnnotations(ctx.annotations, ctx.theme),
     categories.map((label) => Date.parse(String(label))),
-    ctx.options.zLevel?.series
+    ctx.options.zLevel?.series,
+    readAnnotationDisplay(ctx.options.annotations)
   );
 }
 

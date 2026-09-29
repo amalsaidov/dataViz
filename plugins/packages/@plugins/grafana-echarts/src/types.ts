@@ -7,6 +7,7 @@ import {
   type StackingMode,
   type TimelineValueAlignment,
   type VisibilityMode,
+  type VizAnnotations,
   type VizLegendOptions,
   type VizOrientation,
   type VizTextDisplayOptions,
@@ -165,6 +166,9 @@ export interface PanelOptions
    */
   [editorModePath]?: EditorMode;
   heatmapColorScheme?: HeatmapColorScheme;
+
+  /** The core annotation options of the cartesian panel (`OptionsWithAnnotations` in @grafana/schema). */
+  annotations?: VizAnnotations;
 
   /**
    * Heatmap coordinate model: continuous interval cells (`binned`, the dataplane

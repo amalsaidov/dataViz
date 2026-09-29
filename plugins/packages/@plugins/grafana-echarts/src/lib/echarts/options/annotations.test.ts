@@ -107,3 +107,32 @@ describe('buildCategoryAnnotationSeries', () => {
     expect(buildCategoryAnnotationSeries([{ time: 1000, color: 'red' }], [])).toBeUndefined();
   });
 });
+
+describe('buildAnnotationSeries style', () => {
+  const range = { min: 1000, max: 2000 };
+  const marks = [
+    { time: 1200, color: 'red' },
+    { time: 1300, timeEnd: 1500, color: 'blue' },
+  ];
+
+  it('draws the lines at the line width and the bands at the band opacity', () => {
+    const series = buildAnnotationSeries(marks, range, undefined, { lineWidth: 4, regionOpacity: 0.3 });
+    expect(series?.markLine?.data?.map((item) => ('lineStyle' in item ? item.lineStyle?.width : undefined))).toEqual([
+      4, 4, 4,
+    ]);
+    expect(series?.markArea?.data).toEqual([
+      [{ xAxis: 1300, itemStyle: { color: 'blue', opacity: 0.3 } }, { xAxis: 1500 }],
+    ]);
+  });
+
+  it('draws no line at a width of 0, and no band at an opacity of 0', () => {
+    expect(buildAnnotationSeries(marks, range, undefined, { lineWidth: 0 })?.markLine?.data).toEqual([]);
+    expect(buildAnnotationSeries(marks, range, undefined, { regionOpacity: 0 })?.markArea?.data).toEqual([]);
+    expect(buildAnnotationSeries(marks, range, undefined, { lineWidth: 0, regionOpacity: 0 })).toBeUndefined();
+  });
+
+  it('gives the style to the category axis series', () => {
+    const series = buildCategoryAnnotationSeries(marks, [1000, 1500, 2000], undefined, { regionOpacity: 0 });
+    expect(series?.markArea?.data).toEqual([]);
+  });
+});
