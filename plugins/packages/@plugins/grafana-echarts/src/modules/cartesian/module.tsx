@@ -22,7 +22,7 @@ import { addCartesianBarFillOpacityOptions } from 'lib/grafana/editor/cartesian/
 import { addCartesianBarRadiusOptions } from 'lib/grafana/editor/cartesian/bar-radius';
 import { addCartesianBarWidthOptions } from 'lib/grafana/editor/cartesian/bar-width';
 import { addCartesianFillOpacityOptions } from 'lib/grafana/editor/cartesian/fill-opacity';
-import { addCartesianHistogramOptions } from 'lib/grafana/editor/cartesian/histogram';
+import { addCartesianHistogramFieldConfig, addCartesianHistogramOptions } from 'lib/grafana/editor/cartesian/histogram';
 import { addCartesianLineWidthOptions } from 'lib/grafana/editor/cartesian/line-width';
 import { addCartesianPointSizeOptions } from 'lib/grafana/editor/cartesian/point-size';
 import { addCartesianSpanNullsFieldConfig } from 'lib/grafana/editor/cartesian/span-nulls';
@@ -140,6 +140,10 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
           options: getGraphFieldOptions().thresholdsDisplayModes,
         },
       });
+
+      // Core Histogram field settings: Stacking, Line width, Fill opacity and Gradient mode. Only the
+      // histogram mode reads them.
+      addCartesianHistogramFieldConfig(builder);
 
       // Register the standard `custom.hideFrom` field config ("Hide in area"
       // switches). Required so the legend visibility toggle's `byName` override

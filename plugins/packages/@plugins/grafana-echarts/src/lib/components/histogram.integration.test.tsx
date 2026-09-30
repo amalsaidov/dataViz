@@ -7,8 +7,17 @@ import {
   getHistogramFields,
   toDataFrame,
 } from '@grafana/data';
-import { StackingMode } from '@grafana/schema';
-import { type BarCanvasEvent, barRects, type DrawnRect, drawnTexts, renderBars, texts } from 'test/barCanvas';
+import { GraphGradientMode, StackingMode } from '@grafana/schema';
+import {
+  type BarCanvasEvent,
+  barRects,
+  type DrawnRect,
+  drawnTexts,
+  fills,
+  lineWidths,
+  renderBars,
+  texts,
+} from 'test/barCanvas';
 import { type PanelOptions } from 'types';
 
 // The histogram mode of the cartesian panel against the buckets of the core Histogram panel. Core buckets
@@ -151,6 +160,75 @@ describe('histogram mode against the core buckets', () => {
     const hidden = barRects((await renderBars(frames, { histogram: true, bucketSize: 10 }, {}, hideB)).series);
     expect(shown).toHaveLength(4);
     expect(hidden).toHaveLength(2);
+  });
+});
+
+// Core reads Stacking, Fill opacity, Line width and Gradient mode from each count field. The fields of one
+// stacking group stack on each other, and each group starts at 0 (`getStackingGroups`, `preparePlotData2`). The
+// gradient of a bar fill spans the plot from its top to its bottom (`gradientFills.ts`).
+// https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
+// https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/uPlot/utils.ts
+describe('histogram mode against the core field settings', () => {
+  const custom = (name: string, data: number[], settings: Record<string, unknown>) =>
+    values(name, data, { custom: settings });
+  const group = (name: string) => ({ stacking: { mode: StackingMode.Normal, group: name } });
+  const uniqueRects = (rects: DrawnRect[]) => [...new Map(rects.map((rect) => [JSON.stringify(rect), rect])).values()];
+
+  it('stacks the fields of each stacking group on their own, with the core counts', async () => {
+    const data = { A: [1, 2, 11], B: [3, 12, 13], C: [4, 14, 15] };
+    const frames = [custom('A', data.A, group('A')), custom('B', data.B, group('A')), custom('C', data.C, group('B'))];
+    const core = buildHistogram(frames, { bucketSize: 10 }, createTheme())!;
+    const [a, b, c] = core.counts.map((field) => field.values);
+    // Core stacks B on A in each bucket. C is in group B, so it starts at 0.
+    const tops = [...a, ...a.map((count, j) => count + b[j]), ...c];
+    const bases = [0, 0, ...a, 0, 0];
+
+    const { series } = await renderHistogram(frames, { bucketSize: 10 });
+    const bars = barRects(series);
+    expect(bars).toHaveLength(6);
+    // The series paint in the order of the fields, and each series paints its buckets from left to right.
+    const baseline = Math.max(...bars.map((bar) => bar.y + bar.height));
+    const pxPerCount = bars[0].height / a[0];
+    bars.forEach((bar, i) => {
+      expect(baseline - (bar.y + bar.height)).toBeCloseTo(bases[i] * pxPerCount, 0);
+      expect(baseline - bar.y).toBeCloseTo(tops[i] * pxPerCount, 0);
+    });
+  });
+
+  it('draws the fill opacity and the line width of each field', async () => {
+    const frames = [
+      custom('A', [1, 2, 11], { fillOpacity: 20, lineWidth: 3 }),
+      custom('B', [3, 12, 13], { fillOpacity: 90, lineWidth: 2 }),
+    ];
+    const { series } = await renderHistogram(frames, { bucketSize: 10, barFillOpacity: 50, lineWidth: 1 });
+    const alphas = [...fills(series)].map((fill) => fill.match(/, ([\d.]+)\)$/)?.[1]).sort();
+    expect(alphas).toEqual(['0.2', '0.9']);
+    expect([...lineWidths(series)].sort()).toEqual([2, 3]);
+  });
+
+  it.each([GraphGradientMode.Opacity, GraphGradientMode.Hue])(
+    'draws one gradient from the top to the bottom of the plot for each bar with Gradient mode %s',
+    async (gradientMode) => {
+      const frames = [custom('A', [1, 2, 2, 11, 21, 22, 23], { gradientMode })];
+      const { series } = await renderHistogram(frames, { bucketSize: 10 });
+      // zrender draws the path of a bar with a gradient twice: for the fill and for the border.
+      const bars = uniqueRects(barRects(series));
+      const gradients = series.filter((event) => event.type === 'createLinearGradient').map((event) => event.props);
+      expect(bars).toHaveLength(3);
+      expect(gradients.length).toBeGreaterThanOrEqual(bars.length);
+      // The bars have different heights, but one gradient: from above the highest bar to the base of the bars.
+      const [first] = gradients;
+      gradients.forEach((gradient) => expect(gradient).toEqual(first));
+      expect(first.x0).toBe(first.x1);
+      expect(Number(first.y0)).toBeLessThanOrEqual(Math.min(...bars.map((bar) => bar.y)));
+      expect(Number(first.y1)).toBeCloseTo(Math.max(...bars.map((bar) => bar.y + bar.height)), 0);
+    }
+  );
+
+  it('draws the same bars with no gradient for Gradient mode None as with no field setting', async () => {
+    const none = barRects((await renderHistogram([custom('A', [1, 2, 11], { gradientMode: 'none' })])).series);
+    const unset = barRects((await renderHistogram([values('A', [1, 2, 11])])).series);
+    expect(none).toEqual(unset);
   });
 });
 

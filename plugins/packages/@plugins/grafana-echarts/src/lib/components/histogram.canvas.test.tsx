@@ -1,5 +1,5 @@
 import { type DataFrame, DataFrameType, FieldType, toDataFrame } from '@grafana/data';
-import { StackingMode } from '@grafana/schema';
+import { GraphGradientMode, StackingMode } from '@grafana/schema';
 import { render } from '@testing-library/react';
 import { AXIS_ZLEVEL, normalizeCanvasEvents, SERIES_ZLEVEL } from 'test/canvas';
 import { getAxisCanvasEvents, getComponent, height, width } from 'test/panel';
@@ -13,7 +13,7 @@ import { type PanelOptions } from 'types';
 const values = (
   fields: Record<string, number[]>,
   unit?: string,
-  config: { min?: number; max?: number } = {}
+  config: { min?: number; max?: number; custom?: Record<string, unknown> } = {}
 ): DataFrame =>
   toDataFrame({
     fields: [
@@ -111,6 +111,35 @@ describe('cartesian histogram', () => {
       height,
     });
   });
+
+  it('stacks two stacking groups of field settings on their own', async () => {
+    const stacking = (group: string) => ({ custom: { stacking: { mode: StackingMode.Normal, group } } });
+    const { defaultEvents, axisEvents, seriesEvents } = await renderHistogram(
+      [
+        values({ Height: heights, Taller: taller }, undefined, stacking('A')),
+        values({ Shorter: heights.map((value) => value - 7) }, undefined, stacking('B')),
+      ],
+      { bucketSize: 10 }
+    );
+    expect(normalizeCanvasEvents([...axisEvents, ...seriesEvents])).toMatchCanvasSnapshot(defaultEvents, {
+      width,
+      height,
+    });
+  });
+
+  it.each([GraphGradientMode.Opacity, GraphGradientMode.Hue])(
+    'draws the %s gradient of the field settings, with a fill opacity and a line width',
+    async (gradientMode) => {
+      const { defaultEvents, axisEvents, seriesEvents } = await renderHistogram(
+        [values({ Height: heights }, undefined, { custom: { gradientMode, fillOpacity: 60, lineWidth: 2 } })],
+        { bucketSize: 5 }
+      );
+      expect(normalizeCanvasEvents([...axisEvents, ...seriesEvents])).toMatchCanvasSnapshot(defaultEvents, {
+        width,
+        height,
+      });
+    }
+  );
 
   it('draws the named buckets of a heatmap-rows frame on an ordinal axis', async () => {
     const frame = toDataFrame({

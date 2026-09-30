@@ -6,15 +6,21 @@ import {
   getDisplayProcessor,
   type GrafanaTheme2,
 } from '@grafana/data';
-import { StackingMode, TooltipDisplayMode } from '@grafana/schema';
-import { type CustomSeriesOption, type CustomSeriesRenderItem } from 'echarts';
+import { GraphGradientMode, StackingMode, TooltipDisplayMode } from '@grafana/schema';
+import { type CustomSeriesOption, type CustomSeriesRenderItem, type LinearGradientObject } from 'echarts';
 import { type TopLevelFormatterParams } from 'echarts/types/dist/shared';
 import { type XAXisOption, type YAXisOption } from 'echarts/types/src/coord/cartesian/AxisModel';
-import { CARTESIAN_BAR_BORDER_WIDTH_DEFAULT } from 'editor/cartesian';
 import { type HistogramModel, isOrdinalHistogram } from 'lib/echarts/converters/histogram';
 import { getCartesianGrid } from 'lib/echarts/grid/grid';
 import { clipRectByRect } from 'lib/echarts/options/binnedHeatmap';
 import { getBarFillColor } from 'lib/echarts/options/bars';
+import { type GradientStop, getHueGradientStops, getOpacityGradientStops } from 'lib/grafana/fields/gradientColors';
+import {
+  getHistogramFieldStyles,
+  getHistogramStackingGroups,
+  type HistogramFieldStyle,
+  type HistogramStackingGroup,
+} from 'lib/grafana/fields/histogramStyle';
 import { cartesianCategoryDefaultOptions, getCartesianAxisStyle, mergeAxisStyle } from 'lib/echarts/options/cartesian';
 import { resolveEChartsLegend } from 'lib/echarts/options/legend';
 import { isRect } from 'lib/echarts/options/narrowing';
@@ -70,11 +76,12 @@ export function buildHistogramOption(input: HistogramOptionInput): EChartCartesi
   const { model, theme, options, isGrafanaLegend } = input;
   const hidden = getHiddenSeriesNames(input.fieldConfig, model.names);
   const colors = getHistogramColors(model, theme);
-  const percent = options.stacking === StackingMode.Percent;
-  const stacked = options.stacking === StackingMode.Normal || percent;
+  const styles = getHistogramFieldStyles(model.counts, options);
+  const groups = getHistogramStackingGroups(model.counts, styles, (i) => hidden.has(model.names[i]));
+  const percent = isPercentOnly(model, styles, hidden);
   const bounds = getBucketBounds(model);
   const range = getXAxisRange(model, bounds);
-  const rows = getBarRows(model, bounds, hidden, stacked, percent, range);
+  const rows = getBarRows(model, bounds, groups, range);
   const axisStyle = getCartesianAxisStyle(theme);
   const countDisplay = getDisplay(model.counts[0], theme);
 
@@ -87,7 +94,7 @@ export function buildHistogramOption(input: HistogramOptionInput): EChartCartesi
             type: 'custom',
             coordinateSystem: 'cartesian2d',
             zlevel: options.zLevel?.series,
-            renderItem: makeHistogramRenderItem(colors[i], options),
+            renderItem: makeHistogramRenderItem(colors[i], styles[i], theme),
             // The x extent spans both bounds, and the y extent spans the base and the top of each bar.
             // https://echarts.apache.org/en/option.html#series-custom.encode
             encode: { x: [X_MIN, X_MAX], y: [BASE, TOP], tooltip: [COUNT] },
@@ -122,51 +129,63 @@ export function buildHistogramOption(input: HistogramOptionInput): EChartCartesi
 }
 
 /**
- * The bar rows of each count field. A stacked bar starts on the top of the bars of the same bucket before it.
- * Percent stacking divides by the total of the bucket. Hidden fields do not stack. A bucket out of the x range
- * gets a row with no bar, so its count does not change the count axis, as the uPlot scale of core.
+ * True when each shown field stacks with 100%. Then the count axis is 0 to 100%. Else it shows the counts.
+ */
+function isPercentOnly(model: HistogramModel, styles: HistogramFieldStyle[], hidden: Set<string>): boolean {
+  const shown = styles.filter((_, i) => !hidden.has(model.names[i]));
+  return shown.length > 0 && shown.every((style) => style.stacking === StackingMode.Percent);
+}
+
+/**
+ * The bar rows of each count field, as core `preparePlotData2` with the stacking groups. A stacked bar starts on
+ * the top of the bars of the same bucket before it in its group. 100% stacking divides by the total of the
+ * bucket in the group. A field in no group starts at 0. A bucket out of the x range gets a row with no bar, so
+ * its count does not change the count axis, as the uPlot scale of core.
+ * https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/uPlot/utils.ts
  */
 function getBarRows(
   model: HistogramModel,
   bounds: BucketBounds,
-  hidden: Set<string>,
-  stacked: boolean,
-  percent: boolean,
+  groups: HistogramStackingGroup[],
   range: { min?: number; max?: number }
 ): number[][][] {
   const buckets = model.xMin.values.length;
-  const totals = new Array<number>(buckets).fill(0);
-  model.counts.forEach((field, i) => {
-    if (!hidden.has(model.names[i])) {
-      field.values.forEach((count, j) => (totals[j] += Number(count) || 0));
-    }
-  });
-  const bases = new Array<number>(buckets).fill(0);
-  return model.counts.map((field, i) =>
-    Array.from({ length: buckets }, (_, j) => {
-      const count = Number(field.values[j]) || 0;
-      const height = percent ? (totals[j] > 0 ? count / totals[j] : 0) : count;
-      const base = stacked ? bases[j] : 0;
-      if (stacked && !hidden.has(model.names[i])) {
-        bases[j] += height;
+  const countOf = (i: number, j: number) => Number(model.counts[i].values[j]) || 0;
+  const groupOf = (i: number) => groups.find((group) => group.fields.includes(i));
+  const totals = groups.map((group) =>
+    Array.from({ length: buckets }, (_, j) => group.fields.reduce((sum, i) => sum + countOf(i, j), 0))
+  );
+  const bases = groups.map(() => new Array<number>(buckets).fill(0));
+  return model.counts.map((_, i) => {
+    const group = groupOf(i);
+    const g = group ? groups.indexOf(group) : -1;
+    return Array.from({ length: buckets }, (_, j) => {
+      const count = countOf(i, j);
+      const height = group?.mode === StackingMode.Percent ? (totals[g][j] > 0 ? count / totals[g][j] : 0) : count;
+      const base = group ? bases[g][j] : 0;
+      if (group) {
+        bases[g][j] += height;
       }
       const [xMin, xMax] = [bounds.mins[j], bounds.maxs[j]];
       if (xMax <= (range.min ?? -Infinity) || xMin >= (range.max ?? Infinity)) {
         return [xMin, xMax, 0, 0, 0];
       }
       return [xMin, xMax, base, base + height, count];
-    })
-  );
+    });
+  });
 }
 
 /**
  * Draw one bar from `xMin` to `xMax` and from its base to its top, clipped to the grid. As core, a bucket with
- * a count of 0 draws no bar. The fill is the series color at the fill opacity, and the border is the solid color.
+ * a count of 0 draws no bar. The fill and the border come from the field style (`getHistogramFill`).
  * https://echarts.apache.org/en/option.html#series-custom.renderItem
  */
-function makeHistogramRenderItem(color: string, options: PanelOptions): CustomSeriesRenderItem {
-  const fill = getBarFillColor(color, options.barFillOpacity);
-  const lineWidth = options.lineWidth ?? CARTESIAN_BAR_BORDER_WIDTH_DEFAULT;
+function makeHistogramRenderItem(
+  color: string,
+  style: HistogramFieldStyle,
+  theme: GrafanaTheme2
+): CustomSeriesRenderItem {
+  const { lineWidth } = style;
   return (params, api) => {
     if (!Number(api.value(COUNT)) || !isRect(params.coordSys)) {
       return;
@@ -185,8 +204,44 @@ function makeHistogramRenderItem(color: string, options: PanelOptions): CustomSe
     if (!shape) {
       return;
     }
-    return { type: 'rect', shape, style: { fill, stroke: color, lineWidth } };
+    return { type: 'rect', shape, style: { ...getHistogramFill(color, style, theme, params.coordSys), lineWidth } };
   };
+}
+
+/**
+ * The fill and the border of the bars of a field, as core `UPlotSeriesBuilder` (`getFill`, `getLineColor`):
+ * - None (and Scheme, not supported yet): the color at the fill opacity, and a solid border.
+ * - Opacity: a gradient from the color at the fill opacity to transparent, and a solid border.
+ * - Hue: a gradient of hues at the fill opacity. The border is the same gradient, solid.
+ * Core draws one gradient over the plot, from its top to its bottom, so each bar shows a part of it.
+ * https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/uPlot/config/UPlotSeriesBuilder.ts
+ */
+export function getHistogramFill(
+  color: string,
+  { fillOpacity, gradientMode }: HistogramFieldStyle,
+  theme: GrafanaTheme2,
+  plot: { y: number; height: number }
+): { fill: string | LinearGradientObject; stroke: string | LinearGradientObject } {
+  const opacity = Math.min(Math.max(fillOpacity, 0), 100) / 100;
+  switch (gradientMode) {
+    case GraphGradientMode.Opacity:
+      return { fill: plotGradient(getOpacityGradientStops(color, opacity), plot), stroke: color };
+    case GraphGradientMode.Hue:
+      return {
+        fill: plotGradient(getHueGradientStops(color, opacity, theme.isDark), plot),
+        stroke: plotGradient(getHueGradientStops(color, 1, theme.isDark), plot),
+      };
+    default:
+      return { fill: getBarFillColor(color, fillOpacity), stroke: color };
+  }
+}
+
+/**
+ * A vertical gradient from the top to the bottom of the plot, in px of the canvas (`global: true`).
+ * https://echarts.apache.org/en/option.html#color
+ */
+function plotGradient(colorStops: GradientStop[], plot: { y: number; height: number }): LinearGradientObject {
+  return { type: 'linear', x: 0, y: plot.y, x2: 0, y2: plot.y + plot.height, colorStops, global: true };
 }
 
 /** The x positions of the buckets. On an ordinal axis, the positions are the bucket indexes. */

@@ -1,5 +1,5 @@
 import { createTheme, DataFrameType, dateTime, type DataFrame, FieldType, toDataFrame } from '@grafana/data';
-import { LegendDisplayMode, StackingMode, TooltipDisplayMode } from '@grafana/schema';
+import { GraphGradientMode, LegendDisplayMode, StackingMode, TooltipDisplayMode } from '@grafana/schema';
 import { type CustomSeriesOption } from 'echarts';
 import { type TopLevelFormatterParams } from 'echarts/types/dist/shared';
 import { cartesianChartModule } from 'lib/echarts/charts/cartesian';
@@ -7,7 +7,7 @@ import { type ChartContext } from 'lib/echarts/charts/types';
 import { buildHistogramModel } from 'lib/echarts/converters/histogram';
 import { type TooltipModel } from 'lib/echarts/tooltip/types';
 import { type PanelOptions } from 'types';
-import { buildHistogramOption } from './histogram';
+import { buildHistogramOption, getHistogramFill } from './histogram';
 import { buildPanelChartOption } from './panelOption';
 
 const theme = createTheme();
@@ -143,6 +143,122 @@ describe('buildHistogramOption', () => {
 // Core draws buckets with names on an ordinal x axis: bucket `i` is from position `i` to `i + 1`, the axis ends
 // at the last position, and each position has a tick with the name of its lower bound (`isOrdinalX`).
 // https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
+// Core reads the stacking, the fill and the line width from each count field (`prepConfig`, `preparePlotData2`).
+// https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
+describe('histogram field settings', () => {
+  /** One frame with a field for each entry, with its custom field config. */
+  const customFrame = (fields: Array<[string, number[], Record<string, unknown>]>): DataFrame =>
+    toDataFrame({
+      fields: [
+        { name: 'time', type: FieldType.time, values: fields[0][1].map((_, i) => 1783137094497 + i) },
+        ...fields.map(([name, values, custom]) => ({ name, type: FieldType.number, values, config: { custom } })),
+      ],
+    });
+  const stack = (mode: StackingMode, group = 'A') => ({ stacking: { mode, group } });
+  const noPanelOptions: Partial<PanelOptions> = {};
+
+  it('stacks the fields of each stacking group on their own, as core getStackingGroups', () => {
+    const frames = [
+      customFrame([
+        ['A', [1, 2, 11], stack(StackingMode.Normal)],
+        ['B', [3, 12, 13], stack(StackingMode.Normal, 'B')],
+        ['C', [4, 14, 15], stack(StackingMode.Normal)],
+        ['D', [5, 16, 17], stack(StackingMode.Normal, 'B')],
+      ]),
+    ];
+    const [a, b, c, d] = rowsOf(optionFor(frames));
+    // Group A: C is on A. Group B: D is on B. A and B start at 0.
+    expect(a).toEqual([
+      [0, 10, 0, 2, 2],
+      [10, 20, 0, 1, 1],
+    ]);
+    expect(b).toEqual([
+      [0, 10, 0, 1, 1],
+      [10, 20, 0, 2, 2],
+    ]);
+    expect(c).toEqual([
+      [0, 10, 2, 3, 1],
+      [10, 20, 1, 3, 2],
+    ]);
+    expect(d).toEqual([
+      [0, 10, 1, 2, 1],
+      [10, 20, 2, 4, 2],
+    ]);
+  });
+
+  it('divides by the total of the bucket in the group with Stacking 100%, and keeps the count axis for a mix', () => {
+    const frames = [
+      customFrame([
+        ['A', [1, 2, 11], stack(StackingMode.Percent)],
+        ['B', [3, 12, 13], stack(StackingMode.Percent)],
+        ['C', [4, 14, 15], stack(StackingMode.None)],
+      ]),
+    ];
+    const option = buildHistogramOption({
+      model: buildHistogramModel(frames, { bucketSize: 10 }, theme)!,
+      theme,
+      options: { legend, ...noPanelOptions } as PanelOptions,
+      fieldConfig: noOverrides,
+      isGrafanaLegend: true,
+    });
+    const [a, b, c] = rowsOf(option.series as CustomSeriesOption[]) as number[][][];
+    expect(a.map((row) => row[3])).toEqual([2 / 3, 1 / 3]);
+    expect(b.map((row) => row[3])).toEqual([1, 1]);
+    expect(c.map((row) => row[3])).toEqual([1, 2]);
+    expect(option.yAxis).toEqual(expect.objectContaining({ minInterval: 1 }));
+    expect(option.yAxis).not.toEqual(expect.objectContaining({ max: 1 }));
+  });
+
+  it('uses the stacking of the field before the panel option', () => {
+    const frames = [
+      customFrame([
+        ['A', [1, 2, 11], stack(StackingMode.None)],
+        ['B', [3, 12, 13], {}],
+      ]),
+    ];
+    const [, b] = rowsOf(optionFor(frames, { stacking: StackingMode.Normal }));
+    // B stacks with the panel option, but A stacks with nothing, so B starts at 0.
+    expect((b as number[][]).map((row) => row[2])).toEqual([0, 0]);
+  });
+});
+
+describe('getHistogramFill', () => {
+  const plot = { y: 10, height: 100 };
+  const style = (gradientMode: GraphGradientMode, fillOpacity = 50) => ({
+    stacking: StackingMode.None,
+    group: 'A',
+    fillOpacity,
+    lineWidth: 1,
+    gradientMode,
+  });
+  const gradient = (colorStops: unknown) => ({ type: 'linear', x: 0, y: 10, x2: 0, y2: 110, colorStops, global: true });
+
+  it('fills with the color at the fill opacity and a solid border for None and Scheme', () => {
+    for (const mode of [GraphGradientMode.None, GraphGradientMode.Scheme]) {
+      expect(getHistogramFill('#ff0000', style(mode), theme, plot)).toEqual({ fill: '#ff000080', stroke: '#ff0000' });
+    }
+  });
+
+  it('fills with a gradient to transparent over the plot for Opacity, with a solid border', () => {
+    expect(getHistogramFill('#ff0000', style(GraphGradientMode.Opacity), theme, plot)).toEqual({
+      fill: gradient([
+        { offset: 0, color: '#ff000080' },
+        { offset: 1, color: '#ff000000' },
+      ]),
+      stroke: '#ff0000',
+    });
+  });
+
+  it('fills and borders with a hue gradient over the plot for Hue', () => {
+    const { fill, stroke } = getHistogramFill('#ff0000', style(GraphGradientMode.Hue), theme, plot);
+    expect(fill).toEqual(gradient([expect.objectContaining({ offset: 0 }), expect.objectContaining({ offset: 1 })]));
+    expect(stroke).toEqual(gradient([expect.objectContaining({ offset: 0 }), expect.objectContaining({ offset: 1 })]));
+    // The fill has the fill opacity, and the border is solid.
+    expect(typeof fill === 'object' && fill.colorStops[0].color).toMatch(/0\.5\)$/);
+    expect(typeof stroke === 'object' && stroke.colorStops[0].color).toMatch(/^#/);
+  });
+});
+
 describe('histogram with buckets that have names', () => {
   const leFrame = toDataFrame({
     meta: { type: DataFrameType.HeatmapRows },

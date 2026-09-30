@@ -40,15 +40,21 @@ gdev Histogram dashboard next to a core Histogram twin. The tests are
 
 ## Field config
 
-| Core Grafana setting        | ECharts equivalent                                                              | Status        |
-| --------------------------- | ------------------------------------------------------------------------------- | ------------- |
-| Unit, decimals of the field | The x axis labels and the tooltip header                                        | Supported     |
-| Color scheme                | Classic palette over the count fields, as core `prepConfig`                     | Supported     |
-| Stacking (field)            | The panel `stacking` option: Normal and 100%. No per-field groups               | Partial       |
-| Fill opacity, line width    | The panel `barFillOpacity` and `lineWidth` options                              | Partial       |
-| Gradient mode               | none                                                                            | Not supported |
-| Hide in area                | The legend toggle hides the bars. The hidden field still counts for the buckets | Supported     |
-| Min, max (x range)          | The x range, rounded to the bucket size, as core                                | Supported     |
+| Core Grafana setting        | ECharts equivalent                                                              | Status    |
+| --------------------------- | ------------------------------------------------------------------------------- | --------- |
+| Unit, decimals of the field | The x axis labels and the tooltip header                                        | Supported |
+| Color scheme                | Classic palette over the count fields, as core `prepConfig`                     | Supported |
+| Stacking (field)            | `custom.stacking`: Off, Normal and 100%, with the stacking groups of core       | Supported |
+| Fill opacity, line width    | `custom.fillOpacity` and `custom.lineWidth` of each field                       | Supported |
+| Gradient mode               | `custom.gradientMode`: None, Opacity and Hue. Scheme draws a solid fill         | Partial   |
+| Hide in area                | The legend toggle hides the bars. The hidden field still counts for the buckets | Supported |
+| Min, max (x range)          | The x range, rounded to the bucket size, as core                                | Supported |
+
+The field settings Stacking, Fill opacity, Line width and Gradient mode have no default value in the cartesian
+panel. A field with no setting uses the panel options `stacking`, `barFillOpacity` and `lineWidth`, and then the
+core defaults (Off, 80 and 1). The fields of one stacking group have the same mode, group name and scale, as core
+`getStackingGroups`. The count axis is 0 to 100% only when each shown field stacks with 100%. The gradients of
+Opacity and Hue go from the top to the bottom of the plot, as core `gradientFills.ts`.
 
 ## Known differences
 
@@ -61,3 +67,5 @@ gdev Histogram dashboard next to a core Histogram twin. The tests are
   gap between two values. An offset that is not a finite number is removed. Core gives `NaN` buckets for it.
 - The panel shows an error view for more than 10000 buckets (`MAX_HISTOGRAM_BUCKETS`). Core has no limit.
 - The x axis has 50 ticks or fewer before the plot width is known.
+- Gradient mode Scheme draws the color at the fill opacity. Core draws a gradient of the color scheme on the
+  count axis.

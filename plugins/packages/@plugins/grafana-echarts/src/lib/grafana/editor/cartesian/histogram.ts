@@ -1,5 +1,7 @@
-import { histogramFieldInfo, type PanelOptionsEditorBuilder } from '@grafana/data';
+import { type FieldConfigEditorBuilder, histogramFieldInfo, type PanelOptionsEditorBuilder } from '@grafana/data';
+import { commonOptionsBuilder, getGraphFieldOptions } from '@grafana/ui';
 import { histogramCategoryName, histogramPath } from 'editor/cartesian';
+import { type EChartsGraphFieldConfig } from 'editor/types';
 import { type PanelOptions } from 'types';
 
 const isHistogram = (options: PanelOptions) => options.histogram === true;
@@ -51,5 +53,41 @@ export function addCartesianHistogramOptions(builder: PanelOptionsEditorBuilder<
       category,
       description: histogramFieldInfo.combine.description,
       showIf: isHistogram,
+    });
+}
+
+/**
+ * Register the field settings of the core Histogram panel: Stacking (with a group in an override), Line width,
+ * Fill opacity and Gradient mode. The histogram mode reads them from each field (`getHistogramFieldStyles`).
+ * They have no default value. Thus a panel with no field setting keeps its panel options (`stacking`,
+ * `barFillOpacity` and `lineWidth`).
+ * Core source: https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/module.tsx
+ * https://grafana.com/developers/plugin-tools/how-to-guides/panel-plugins/add-support-for-field-config
+ */
+export function addCartesianHistogramFieldConfig(builder: FieldConfigEditorBuilder<EChartsGraphFieldConfig>) {
+  const category = [histogramCategoryName];
+  const description = 'Histogram mode. Empty uses the panel option.';
+  commonOptionsBuilder.addStackingConfig(builder, undefined, category);
+  builder
+    .addSliderInput({
+      path: 'lineWidth',
+      name: 'Line width',
+      category,
+      description,
+      settings: { min: 0, max: 10, step: 1 },
+    })
+    .addSliderInput({
+      path: 'fillOpacity',
+      name: 'Fill opacity',
+      category,
+      description,
+      settings: { min: 0, max: 100, step: 1 },
+    })
+    .addRadio({
+      path: 'gradientMode',
+      name: 'Gradient mode',
+      category,
+      description: 'Histogram mode. Empty uses None.',
+      settings: { options: getGraphFieldOptions().fillGradient },
     });
 }
