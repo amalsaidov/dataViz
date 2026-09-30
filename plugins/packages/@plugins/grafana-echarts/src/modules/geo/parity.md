@@ -7,7 +7,7 @@ The frame shapes are in [data-plane/geo.md](../../../data-plane/geo.md).
 `provisioning/dashboards/geo/geo-core-parity.json` shows core Geomap and this panel side by side.
 
 The panel reads the core option JSON. The editor has the map view, the map controls, the layer list, and the data,
-location, style and tooltip options of each markers layer, and the options of each heatmap and route layer. The basemap has no editor yet (#502).
+location, style and tooltip options of each markers layer, and the options of each heatmap, route and GeoJSON layer. The basemap has no editor yet (#502).
 
 ## Panel options
 
@@ -43,7 +43,7 @@ location, style and tooltip options of each markers layer, and the options of ea
 | Tooltip data links                      | The pinned tooltip shows the data links of the fields, deduplicated. Core also shows the links on hover.                                                                                                                                                                                                 | Different     |
 | Tooltip of markers at the same position | ECharts shows the top marker only. Core lists each marker in a collapsed row (#512).                                                                                                                                                                                                                     | Different     |
 | More than one markers layer             | Each `markers` layer draws in the list order, and the last layer is on top, as core ([layers.ts](../../lib/grafana/geo/layers.ts)).                                                                                                                                                                      | Supported     |
-| Other layer types                       | The `heatmap` and `route` layers are drawn (see below). The other types are not drawn (#334, #336, #337)                                                                                                                                                                                                 | Not supported |
+| Other layer types                       | The `heatmap`, `route` and `geojson` layers are drawn (see below). The other types are not drawn (#336, #337)                                                                                                                                                                                            | Not supported |
 | Filter data by query (`filterData`)     | The layer uses the frames of that query. A query that returns no frame gives no markers. A query that is not in the panel is ignored, as core.                                                                                                                                                           | Supported     |
 
 ## Heatmap layer
@@ -78,6 +78,25 @@ The panel draws an ECharts `lines` series on the `geo` coordinate system ([route
 | Crosshair from the dashboard time | none: the panel does not listen to `DataHoverEvent` (#661)                                                                                         | Not supported |
 | Display tooltip (`tooltip`)       | none: the route does not react to the mouse (#662)                                                                                                 | Not supported |
 
+## GeoJSON layer
+
+Core: [geojsonLayer.ts](https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/layers/data/geojsonLayer.ts).
+The panel draws an ECharts `custom` series on the `geo` coordinate system ([geojson.ts](../../lib/echarts/geo/geojson.ts)).
+The styles are in [lib/grafana/geo/geojson.ts](../../lib/grafana/geo/geojson.ts). The layer reads no query data, as core.
+
+| Core option                       | ECharts equivalent                                                                                                                                              | Status        |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| GeoJSON URL (`config.src`)        | The default `public/maps/countries.geojson` uses the basemap data, with no fetch. The panel fetches each other file once, with the template variables replaced. | Supported     |
+| GeoJSON URL in the standalone viz | Only the default file draws. The standalone renderer fetches no file (#567).                                                                                    | Different     |
+| Default style: color, opacity     | The fill has the color with the opacity as alpha, and the stroke has the color. The defaults are `dark-green` and 0.4. An opacity of 0 draws no fill, as core.  | Supported     |
+| Default style: line width, size   | `lineWidth` (default 1) and the point radius (default 5) from the saved JSON. Core shows no editor for them either.                                             | Supported     |
+| Style rules (`config.rules`)      | The first rule whose property check matches gives the style, else the default style. The checks compare as core `compareValues`.                                | Supported     |
+| Feature style properties          | `fill`, `fill-opacity` and `stroke-width` of a polygon, `stroke` and `stroke-width` of a line, `marker-color` and `marker-size` of a point, as core.            | Supported     |
+| Rule editor: property list        | The property is a text input. Core lists the properties and the values of the loaded features (#664).                                                           | Different     |
+| Point symbol, rotation, text      | A point is a circle. Core draws the style symbol and the text (#664).                                                                                           | Not supported |
+| Polygon holes                     | A ring of the other winding is not filled (RFC 7946).                                                                                                           | Supported     |
+| Tooltip of a feature, Fit to data | The features do not react to the mouse, and "Fit to data" does not use them (#663).                                                                             | Not supported |
+
 ## Editor
 
 | Core option                               | ECharts equivalent                                                                                                                                                                                                         | Status        |
@@ -85,7 +104,7 @@ The panel draws an ECharts `lines` series on the `geo` coordinate system ([route
 | Map layers: add, delete, rename           | The same. A new layer is a markers layer named `Layer <n>`. A name must be unique and not empty.                                                                                                                           | Supported     |
 | Map layers: order                         | Move up and move down buttons. Core drags the layers. The top row draws on top, as core.                                                                                                                                   | Different     |
 | Map layers: select a layer                | none: each markers layer has its group of options. Core shows the options of the selected layer only.                                                                                                                      | Different     |
-| Layer type                                | A select of Markers, Heatmap and Route. A new type clears the layer config, as core. The other types are #334, #336, #337.                                                                                                 | Different     |
+| Layer type                                | A select of Markers, Heatmap, Route and GeoJSON. A new type clears the layer config, as core. The other types are #336 and #337.                                                                                           | Different     |
 | Layer: Data (`filterData`)                | A select of the refIds of the panel frames                                                                                                                                                                                 | Supported     |
 | Layer: Location mode and fields           | Auto, Coords, Geohash and Lookup, with the field pickers and the gazetteer of core                                                                                                                                         | Supported     |
 | Layer: style, fixed values                | Size, symbol, symbol align, color, fill opacity, rotation, text label and the text options, as core `StyleEditor`. Each option is an item of the group. The symbol is a select of the 7 marker files that the panel draws. | Supported     |
@@ -99,6 +118,7 @@ The panel draws an ECharts `lines` series on the `geo` coordinate system ([route
 | Map view: Use current map settings        | Saves the live center and zoom of the panel as a Coordinates view, as core                                                                                                                                                 | Supported     |
 | Layer: route options                      | The style options without the rotation, and the Arrow radio of None, Forward and Reverse, as core.                                                                                                                         | Supported     |
 | Layer: heatmap options                    | Weight values, Radius and Blur, as core. The weight editor has no min and max for a field, as core `hideRange`.                                                                                                            | Supported     |
+| Layer: GeoJSON options                    | GeoJSON URL (the core public files or a custom URL), default color and opacity, and the style rules. No data or location options, as core.                                                                                 | Supported     |
 | Basemap layer                             | none (#502)                                                                                                                                                                                                                | Not supported |
 
 ## Same behavior as core

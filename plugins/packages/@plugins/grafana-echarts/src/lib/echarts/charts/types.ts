@@ -214,10 +214,16 @@ export type EChartSunburstSeriesOption = ComposeOption<SunburstSeriesOption>;
 // Relations (graph) renders nodes plus links. The `graph` series ships its own
 // `View` coordinate system, so no coordinate component is composed in.
 export type EChartGraphSeriesOption = ComposeOption<GraphSeriesOption>;
-// Geo renders a `scatter` series of markers, a `heatmap` series of each heatmap layer and a `lines` series of each
-// route layer on the basemap `geo` component. Each heatmap has a hidden `visualMap` for its gradient.
+// Geo renders a `custom` series of each GeoJSON layer, a `scatter` series of markers, a `heatmap` series of each
+// heatmap layer and a `lines` series of each route layer on the basemap `geo` component. Each heatmap has a hidden
+// `visualMap` for its gradient.
 export type EChartGeoOption = ComposeOption<
-  GeoComponentOption | ScatterSeriesOption | HeatmapSeriesOption | LinesSeriesOption | VisualMapComponentOption
+  | GeoComponentOption
+  | ScatterSeriesOption
+  | HeatmapSeriesOption
+  | LinesSeriesOption
+  | CustomSeriesOption
+  | VisualMapComponentOption
 >;
 // Relations (sankey) lays the same node/link model out as weighted flow ribbons.
 export type EChartSankeySeriesOption = ComposeOption<SankeySeriesOption>;

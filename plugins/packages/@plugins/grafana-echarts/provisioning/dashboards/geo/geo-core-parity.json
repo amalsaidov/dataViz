@@ -4037,6 +4037,270 @@
           "csvContent": "name,lat,lon,speed\nLisbon,38.7223,-9.1393,10\nMadrid,40.4168,-3.7038,20\nParis,48.8566,2.3522,30\nBerlin,52.52,13.405,40\nWarsaw,52.2297,21.0122,50\nVienna,48.21,16.37,60\nRome,41.9028,12.4964,70\nAthens,37.9838,23.7275,80"
         }
       ]
+    },
+    {
+      "type": "geomap",
+      "title": "Core Geomap: GeoJSON: US states, a style rule",
+      "description": "A GeoJSON layer of `public/maps/usa-states.geojson`. The default style is blue at opacity 0.3. A rule draws each state with a `density` above 200 in red at opacity 0.6.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 209
+      },
+      "id": 39,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "coords",
+          "lat": 39,
+          "lon": -97,
+          "zoom": 3.5
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        },
+        "basemap": {
+          "type": "osm-standard",
+          "name": "Basemap"
+        },
+        "layers": [
+          {
+            "type": "geojson",
+            "name": "Layer 1",
+            "config": {
+              "src": "public/maps/usa-states.geojson",
+              "style": {
+                "color": {
+                  "fixed": "blue"
+                },
+                "opacity": 0.3
+              },
+              "rules": [
+                {
+                  "check": {
+                    "property": "density",
+                    "operation": "gt",
+                    "value": 200
+                  },
+                  "style": {
+                    "color": {
+                      "fixed": "red"
+                    },
+                    "opacity": 0.6
+                  }
+                }
+              ]
+            },
+            "tooltip": true
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon\nnone,0,0"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "ECharts Geo: GeoJSON: US states, a style rule",
+      "description": "A GeoJSON layer of `public/maps/usa-states.geojson`. The default style is blue at opacity 0.3. A rule draws each state with a `density` above 200 in red at opacity 0.6.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 209
+      },
+      "id": 40,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "coords",
+          "lat": 39,
+          "lon": -97,
+          "zoom": 3.5
+        },
+        "layers": [
+          {
+            "type": "geojson",
+            "name": "Layer 1",
+            "config": {
+              "src": "public/maps/usa-states.geojson",
+              "style": {
+                "color": {
+                  "fixed": "blue"
+                },
+                "opacity": 0.3
+              },
+              "rules": [
+                {
+                  "check": {
+                    "property": "density",
+                    "operation": "gt",
+                    "value": 200
+                  },
+                  "style": {
+                    "color": {
+                      "fixed": "red"
+                    },
+                    "opacity": 0.6
+                  }
+                }
+              ]
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon\nnone,0,0"
+        }
+      ]
+    },
+    {
+      "type": "geomap",
+      "title": "Core Geomap: GeoJSON: feature style properties",
+      "description": "A GeoJSON layer of `public/maps/example-with-style.geojson`. Each feature gives its style in the `fill`, `fill-opacity`, `stroke`, `stroke-width`, `marker-color` and `marker-size` properties.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 220
+      },
+      "id": 41,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "coords",
+          "lat": 26,
+          "lon": -70,
+          "zoom": 4
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        },
+        "basemap": {
+          "type": "osm-standard",
+          "name": "Basemap"
+        },
+        "layers": [
+          {
+            "type": "geojson",
+            "name": "Layer 1",
+            "config": {
+              "src": "public/maps/example-with-style.geojson"
+            },
+            "tooltip": true
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon\nnone,0,0"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "ECharts Geo: GeoJSON: feature style properties",
+      "description": "A GeoJSON layer of `public/maps/example-with-style.geojson`. Each feature gives its style in the `fill`, `fill-opacity`, `stroke`, `stroke-width`, `marker-color` and `marker-size` properties.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 220
+      },
+      "id": 42,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "coords",
+          "lat": 26,
+          "lon": -70,
+          "zoom": 4
+        },
+        "layers": [
+          {
+            "type": "geojson",
+            "name": "Layer 1",
+            "config": {
+              "src": "public/maps/example-with-style.geojson"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon\nnone,0,0"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,

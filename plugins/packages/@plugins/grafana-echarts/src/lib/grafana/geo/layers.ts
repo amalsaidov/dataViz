@@ -14,6 +14,8 @@ export const HEATMAP_LAYER_TYPE = 'heatmap';
 
 /** The layer type of the core route layer (`ROUTE_LAYER_ID`). */
 export const ROUTE_LAYER_TYPE = 'route';
+/** The layer type of the core GeoJSON layer. */
+export const GEOJSON_LAYER_TYPE = 'geojson';
 
 /** A new markers layer, as core `defaultMarkersConfig`. The style is unset: the default style applies. */
 export const newMarkersLayer = (name: string): MapLayerOptions => ({

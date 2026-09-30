@@ -6,6 +6,7 @@ const size = { width: 800, height: 512 };
 
 const input = (mouseWheelZoom: boolean, view = resolveCoreMapView({ id: 'zero' })): GeoMarkersInput => ({
   layers: [],
+  geojson: [],
   heatmaps: [],
   routes: [],
   view,

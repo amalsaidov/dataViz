@@ -3,10 +3,13 @@ import { FrameGeometrySourceMode, type MapLayerOptions } from '@grafana/schema';
 import { DEFAULT_MARKER_STYLE } from 'lib/grafana/geo/dimensions';
 import { COUNTRIES_GAZETTEER_PATH } from 'lib/grafana/geo/gazetteer';
 import { getLayerStyleConfig } from 'lib/grafana/geo/markers';
+import { DEFAULT_GEOJSON_CONFIG } from 'lib/grafana/geo/geojson';
+import { PUBLIC_GEOJSON_FILES } from 'lib/grafana/geo/geojsonSource';
 import { DEFAULT_HEATMAP_CONFIG } from 'lib/grafana/geo/heatmap';
 import { DEFAULT_ROUTE_CONFIG } from 'lib/grafana/geo/route';
 import {
   getLayerEditorFrames,
+  GEOJSON_LAYER_TYPE,
   HEATMAP_LAYER_TYPE,
   MARKERS_LAYER_TYPE,
   replaceLayer,
@@ -17,6 +20,7 @@ import { type PanelOptions } from 'types';
 import { GeoFrameSelectionEditor } from './GeoFrameSelectionEditor';
 import { GeoLayersEditor } from './GeoLayersEditor';
 import { GeoScaleDimensionEditor, type ScaleEditorSettings } from './GeoScaleDimensionEditor';
+import { GeoStyleRulesEditor } from './GeoStyleRulesEditor';
 import { addLocationFields } from './location';
 import { addStyleFields } from './style';
 
@@ -55,6 +59,9 @@ const UNSET_LAYER_VALUES: OptionObject = {
 /** The unset values of a heatmap layer: the core `defaultOptions` of the heatmap layer. */
 const UNSET_HEATMAP_VALUES: OptionObject = { ...UNSET_LAYER_VALUES, config: DEFAULT_HEATMAP_CONFIG };
 
+/** The unset values of a GeoJSON layer: the core `defaultOptions` of the GeoJSON layer. */
+const UNSET_GEOJSON_VALUES: OptionObject = { ...UNSET_LAYER_VALUES, config: DEFAULT_GEOJSON_CONFIG };
+
 /** The unset values of a route layer: the core `defaultOptions` of the route layer. */
 const UNSET_ROUTE_VALUES: OptionObject = { ...UNSET_LAYER_VALUES, config: DEFAULT_ROUTE_CONFIG };
 
@@ -62,6 +69,7 @@ const UNSET_ROUTE_VALUES: OptionObject = { ...UNSET_LAYER_VALUES, config: DEFAUL
 const UNSET_VALUES_BY_TYPE: Record<string, OptionObject> = {
   [HEATMAP_LAYER_TYPE]: UNSET_HEATMAP_VALUES,
   [ROUTE_LAYER_TYPE]: UNSET_ROUTE_VALUES,
+  [GEOJSON_LAYER_TYPE]: UNSET_GEOJSON_VALUES,
 };
 
 /** The layer types that the panel draws, as the core layer type select. */
@@ -69,6 +77,7 @@ const LAYER_TYPES = [
   { value: MARKERS_LAYER_TYPE, label: 'Markers' },
   { value: HEATMAP_LAYER_TYPE, label: 'Heatmap' },
   { value: ROUTE_LAYER_TYPE, label: 'Route' },
+  { value: GEOJSON_LAYER_TYPE, label: 'GeoJSON' },
 ];
 
 const SYMBOL_FIXED_PATH = 'config.style.symbol.fixed';
@@ -161,8 +170,44 @@ function addRouteFields(builder: PanelOptionsEditorBuilder<MapLayerOptions>, lay
 }
 
 /**
- * The layers editor of core Geomap: the layer list, then the options of each markers, heatmap and route layer in a group
- * of the layer name. Core shows the options of the selected layer only. This panel has no instance state to keep the
+ * The options of a GeoJSON layer, as core `registerOptionsUI` of the GeoJSON layer: the file, the default style and
+ * the style rules. The default style has the fixed color and opacity of core `StyleEditor` with `simpleFixedValues`.
+ * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/layers/data/geojsonLayer.ts
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/geomap/#geojson-layer
+ */
+function addGeoJsonFields(builder: PanelOptionsEditorBuilder<MapLayerOptions>): void {
+  builder
+    .addSelect({
+      path: 'config.src',
+      name: 'GeoJSON URL',
+      settings: {
+        options: PUBLIC_GEOJSON_FILES.map((value) => ({ value, label: value })),
+        allowCustomValue: true,
+      },
+    })
+    .addColorPicker({
+      path: 'config.style.color.fixed',
+      name: 'Default color',
+      description: 'The color of the features that no style rule matches',
+    })
+    .addSliderInput({
+      path: 'config.style.opacity',
+      name: 'Default opacity',
+      description: 'The fill opacity of the features that no style rule matches',
+      settings: { min: 0, max: 1, step: 0.1 },
+    })
+    .addCustomEditor({
+      id: 'config.rules',
+      path: 'config.rules',
+      name: 'Style rules',
+      description: 'Apply styles based on feature properties',
+      editor: GeoStyleRulesEditor,
+    });
+}
+
+/**
+ * The layers editor of core Geomap: the layer list, then the options of each markers, heatmap, route and GeoJSON
+ * layer in a group of the layer name. Core shows the options of the selected layer only. This panel has no instance state to keep the
  * selection, so it shows each layer.
  * Core: https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/module.tsx
  * and https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/editor/layerEditor.tsx
@@ -186,6 +231,7 @@ export function addGeoLayerOptions(
   const layers = resolveLayers(options?.layers);
   layers.forEach((layer, index) => {
     const isMarkers = layer.type === MARKERS_LAYER_TYPE;
+    const isGeoJson = layer.type === GEOJSON_LAYER_TYPE;
     if (!LAYER_TYPES.some((t) => t.value === layer.type)) {
       return;
     }
@@ -199,14 +245,19 @@ export function addGeoLayerOptions(
           name: 'Layer type',
           settings: { options: LAYER_TYPES },
         });
-        layerBuilder.addCustomEditor({
-          id: 'filterData',
-          path: 'filterData',
-          name: 'Data',
-          description: 'The query of the layer. No query gives the first frame of the panel.',
-          editor: GeoFrameSelectionEditor,
-        });
-        addLocationFields(layerBuilder, layer.location);
+        if (isGeoJson) {
+          // The GeoJSON layer reads no query data, so core shows no data and location options.
+          addGeoJsonFields(layerBuilder);
+        } else {
+          layerBuilder.addCustomEditor({
+            id: 'filterData',
+            path: 'filterData',
+            name: 'Data',
+            description: 'The query of the layer. No query gives the first frame of the panel.',
+            editor: GeoFrameSelectionEditor,
+          });
+          addLocationFields(layerBuilder, layer.location);
+        }
         if (isMarkers) {
           addStyleFields(layerBuilder, getLayerStyleConfig(layer));
           // Core adds the legend switch after the style options.
@@ -218,7 +269,7 @@ export function addGeoLayerOptions(
           });
         } else if (layer.type === ROUTE_LAYER_TYPE) {
           addRouteFields(layerBuilder, layer);
-        } else {
+        } else if (!isGeoJson) {
           addHeatmapFields(layerBuilder);
         }
         // Core adds this switch after the options of each layer type (`layerEditor.tsx`).

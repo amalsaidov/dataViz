@@ -6,6 +6,7 @@ import { addGeoControlsOptions } from 'lib/grafana/editor/geo/controls';
 import { addGeoLayerOptions } from 'lib/grafana/editor/geo/layers';
 import { addGeoViewOptions } from 'lib/grafana/editor/geo/view';
 import { type PanelOptions } from 'types';
+import { makeGeoPanel } from './GeoPanel';
 import { geoSuggestionsSupplier } from './suggestions';
 
 // Loads and registers the basemap and the marker option builder before the first render. The async chunk keeps
@@ -22,7 +23,7 @@ const loadBasemap = () =>
 // matchers of core Geomap (see `lib/grafana/geo/location.ts`). It reads the core `view` and `layers` options. The
 // editor has the map view (first, as core), the layer list, the location and style options of each layer and the
 // map controls.
-export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(makeLazyPanel('geo', loadBasemap))
+export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(makeGeoPanel(makeLazyPanel('geo', loadBasemap)))
   // The standard Color option of Grafana, as core Geomap: the Thresholds mode is the default. A marker color from a
   // field uses it. https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/module.tsx
   .useFieldConfig({ standardOptions: { [FieldConfigProperty.Filterable]: STANDARD_FILTERABLE_OPTION } })

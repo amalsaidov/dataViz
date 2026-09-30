@@ -5,6 +5,7 @@ import { LinesChart } from 'echarts/charts';
 import { GeoComponent } from 'echarts/components';
 // `use` is aliased as in `lib/echarts/echarts.ts`, for the react-hooks lint rule.
 import { registerMap, use as registerEChartsModules } from 'echarts/core';
+import { COUNTRIES_GEOJSON_SRC, setGeoJsonSource } from 'lib/grafana/geo/geojsonSource';
 import { feature } from 'topojson-client';
 import countries from './data/countries.topo.json';
 
@@ -57,8 +58,8 @@ function decodeBasemap(): object | undefined {
 }
 
 /**
- * Register the `geo` coordinate system, the `lines` series of the route layer and the basemap with ECharts. A second
- * call has no new effect.
+ * Register the `geo` coordinate system, the `lines` series of the route layer and the basemap with ECharts, and give
+ * the countries to the GeoJSON layer. A second call has no new effect.
  * https://echarts.apache.org/handbook/en/basics/import (import by parts)
  * https://echarts.apache.org/en/api.html#echarts.registerMap
  */
@@ -67,5 +68,7 @@ export function registerBasemap(): void {
   const map = decodeBasemap();
   if (map && isFeatureCollection(map)) {
     registerMap(BASEMAP_NAME, map);
+    // The GeoJSON layer draws the same countries for the core default `config.src`, with no fetch.
+    setGeoJsonSource(COUNTRIES_GEOJSON_SRC, map);
   }
 }

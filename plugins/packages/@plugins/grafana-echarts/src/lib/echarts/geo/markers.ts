@@ -1,4 +1,5 @@
 import {
+  type CustomSeriesOption,
   type GeoComponentOption,
   type HeatmapSeriesOption,
   type LinesSeriesOption,
@@ -7,6 +8,7 @@ import {
 } from 'echarts';
 import { type EChartGeoOption } from 'lib/echarts/charts/types';
 import { type LonLat } from 'lib/grafana/geo/gazetteer';
+import { type GeoJsonLayerShapes } from 'lib/grafana/geo/geojson';
 import { type GeoHeatmap } from 'lib/grafana/geo/heatmap';
 import { type SymbolAlign } from 'lib/grafana/geo/dimensions';
 import { type GeoMarker, type GeoMarkers } from 'lib/grafana/geo/markers';
@@ -14,6 +16,7 @@ import { type GeoRoute } from 'lib/grafana/geo/route';
 import { type BasemapStyle } from 'lib/grafana/geo/style';
 import { type CoreMapView } from 'lib/grafana/geo/view';
 import { BASEMAP_NAME } from './basemap';
+import { buildGeoJsonSeries } from './geojson';
 import { buildHeatmapLayer } from './heatmap';
 import { buildRouteSeries } from './route';
 import { WORLD_BOUNDING_COORDS, webMercator } from './projection';
@@ -21,7 +24,7 @@ import { getMarkerSymbol } from './symbols';
 import { geoMarkerTooltip, type GeoTooltipContext } from './tooltip';
 import { toGeoView, toGeoZoom, type ViewSize } from './view';
 
-type EChartGeoSeries = ScatterSeriesOption | HeatmapSeriesOption | LinesSeriesOption;
+type EChartGeoSeries = ScatterSeriesOption | HeatmapSeriesOption | LinesSeriesOption | CustomSeriesOption;
 
 /** The input of `buildGeoOption`. The colors are CSS colors, from `lib/grafana/geo`. */
 export interface GeoMarkersInput {
@@ -31,6 +34,8 @@ export interface GeoMarkersInput {
   heatmaps: GeoHeatmap[];
   /** The line of each route layer. */
   routes: GeoRoute[];
+  /** The features of each GeoJSON layer. */
+  geojson: GeoJsonLayerShapes[];
   view: CoreMapView;
   size: ViewSize;
   /** The core `controls.mouseWheelZoom`: the mouse wheel zooms the map. */
@@ -182,13 +187,14 @@ function buildMarkerSeries(layer: GeoMarkers, textZ: number, tooltip: GeoTooltip
 const layerZ = (layerIndex: number) => TEXT_Z + layerIndex * Z_PER_LAYER;
 
 /**
- * The basemap, the markers of each core markers layer, the points of each heatmap layer and the line of each route
- * layer. A later layer draws over the layers before it.
+ * The basemap, the features of each GeoJSON layer, the markers of each core markers layer, the points of each heatmap
+ * layer and the line of each route layer. A later layer draws over the layers before it.
  */
 export function buildGeoOption(input: GeoMarkersInput): EChartGeoOption {
-  const series: EChartGeoSeries[] = input.layers.flatMap((layer) =>
-    buildMarkerSeries(layer, layerZ(layer.layerIndex), input.tooltip)
-  );
+  const series: EChartGeoSeries[] = [
+    ...input.geojson.map((layer) => buildGeoJsonSeries(layer, layerZ(layer.layerIndex))),
+    ...input.layers.flatMap((layer) => buildMarkerSeries(layer, layerZ(layer.layerIndex), input.tooltip)),
+  ];
   const visualMap: VisualMapComponentOption[] = [];
   for (const heatmap of input.heatmaps) {
     const layer = buildHeatmapLayer(heatmap, series.length, layerZ(heatmap.layerIndex));

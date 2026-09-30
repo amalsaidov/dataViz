@@ -12,7 +12,11 @@ import { addGeoLayerOptions } from './layers';
 
 const noEditor = (): null => null;
 standardEditorsRegistry.setInit(() =>
-  ['select', 'field-name', 'radio', 'slider', 'number', 'boolean'].map((id) => ({ id, name: id, editor: noEditor }))
+  ['select', 'field-name', 'radio', 'slider', 'number', 'boolean', 'color'].map((id) => ({
+    id,
+    name: id,
+    editor: noEditor,
+  }))
 );
 
 /** Build the options for `options`, as the panel editor does. */
@@ -73,6 +77,24 @@ describe('geo layer options', () => {
     ]);
     expect(access.getValue('config.weight')).toEqual({ fixed: 1, min: 0, max: 1 });
     expect([access.getValue('config.radius'), access.getValue('config.blur')]).toEqual([5, 15]);
+  });
+
+  it('gives a GeoJSON layer the core GeoJSON options and defaults, with no data or location options', () => {
+    const { access, paths } = layerItems({ layers: [{ type: 'geojson', name: 'g' }] }, 0);
+    expect(paths).toEqual([
+      'type',
+      'config.src',
+      'config.style.color.fixed',
+      'config.style.opacity',
+      'config.rules',
+      ...TOOLTIP,
+    ]);
+    expect(access.getValue('config.src')).toBe('public/maps/countries.geojson');
+    expect([access.getValue('config.style.color.fixed'), access.getValue('config.style.opacity')]).toEqual([
+      'dark-green',
+      0.4,
+    ]);
+    expect(access.getValue('config.rules')).toEqual([]);
   });
 
   it('gives a route layer the core style with no rotation, the arrow and the core defaults', () => {

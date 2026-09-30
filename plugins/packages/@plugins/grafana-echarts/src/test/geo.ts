@@ -1,6 +1,6 @@
 import { createDataFrame, createTheme, type DataFrame, dateTime, FieldType } from '@grafana/data';
 import { LegendDisplayMode, SortOrder, TooltipDisplayMode } from '@grafana/schema';
-import { HeatmapChart, LinesChart, ScatterChart } from 'echarts/charts';
+import { CustomChart, HeatmapChart, LinesChart, ScatterChart } from 'echarts/charts';
 import { GeoComponent, VisualMapContinuousComponent } from 'echarts/components';
 import { type EChartsType, init, registerMap, setPlatformAPI, use as registerEChartsModules } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -49,14 +49,15 @@ type MapSource = Parameters<typeof registerMap>[1];
  * test map keeps it small. `basemap.integration.test.ts` tests the real basemap.
  */
 export function registerTestBasemap(): void {
-  // The heatmap layer needs the modules that `lib/echarts/echarts.ts` registers for the panel. The route layer needs
-  // the `lines` series of `registerBasemap`.
+  // The heatmap and GeoJSON layers need the modules that `lib/echarts/echarts.ts` registers for the panel. The route
+  // layer needs the `lines` series of `registerBasemap`.
   registerEChartsModules([
     CanvasRenderer,
     GeoComponent,
     ScatterChart,
     HeatmapChart,
     LinesChart,
+    CustomChart,
     VisualMapContinuousComponent,
   ]);
   const square = [
