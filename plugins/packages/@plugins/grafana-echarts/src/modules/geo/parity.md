@@ -6,8 +6,8 @@ This file compares the options of the ECharts **Geo** module ([module.tsx](./mod
 The frame shapes are in [data-plane/geo.md](../../../data-plane/geo.md).
 `provisioning/dashboards/geo/geo-core-parity.json` shows core Geomap and this panel side by side.
 
-The panel reads the core option JSON. The editor has the layer list, and the data, location, style and tooltip
-options of each markers layer. The map view and the basemap have no editor yet (#501, #502).
+The panel reads the core option JSON. The editor has the map view, the map controls, the layer list, and the data,
+location, style and tooltip options of each markers layer. The basemap has no editor yet (#502).
 
 ## Panel options
 
@@ -61,7 +61,11 @@ options of each markers layer. The map view and the basemap have no editor yet (
 | Layer: legend switch                      | "Show legend", on when unset, as core                                                                                                                                                                                      | Supported     |
 | Layer: tooltip switch                     | `Display tooltip` (`tooltip`), on when unset, as core                                                                                                                                                                      | Supported     |
 | Map controls: zoom switches, tooltip mode | The core switches and radio of the "Map controls" group                                                                                                                                                                    | Supported     |
-| Map view, basemap layer                   | none (#501, #502)                                                                                                                                                                                                          | Not supported |
+| Map view: Initial view                    | A select of the core presets, in core order. A preset copies its center and zoom into the view, as core `MapViewEditor`.                                                                                                   | Supported     |
+| Map view: lat, lon, padding, zoom         | Lat and lon for Coordinates, the padding for Fit to data, then the zoom. Core names the zoom Max Zoom for Fit to data.                                                                                                     | Supported     |
+| Map view: min and max zoom                | Two number inputs. Core has no input for them.                                                                                                                                                                             | Different     |
+| Map view: Use current map settings        | Saves the live center and zoom of the panel as a Coordinates view, as core                                                                                                                                                 | Supported     |
+| Basemap layer                             | none (#502)                                                                                                                                                                                                                | Not supported |
 
 ## Same behavior as core
 

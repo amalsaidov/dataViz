@@ -6,6 +6,7 @@ import { ChartTimeSlider, TIME_SLIDER_HEIGHT } from './ChartTimeSlider';
 import { ChartZoomControls } from './ChartZoomControls';
 import { GeoMarkersLegend } from './GeoMarkersLegend';
 import { EChart } from './EChart';
+import { useGeoInstanceState } from './hooks/useGeoInstanceState';
 import { useLegend } from './hooks/useLegend';
 import { useLegendHighlight } from './hooks/useLegendHighlight';
 import { type ChartContentProps } from './types';
@@ -53,6 +54,7 @@ export const ChartContent: React.FC<ChartContentProps> = ({
   // instance state `EChart` keeps for its own hooks.
   const chartInstanceRef = useRef<EChartsType | null>(null);
   useLegendHighlight(chartInstanceRef, chartModule, chartContext, eventBus, !isPreview);
+  useGeoInstanceState(chartInstanceRef, isPreview ? undefined : chartContext.family);
 
   const { items: legendItems, renderLegend } = useLegend({
     chartModule,

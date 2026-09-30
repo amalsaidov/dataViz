@@ -86,3 +86,18 @@ export function resolveCoreMapView(config: Partial<MapViewConfig> | undefined): 
   }
   return { center, zoom: clamp(config?.zoom || 1), minZoom, maxZoom };
 }
+
+/** The live view of the map in the terms of the core `view` option: the center and the OpenLayers zoom. */
+export interface LiveMapView {
+  lon: number;
+  lat: number;
+  zoom: number;
+}
+
+/**
+ * The panel instance state of the geo panel. The view editor reads it from `context.instanceState` for the core
+ * "Use current map settings" button.
+ */
+export interface GeoInstanceState {
+  readMapView(): LiveMapView | undefined;
+}

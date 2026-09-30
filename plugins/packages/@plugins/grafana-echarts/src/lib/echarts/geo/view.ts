@@ -1,7 +1,8 @@
 import { type GeoComponentOption } from 'echarts';
 import { type LonLat } from 'lib/grafana/geo/gazetteer';
-import { type CoreMapView } from 'lib/grafana/geo/view';
-import { projectLonLat, WORLD_LAYOUT } from './projection';
+import { type CoreMapView, type LiveMapView } from 'lib/grafana/geo/view';
+import { type GeoViewState } from './liveView';
+import { projectLonLat, unprojectLonLat, WORLD_LAYOUT } from './projection';
 
 /** The tile size of OpenLayers: at zoom 0 the world is 256 px wide. https://openlayers.org/en/latest/apidoc/module-ol_View-View.html */
 const OL_TILE_SIZE = 256;
@@ -19,6 +20,25 @@ export interface ViewSize {
  */
 export function toGeoZoom(olZoom: number, size: ViewSize): number {
   return (OL_TILE_SIZE * 2 ** olZoom) / Math.min(size.width, size.height);
+}
+
+/** The inverse of `toGeoZoom`. */
+export function fromGeoZoom(geoZoom: number, size: ViewSize): number {
+  return Math.log2((geoZoom * Math.min(size.width, size.height)) / OL_TILE_SIZE);
+}
+
+/**
+ * The live `geo` view in core terms, as core `onSetCurrentView`: the center in degrees with 6 decimals, and the
+ * OpenLayers zoom with 2 decimals. A view with no center or zoom, or a chart with no size, gives `undefined`.
+ * Core: https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/editor/MapViewEditor.tsx
+ */
+export function toLiveMapView(view: GeoViewState | undefined, size: ViewSize): LiveMapView | undefined {
+  if (!view?.center || view.zoom == null || !(Math.min(size.width, size.height) > 0)) {
+    return undefined;
+  }
+  const [lon, lat] = unprojectLonLat(view.center);
+  const round = (value: number, digits: number) => +value.toFixed(digits);
+  return { lon: round(lon, 6), lat: round(lat, 6), zoom: round(fromGeoZoom(view.zoom, size), 2) };
 }
 
 /**

@@ -2,7 +2,7 @@ import { init } from 'lib/echarts/echarts';
 import { resolveCoreMapView } from 'lib/grafana/geo/view';
 import { BASEMAP_NAME, registerBasemap } from './basemap';
 import { projectLonLat, WORLD_BOUNDING_COORDS, webMercator } from './projection';
-import { toGeoView, toGeoZoom } from './view';
+import { fromGeoZoom, toGeoView, toGeoZoom, toLiveMapView } from './view';
 
 const size = { width: 800, height: 512 };
 
@@ -12,6 +12,31 @@ describe('toGeoZoom', () => {
     expect(toGeoZoom(1, size)).toBe(1);
     expect(toGeoZoom(4, size)).toBe(8);
     expect(toGeoZoom(0, { width: 256, height: 1000 })).toBe(1);
+  });
+});
+
+describe('fromGeoZoom', () => {
+  it('is the inverse of toGeoZoom', () => {
+    expect(fromGeoZoom(toGeoZoom(4.25, size), size)).toBeCloseTo(4.25, 10);
+    expect(fromGeoZoom(1, size)).toBe(1);
+  });
+});
+
+describe('toLiveMapView', () => {
+  it('gives the center in degrees and the OpenLayers zoom, rounded as core', () => {
+    const center = projectLonLat([14.1234567, 46.7654321]);
+    expect(toLiveMapView({ center, zoom: toGeoZoom(4.567, size) }, size)).toEqual({
+      lon: 14.123457,
+      lat: 46.765432,
+      zoom: 4.57,
+    });
+  });
+
+  it('gives no view without a center, a zoom or a size', () => {
+    expect(toLiveMapView(undefined, size)).toBeUndefined();
+    expect(toLiveMapView({ zoom: 1 }, size)).toBeUndefined();
+    expect(toLiveMapView({ center: [0, 0] }, size)).toBeUndefined();
+    expect(toLiveMapView({ center: [0, 0], zoom: 1 }, { width: 0, height: 0 })).toBeUndefined();
   });
 });
 
