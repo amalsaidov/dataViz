@@ -38,6 +38,10 @@ interface MarkersConfig {
   style?: MarkerStyleConfig;
 }
 
+/** The style config of a markers layer (`config.style`). */
+export const getLayerStyleConfig = (layer: Partial<MapLayerOptions<MarkersConfig>>): MarkerStyleConfig | undefined =>
+  layer.config?.style;
+
 /** Change a longitude to the range -180 to 180. Core repeats the world, so a longitude of 400 shows at 40. */
 const wrapLongitude = (lon: number): number =>
   lon >= -180 && lon <= 180 ? lon : ((((lon + 180) % 360) + 360) % 360) - 180;
@@ -55,7 +59,7 @@ function getLayerMarkers(
   theme: GrafanaTheme2,
   queryRefIds?: string[]
 ): GeoMarkers {
-  const styleConfig = layer.config?.style;
+  const styleConfig = getLayerStyleConfig(layer);
   const style = getMarkerLayerStyle(styleConfig, theme);
   const tooltip = layer.tooltip !== false;
   const name = layer.name || 'Layer 1';

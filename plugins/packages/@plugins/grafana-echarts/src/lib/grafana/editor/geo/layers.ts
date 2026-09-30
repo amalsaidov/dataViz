@@ -1,11 +1,14 @@
 import { type NestedValueAccess, type PanelOptionsEditorBuilder, type StandardEditorContext } from '@grafana/data';
 import { FrameGeometrySourceMode, type MapLayerOptions } from '@grafana/schema';
+import { DEFAULT_MARKER_STYLE } from 'lib/grafana/geo/dimensions';
 import { COUNTRIES_GAZETTEER_PATH } from 'lib/grafana/geo/gazetteer';
+import { getLayerStyleConfig } from 'lib/grafana/geo/markers';
 import { getLayerEditorFrames, MARKERS_LAYER_TYPE, replaceLayer, resolveLayers } from 'lib/grafana/geo/layers';
 import { type PanelOptions } from 'types';
 import { GeoFrameSelectionEditor } from './GeoFrameSelectionEditor';
 import { GeoLayersEditor } from './GeoLayersEditor';
 import { addLocationFields } from './location';
+import { addStyleFields } from './style';
 
 /** The group of the layers editor, as core Geomap. */
 export const geoLayersCategoryName = 'Map layers';
@@ -28,11 +31,17 @@ function setOption(object: OptionObject, [key, ...rest]: string[], value: unknow
   return { ...object, [key]: rest.length ? setOption(isOptionObject(child) ? child : {}, rest, value) : value };
 }
 
-/** The value that core uses for an unset option: the Auto mode, and the countries gazetteer (`getGazetteer`). */
-const UNSET_LAYER_VALUES: Record<string, unknown> = {
-  'location.mode': FrameGeometrySourceMode.Auto,
-  'location.gazetteer': COUNTRIES_GAZETTEER_PATH,
+/**
+ * The value that core uses for an unset option: the Auto mode, the countries gazetteer (`getGazetteer`), the
+ * tooltip switch on, and each value of the default style (`value?.size ?? defaultStyleConfig.size`).
+ */
+const UNSET_LAYER_VALUES: OptionObject = {
+  location: { mode: FrameGeometrySourceMode.Auto, gazetteer: COUNTRIES_GAZETTEER_PATH },
+  tooltip: true,
+  config: { style: DEFAULT_MARKER_STYLE },
 };
+
+const SYMBOL_FIXED_PATH = 'config.style.symbol.fixed';
 
 /**
  * The value access of the layer at `index`. It reads the resolved layer list, so the default layer of an unset
@@ -43,7 +52,19 @@ function layerValues(layers: MapLayerOptions[], index: number) {
   const layer = layers[index];
   const layerObject: OptionObject = { ...layer };
   return (parent: NestedValueAccess): NestedValueAccess => ({
-    getValue: (path) => getOption(layerObject, path.split('.')) ?? UNSET_LAYER_VALUES[path],
+    getValue: (path) => {
+      const keys = path.split('.');
+      const value = getOption(layerObject, keys);
+      // Core falls back to the default symbol only when `symbol` is unset (`value?.symbol ?? defaultStyleConfig.symbol`).
+      // A cleared symbol is `{ mode: 'fixed' }`, so it shows no symbol.
+      if (
+        value !== undefined ||
+        (path === SYMBOL_FIXED_PATH && getOption(layerObject, keys.slice(0, -1)) !== undefined)
+      ) {
+        return value;
+      }
+      return getOption(UNSET_LAYER_VALUES, keys);
+    },
     onChange: (path, value) => {
       const next = setOption(layerObject, path.split('.'), value);
       if (isMapLayer(next)) {
@@ -98,6 +119,13 @@ export function addGeoLayerOptions(
           editor: GeoFrameSelectionEditor,
         });
         addLocationFields(layerBuilder, layer.location);
+        addStyleFields(layerBuilder, getLayerStyleConfig(layer));
+        // Core adds this switch after the options of each layer type (`layerEditor.tsx`).
+        layerBuilder.addBooleanSwitch({
+          path: 'tooltip',
+          name: 'Display tooltip',
+          description: 'Show the tooltip for layer',
+        });
       },
     });
   });

@@ -6,8 +6,8 @@ This file compares the options of the ECharts **Geo** module ([module.tsx](./mod
 The frame shapes are in [data-plane/geo.md](../../../data-plane/geo.md).
 `provisioning/dashboards/geo/geo-core-parity.json` shows core Geomap and this panel side by side.
 
-The panel reads the core option JSON. The editor has the layer list and the location and data options of each
-markers layer. The map view, the basemap and the marker style have no editor yet (#501, #502, #500).
+The panel reads the core option JSON. The editor has the layer list, and the data, location, style and tooltip
+options of each markers layer. The map view and the basemap have no editor yet (#501, #502).
 
 ## Panel options
 
@@ -47,17 +47,19 @@ markers layer. The map view, the basemap and the marker style have no editor yet
 
 ## Editor
 
-| Core option                           | ECharts equivalent                                                                                    | Status        |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------- |
-| Map layers: add, delete, rename       | The same. A new layer is a markers layer named `Layer <n>`. A name must be unique and not empty.      | Supported     |
-| Map layers: order                     | Move up and move down buttons. Core drags the layers. The top row draws on top, as core.              | Different     |
-| Map layers: select a layer            | none: each markers layer has its group of options. Core shows the options of the selected layer only. | Different     |
-| Layer type                            | none: an added layer is a markers layer (#333 to #337)                                                | Not supported |
-| Layer: Data (`filterData`)            | A select of the refIds of the panel frames                                                            | Supported     |
-| Layer: Location mode and fields       | Auto, Coords, Geohash and Lookup, with the field pickers and the gazetteer of core                    | Supported     |
-| Layer: style and legend switches      | none (#500, #511)                                                                                     | Not supported |
-| Layer: tooltip switch                 | none: set `tooltip` in the panel JSON (#500)                                                          | Not supported |
-| Map view, basemap layer, map controls | none (#501, #502, #510)                                                                               | Not supported |
+| Core option                           | ECharts equivalent                                                                                                                                                                                                         | Status        |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| Map layers: add, delete, rename       | The same. A new layer is a markers layer named `Layer <n>`. A name must be unique and not empty.                                                                                                                           | Supported     |
+| Map layers: order                     | Move up and move down buttons. Core drags the layers. The top row draws on top, as core.                                                                                                                                   | Different     |
+| Map layers: select a layer            | none: each markers layer has its group of options. Core shows the options of the selected layer only.                                                                                                                      | Different     |
+| Layer type                            | none: an added layer is a markers layer (#333 to #337)                                                                                                                                                                     | Not supported |
+| Layer: Data (`filterData`)            | A select of the refIds of the panel frames                                                                                                                                                                                 | Supported     |
+| Layer: Location mode and fields       | Auto, Coords, Geohash and Lookup, with the field pickers and the gazetteer of core                                                                                                                                         | Supported     |
+| Layer: style, fixed values            | Size, symbol, symbol align, color, fill opacity, rotation, text label and the text options, as core `StyleEditor`. Each option is an item of the group. The symbol is a select of the 7 marker files that the panel draws. | Supported     |
+| Layer: style, from a field            | none: a dimension that the JSON binds to a field shows the field, and the editor cannot change it (#566)                                                                                                                   | Not supported |
+| Layer: legend switch                  | none (#511)                                                                                                                                                                                                                | Not supported |
+| Layer: tooltip switch                 | `Display tooltip` (`tooltip`), on when unset, as core                                                                                                                                                                      | Supported     |
+| Map view, basemap layer, map controls | none (#501, #502, #510)                                                                                                                                                                                                    | Not supported |
 
 ## Same behavior as core
 

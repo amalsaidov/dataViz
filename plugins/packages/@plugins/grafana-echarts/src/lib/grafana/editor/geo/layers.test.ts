@@ -11,7 +11,9 @@ import { type PanelOptions } from 'types';
 import { addGeoLayerOptions } from './layers';
 
 const noEditor = (): null => null;
-standardEditorsRegistry.setInit(() => ['select', 'field-name'].map((id) => ({ id, name: id, editor: noEditor })));
+standardEditorsRegistry.setInit(() =>
+  ['select', 'field-name', 'radio', 'slider', 'number', 'boolean'].map((id) => ({ id, name: id, editor: noEditor }))
+);
 
 /** Build the options for `options`, as the panel editor does. */
 function build(options: Partial<PanelOptions>) {
@@ -32,6 +34,19 @@ function layerItems(options: Partial<PanelOptions>, index: number, data = [creat
   return { nested, access, context, onChange, paths: builder.getItems().map((i) => i.path) };
 }
 
+// The style items of core `StyleEditor`, then the core tooltip switch.
+const STYLE_PATHS = [
+  'config.style.size',
+  'config.style.symbol.fixed',
+  'config.style.symbolAlign.vertical',
+  'config.style.symbolAlign.horizontal',
+  'config.style.color',
+  'config.style.opacity',
+  'config.style.rotation',
+  'config.style.text',
+];
+const TOOLTIP = ['tooltip'];
+
 const markers = (name: string, extra: Partial<MapLayerOptions> = {}): MapLayerOptions => ({
   type: 'markers',
   name,
@@ -49,7 +64,7 @@ describe('geo layer options', () => {
     const { nested, access, paths } = layerItems({}, 0);
     expect(nested.category).toEqual(['Layer: Layer 1']);
     expect(access.getValue('location.mode')).toBe('auto');
-    expect(paths).toEqual(['filterData', 'location.mode']);
+    expect(paths).toEqual(['filterData', 'location.mode', ...STYLE_PATHS, ...TOOLTIP]);
   });
 
   it('writes a change of the default layer as the full layer list', () => {
@@ -86,17 +101,23 @@ describe('geo layer options', () => {
       'location.mode',
       'location.latitude',
       'location.longitude',
+      ...STYLE_PATHS,
+      ...TOOLTIP,
     ]);
     expect(paths({ mode: FrameGeometrySourceMode.Geohash })).toEqual([
       'filterData',
       'location.mode',
       'location.geohash',
+      ...STYLE_PATHS,
+      ...TOOLTIP,
     ]);
     expect(paths({ mode: FrameGeometrySourceMode.Lookup })).toEqual([
       'filterData',
       'location.mode',
       'location.lookup',
       'location.gazetteer',
+      ...STYLE_PATHS,
+      ...TOOLTIP,
     ]);
   });
 
@@ -119,5 +140,57 @@ describe('geo layer options', () => {
     const { context } = layerItems({ layers }, 0, [a, b]);
     expect(context.data).toEqual([b]);
     expect(context.options).toEqual(layers[0]);
+  });
+
+  it('shows the text options only for a style with a text, as core StyleEditor', () => {
+    const paths = (style: object) =>
+      layerItems({ layers: [markers('a', { config: { style } })] }, 0).paths.filter((p) => p.includes('textConfig'));
+    expect(paths({})).toEqual([]);
+    expect(paths({ text: { mode: 'fixed', fixed: '' } })).toEqual([]);
+    expect(paths({ text: { mode: 'fixed', fixed: 'A' } })).toEqual([
+      'config.style.textConfig.fontSize',
+      'config.style.textConfig.offsetX',
+      'config.style.textConfig.offsetY',
+      'config.style.textConfig.textAlign',
+      'config.style.textConfig.textBaseline',
+    ]);
+    expect(paths({ text: { mode: 'field', field: 'name' } })).toHaveLength(5);
+  });
+
+  it('shows each value of the default style for an unset style, as core StyleEditor', () => {
+    const { access } = layerItems({ layers: [markers('a', { config: { style: { opacity: 0.9 } } })] }, 0);
+    expect(access.getValue('config.style.opacity')).toBe(0.9);
+    expect(access.getValue('config.style.size')).toEqual({ fixed: 5, min: 2, max: 15 });
+    expect(access.getValue('config.style.color')).toEqual({ fixed: 'dark-green' });
+    expect(access.getValue('config.style.symbol.fixed')).toBe('img/icons/marker/circle.svg');
+    expect(access.getValue('config.style.symbolAlign.vertical')).toBe('center');
+    expect(access.getValue('config.style.textConfig.fontSize')).toBe(12);
+    expect(access.getValue('config.style.text')).toBeUndefined();
+    expect(access.getValue('tooltip')).toBe(true);
+  });
+
+  it('writes one style value and keeps the other values of the style, as core StyleEditor', () => {
+    const layers = [markers('a', { config: { showLegend: true, style: { opacity: 0.9 } } })];
+    const { access, onChange } = layerItems({ layers }, 0);
+    access.onChange('config.style.symbolAlign.vertical', 'top');
+    expect(onChange).toHaveBeenCalledWith('layers', [
+      markers('a', { config: { showLegend: true, style: { opacity: 0.9, symbolAlign: { vertical: 'top' } } } }),
+    ]);
+  });
+
+  it('writes a style value of the default layer, with no other style value', () => {
+    const { access, onChange } = layerItems({}, 0);
+    access.onChange('config.style.size', { fixed: 9, min: 2, max: 15 });
+    expect(onChange.mock.calls[0][1][0].config).toEqual({ style: { size: { fixed: 9, min: 2, max: 15 } } });
+  });
+
+  it('shows no symbol for a cleared symbol, as core draws the text only', () => {
+    const style = { symbol: { mode: 'fixed' }, text: { mode: 'fixed', fixed: 'A' } };
+    const { access, onChange } = layerItems({ layers: [markers('a', { config: { style } })] }, 0);
+    expect(access.getValue('config.style.symbol.fixed')).toBeUndefined();
+    // The default layer with no symbol shows the default circle.
+    expect(layerItems({}, 0).access.getValue('config.style.symbol.fixed')).toBe('img/icons/marker/circle.svg');
+    access.onChange('config.style.symbol.fixed', undefined);
+    expect(onChange.mock.calls[0][1][0].config.style.symbol).toEqual({ mode: 'fixed', fixed: undefined });
   });
 });

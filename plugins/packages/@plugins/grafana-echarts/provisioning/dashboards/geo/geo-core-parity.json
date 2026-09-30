@@ -2136,6 +2136,195 @@
           "csvContent": "name,lat,lon,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
         }
       ]
+    },
+    {
+      "type": "geomap",
+      "title": "Core Geomap: Fixed style, star, rotation and text",
+      "description": "Fixed values only, as the layer editor sets them: star icons of size 10 in `orange` at opacity 0.7, turned 30 degrees. The fixed text `City` is 8 px right and 8 px up, left aligned, on the bottom baseline.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 110
+      },
+      "id": 21,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        },
+        "basemap": {
+          "type": "osm-standard",
+          "name": "Basemap"
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Layer 1",
+            "config": {
+              "showLegend": false,
+              "style": {
+                "size": {
+                  "fixed": 10,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "fixed": "orange"
+                },
+                "opacity": 0.7,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/star.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "City"
+                },
+                "textConfig": {
+                  "fontSize": 14,
+                  "textAlign": "left",
+                  "textBaseline": "bottom",
+                  "offsetX": 8,
+                  "offsetY": -8
+                },
+                "rotation": {
+                  "fixed": 30,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon\nBerlin,52.52,13.405\nParis,48.8566,2.3522\nMadrid,40.4168,-3.7038\nRome,41.9028,12.4964"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "ECharts Geo: Fixed style, star, rotation and text",
+      "description": "Fixed values only, as the layer editor sets them: star icons of size 10 in `orange` at opacity 0.7, turned 30 degrees. The fixed text `City` is 8 px right and 8 px up, left aligned, on the bottom baseline.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 110
+      },
+      "id": 22,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Layer 1",
+            "config": {
+              "showLegend": false,
+              "style": {
+                "size": {
+                  "fixed": 10,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "fixed": "orange"
+                },
+                "opacity": 0.7,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/star.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "City"
+                },
+                "textConfig": {
+                  "fontSize": 14,
+                  "textAlign": "left",
+                  "textBaseline": "bottom",
+                  "offsetX": 8,
+                  "offsetY": -8
+                },
+                "rotation": {
+                  "fixed": 30,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon\nBerlin,52.52,13.405\nParis,48.8566,2.3522\nMadrid,40.4168,-3.7038\nRome,41.9028,12.4964"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,

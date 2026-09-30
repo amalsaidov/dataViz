@@ -90,7 +90,7 @@ export interface MarkerValues {
 }
 
 /** Core `styleUsesText`: a fixed mode with a text, or a field mode with a field. */
-function styleUsesText(text?: TextDimensionConfig): boolean {
+export function styleUsesText(text?: TextDimensionConfig): boolean {
   return Boolean(
     (text?.mode === TextDimensionMode.Fixed && text.fixed?.length) ||
     (text?.mode === TextDimensionMode.Field && text.field?.length)
