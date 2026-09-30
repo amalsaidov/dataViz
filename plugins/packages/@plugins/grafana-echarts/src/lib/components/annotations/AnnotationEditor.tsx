@@ -57,9 +57,20 @@ export const AnnotationEditor: React.FC<Props> = ({ draft, timeZone, dismiss }) 
   // Placed as the tooltip, beside the cursor, and flipped at the window edges.
   useLayoutEffect(() => {
     const dom = rootRef.current;
-    if (dom != null) {
-      dom.style.transform = cursorTransform(draft.position, { width: dom.offsetWidth, height: dom.offsetHeight });
+    if (dom == null) {
+      return;
     }
+    const place = () =>
+      (dom.style.transform = cursorTransform(draft.position, { width: dom.offsetWidth, height: dom.offsetHeight }));
+    place();
+    // The editor grows when the user adds tags. Place it again, so that it stays in the viewport.
+    // https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const observer = new ResizeObserver(place);
+    observer.observe(dom);
+    return () => observer.disconnect();
   }, [draft.position]);
 
   // A press out of the editor or Escape closes it, as core (`useClickAway`).

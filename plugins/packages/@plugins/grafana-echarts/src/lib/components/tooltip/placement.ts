@@ -10,7 +10,8 @@ const SCROLLBAR_WIDTH = 16;
 /**
  * Position a tooltip or an editor beside the cursor like core's `TooltipPlugin2`: offset by
  * `TOOLTIP_OFFSET`, and when it would overflow the viewport (minus a scrollbar's
- * width), flip to the cursor's other side via `translate(-100%)`.
+ * width), flip to the cursor's other side via `translate(-100%)`. When the other side has no room either, move
+ * the box into the viewport.
  */
 export function cursorTransform(position: { x: number; y: number }, size: { width: number; height: number }): string {
   const winWid = window.innerWidth - SCROLLBAR_WIDTH;
@@ -21,8 +22,12 @@ export function cursorTransform(position: { x: number; y: number }, size: { widt
   const flipX = position.x + width > winWid && position.x - width >= 0;
   const flipY = position.y + height > winHgt && position.y - height >= 0;
 
-  const shiftX = position.x + (flipX ? -TOOLTIP_OFFSET.x : TOOLTIP_OFFSET.x);
-  const shiftY = position.y + (flipY ? -TOOLTIP_OFFSET.y : TOOLTIP_OFFSET.y);
+  // When neither side of the cursor has room, move the box into the viewport, so that all of it stays visible.
+  const fitX = !flipX && position.x + width > winWid;
+  const fitY = !flipY && position.y + height > winHgt;
+
+  const shiftX = fitX ? Math.max(0, winWid - size.width) : position.x + (flipX ? -TOOLTIP_OFFSET.x : TOOLTIP_OFFSET.x);
+  const shiftY = fitY ? Math.max(0, winHgt - size.height) : position.y + (flipY ? -TOOLTIP_OFFSET.y : TOOLTIP_OFFSET.y);
   const reflectX = flipX ? ' translateX(-100%)' : '';
   const reflectY = flipY ? ' translateY(-100%)' : '';
 
