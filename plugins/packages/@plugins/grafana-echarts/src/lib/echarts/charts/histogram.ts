@@ -20,17 +20,22 @@ import {
 // these functions when the mode is on.
 
 // `getDataIssue`, `buildOption` and `buildLegendItems` run on the same render. The last model of each
-// frames array is kept, so the frames are bucketed once. https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap
-const modelCache = new WeakMap<DataFrame[], { key: string; model: HistogramModel | undefined }>();
+// frames array is kept, so the frames are bucketed once. The theme is part of the key, because the field
+// `display` of the model uses it. https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap
+const modelCache = new WeakMap<
+  DataFrame[],
+  { key: string; theme: ChartContext['theme']; model: HistogramModel | undefined }
+>();
 
-function getModel(ctx: ChartContext): HistogramModel | undefined {
+/** The histogram model of the context. The same frames, bucket options and theme give the same model. */
+export function getHistogramModel(ctx: ChartContext): HistogramModel | undefined {
   const key = JSON.stringify(getHistogramOptions(ctx.options));
   const cached = modelCache.get(ctx.frames);
-  if (cached?.key === key) {
+  if (cached?.key === key && cached.theme === ctx.theme) {
     return cached.model;
   }
   const model = buildHistogramModel(ctx.frames, getHistogramOptions(ctx.options), ctx.theme);
-  modelCache.set(ctx.frames, { key, model });
+  modelCache.set(ctx.frames, { key, theme: ctx.theme, model });
   return model;
 }
 
@@ -40,7 +45,7 @@ function getModel(ctx: ChartContext): HistogramModel | undefined {
  * 2. Buckets with names (heatmap-rows `le` buckets). They need an ordinal axis, which the chart does not draw yet.
  */
 export function getHistogramDataIssue(ctx: ChartContext): ChartDataIssue | undefined {
-  const model = getModel(ctx);
+  const model = getHistogramModel(ctx);
   if (model && model.xMin.values.length > MAX_HISTOGRAM_BUCKETS) {
     return {
       reason: 'histogram-too-many-buckets',
@@ -66,7 +71,7 @@ export function buildHistogramChartOption(
   if (getHistogramDataIssue(ctx)) {
     return null;
   }
-  const model = getModel(ctx);
+  const model = getHistogramModel(ctx);
   if (!model) {
     return null;
   }
@@ -86,7 +91,7 @@ export function buildHistogramChartOption(
  * shown again. The legend calcs are not given (see the parity doc of the cartesian panel).
  */
 export function buildHistogramLegendItems(ctx: ChartContext): VizLegendItem[] {
-  const model = getModel(ctx);
+  const model = getHistogramModel(ctx);
   if (!model) {
     return [];
   }

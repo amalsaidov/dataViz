@@ -1,6 +1,6 @@
 import { createTheme, type DataFrame, FieldType, toDataFrame } from '@grafana/data';
 import { MAX_HISTOGRAM_BUCKETS } from 'lib/echarts/converters/histogram';
-import { buildHistogramChartOption, getHistogramDataIssue } from './histogram';
+import { buildHistogramChartOption, getHistogramDataIssue, getHistogramModel } from './histogram';
 import { type BaseOptionParts, type ChartContext } from './types';
 
 const theme = createTheme();
@@ -50,5 +50,32 @@ describe('getHistogramDataIssue', () => {
     const ctx = contextOf(values, { bucketSize: 1 });
     expect(getHistogramDataIssue(ctx)).toBeUndefined();
     expect(buildHistogramChartOption(ctx, parts)).not.toBeNull();
+  });
+});
+
+describe('getHistogramModel', () => {
+  it('keeps the model for the same frames, options and theme', () => {
+    const ctx = contextOf([1, 2, 11], { bucketSize: 10 });
+    expect(getHistogramModel({ ...ctx })).toBe(getHistogramModel(ctx));
+  });
+
+  it('makes a new model with the new theme for the same frames', () => {
+    const frames = [
+      toDataFrame({
+        fields: [
+          {
+            name: 'Height',
+            type: FieldType.number,
+            values: [1, 2, 11],
+            config: { color: { mode: 'fixed', fixedColor: 'green' } },
+          },
+        ],
+      }),
+    ];
+    const dark = { ...contextOf([], { bucketSize: 10 }), frames };
+    const light = { ...dark, theme: createTheme({ colors: { mode: 'light' } }) };
+    // The count field display gives the color of its own theme: green is #73BF69 in dark and #56A64B in light.
+    expect(getHistogramModel(dark)?.counts[0].display?.(1).color).toBe('#73BF69');
+    expect(getHistogramModel(light)?.counts[0].display?.(1).color).toBe('#56A64B');
   });
 });
