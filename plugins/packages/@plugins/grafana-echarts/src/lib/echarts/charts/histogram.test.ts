@@ -1,6 +1,11 @@
 import { createTheme, type DataFrame, DataFrameType, FieldType, toDataFrame } from '@grafana/data';
 import { MAX_HISTOGRAM_BUCKETS } from 'lib/echarts/converters/histogram';
-import { buildHistogramChartOption, getHistogramDataIssue, getHistogramModel } from './histogram';
+import {
+  buildHistogramChartOption,
+  buildHistogramLegendItems,
+  getHistogramDataIssue,
+  getHistogramModel,
+} from './histogram';
 import { type BaseOptionParts, type ChartContext } from './types';
 
 const theme = createTheme();
@@ -91,5 +96,37 @@ describe('getHistogramModel', () => {
     // The count field display gives the color of its own theme: green is #73BF69 in dark and #56A64B in light.
     expect(getHistogramModel(dark)?.counts[0].display?.(1).color).toBe('#73BF69');
     expect(getHistogramModel(light)?.counts[0].display?.(1).color).toBe('#56A64B');
+  });
+});
+
+describe('buildHistogramLegendItems', () => {
+  const twoFields = toDataFrame({
+    fields: [
+      { name: 'A', type: FieldType.number, values: [1, 2, 11] },
+      { name: 'B', type: FieldType.number, values: [3, 12, 13, 14] },
+    ],
+  });
+  const calcsOf = (options: Record<string, unknown>, calcs: string[]) =>
+    buildHistogramLegendItems({ ...contextOf([], options), frames: [twoFields] } as unknown as ChartContext, calcs).map(
+      (item) => [item.label, item.getDisplayValues!().map(({ title, text }) => `${title}=${text}`)]
+    );
+
+  it('reduces the raw values of each field, as core', () => {
+    expect(calcsOf({ bucketSize: 10 }, ['max', 'count'])).toEqual([
+      ['A', ['Max=11', 'Count=3']],
+      ['B', ['Max=14', 'Count=4']],
+    ]);
+  });
+
+  it('reduces the bucket counts with Combine series, as core', () => {
+    // Buckets 0 and 10: 1 + 2 + 1 and 0 + 1 + 3 values.
+    expect(calcsOf({ bucketSize: 10, combine: true }, ['max', 'sum'])).toEqual([['Count', ['Max=4', 'Total=7']]]);
+  });
+
+  it('gives no values with no calcs', () => {
+    expect(calcsOf({ bucketSize: 10 }, [])).toEqual([
+      ['A', []],
+      ['B', []],
+    ]);
   });
 });

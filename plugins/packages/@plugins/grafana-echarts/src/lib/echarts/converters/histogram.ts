@@ -27,6 +27,11 @@ export interface HistogramModel {
   counts: Field[];
   /** The display name of each count field, in the order of `counts`. */
   names: string[];
+  /**
+   * The field that the legend calcs reduce, in the order of `counts`: the raw field that the counts come from, as
+   * core `PlotLegend` with the `origin` of the field. With Combine series, it is the count field.
+   */
+  legendFields: Field[];
 }
 
 /**
@@ -44,8 +49,15 @@ export function buildHistogramModel(
   if (frames.length === 0) {
     return undefined;
   }
-  // Core writes the display names into the field state of the frames. Copies keep the input frames unchanged.
-  const copies = frames.map((frame) => ({ ...frame, fields: frame.fields.map((field) => ({ ...field })) }));
+  // Core writes the display names and the origin of each field into the field state of the frames. The origin
+  // gives the raw field of each count field for the legend calcs. Copies keep the input frames unchanged.
+  const copies = frames.map((frame, frameIndex) => ({
+    ...frame,
+    fields: frame.fields.map((field, fieldIndex) => ({
+      ...field,
+      state: { ...field.state, origin: { frameIndex, fieldIndex } },
+    })),
+  }));
   cacheFieldDisplayNames(copies);
 
   const frame = getExplicitHistogram(copies, theme) ?? getBuiltHistogram(copies, options, theme);
@@ -53,7 +65,15 @@ export function buildHistogramModel(
     return undefined;
   }
   const [xMin, xMax, ...counts] = frame.fields;
-  return { xMin, xMax, counts, names: counts.map((field) => getFieldDisplayName(field, frame)) };
+  // Core gives the legend the histogram frame with Combine series, else the raw frames (`Histogram.renderLegend`).
+  const legendFrames = options.combine ? [frame] : copies;
+  const legendFields = counts.map((field) => {
+    const origin = field.state?.origin;
+    const source = origin && legendFrames[origin.frameIndex]?.fields[origin.fieldIndex];
+    // A count field copies the state of its raw field. Remove the cached calcs, because they are of the raw values.
+    return source && source !== field ? source : { ...field, state: { ...field.state, calcs: undefined } };
+  });
+  return { xMin, xMax, counts, names: counts.map((field) => getFieldDisplayName(field, frame)), legendFields };
 }
 
 /** Step 1 of `buildHistogramModel`: the buckets that the data source made. */

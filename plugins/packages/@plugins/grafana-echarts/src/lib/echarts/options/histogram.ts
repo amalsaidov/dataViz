@@ -73,7 +73,8 @@ export function buildHistogramOption(input: HistogramOptionInput): EChartCartesi
   const percent = options.stacking === StackingMode.Percent;
   const stacked = options.stacking === StackingMode.Normal || percent;
   const bounds = getBucketBounds(model);
-  const rows = getBarRows(model, bounds, hidden, stacked, percent);
+  const range = getXAxisRange(model, bounds);
+  const rows = getBarRows(model, bounds, hidden, stacked, percent, range);
   const axisStyle = getCartesianAxisStyle(theme);
   const countDisplay = getDisplay(model.counts[0], theme);
 
@@ -103,7 +104,7 @@ export function buildHistogramOption(input: HistogramOptionInput): EChartCartesi
     // The last x label is on the right edge of the plot. `containLabel` does not keep space for its right half.
     grid: getCartesianGrid(isGrafanaLegend ? undefined : options.legend, { right: X_LABEL_OVERHANG }),
     xAxis: mergeAxisStyle<XAXisOption>(
-      { type: 'value', ...getXAxisRange(bounds), ...getXTickInterval(bounds, input.plotWidth) },
+      { type: 'value', ...range, ...getXTickInterval(model, bounds, input.plotWidth) },
       axisStyle,
       { zlevel: options.zLevel?.axis, axisLabel: { formatter: getXLabelFormatter(model, bounds, theme) } }
     ),
@@ -122,14 +123,16 @@ export function buildHistogramOption(input: HistogramOptionInput): EChartCartesi
 
 /**
  * The bar rows of each count field. A stacked bar starts on the top of the bars of the same bucket before it.
- * Percent stacking divides by the total of the bucket. Hidden fields do not stack.
+ * Percent stacking divides by the total of the bucket. Hidden fields do not stack. A bucket out of the x range
+ * gets a row with no bar, so its count does not change the count axis, as the uPlot scale of core.
  */
 function getBarRows(
   model: HistogramModel,
   bounds: BucketBounds,
   hidden: Set<string>,
   stacked: boolean,
-  percent: boolean
+  percent: boolean,
+  range: { min?: number; max?: number }
 ): number[][][] {
   const buckets = model.xMin.values.length;
   const totals = new Array<number>(buckets).fill(0);
@@ -147,7 +150,11 @@ function getBarRows(
       if (stacked && !hidden.has(model.names[i])) {
         bases[j] += height;
       }
-      return [bounds.mins[j], bounds.maxs[j], base, base + height, count];
+      const [xMin, xMax] = [bounds.mins[j], bounds.maxs[j]];
+      if (xMax <= (range.min ?? -Infinity) || xMin >= (range.max ?? Infinity)) {
+        return [xMin, xMax, 0, 0, 0];
+      }
+      return [xMin, xMax, base, base + height, count];
     })
   );
 }
@@ -202,19 +209,48 @@ function getBucketBounds(model: HistogramModel): BucketBounds {
 }
 
 /**
- * The x axis spans the lower bound of the first bucket to the upper bound of the last bucket, as core. On an
- * ordinal axis, core ends the axis at the last position (`incrRoundDn(wantedMax, 1)`). The last bucket of
- * heatmap-rows is an empty bucket for `+Inf`, so the axis ends at its lower bound.
+ * The x range. With no field min and max, it spans the lower bound of the first bucket to the upper bound of the
+ * last bucket, as core. The field min and max of the first count field set the range for buckets of one size, as
+ * core `prepConfig`: the min rounds up and the max rounds down to a multiple of the bucket size. A max that is the
+ * lower bound of the last bucket gives the upper bound of that bucket.
+ * On an ordinal axis, core ends the axis at the last position (`incrRoundDn(wantedMax, 1)`), and it does not read
+ * the field min and max. The last bucket of heatmap-rows is an empty bucket for `+Inf`, so the axis ends at its
+ * lower bound.
+ * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
  */
-function getXAxisRange(bounds: BucketBounds): { min?: number; max?: number } {
+function getXAxisRange(model: HistogramModel, bounds: BucketBounds): { min?: number; max?: number } {
   if (bounds.ordinal) {
     return bounds.mins.length ? { min: 0, max: Math.max(1, bounds.mins.length - 1) } : {};
   }
   const values = [...bounds.mins, ...bounds.maxs].filter(Number.isFinite);
+  if (!values.length) {
+    return {};
+  }
   // A loop, not `Math.min(...values)`: a spread of many buckets can exceed the call stack.
-  return values.length
-    ? { min: values.reduce((a, b) => Math.min(a, b)), max: values.reduce((a, b) => Math.max(a, b)) }
-    : {};
+  const min = values.reduce((a, b) => Math.min(a, b));
+  const max = values.reduce((a, b) => Math.max(a, b));
+  const size = getUniformBucketSize(bounds);
+  const { min: fieldMin, max: fieldMax } = model.counts[0]?.config ?? {};
+  if (size == null) {
+    return { min, max };
+  }
+  // Core adds one bucket when the max is the lower bound of the last bucket, so that bucket is drawn.
+  const lastMin = bounds.mins[bounds.mins.length - 1];
+  const toMax = (value: number) => (value === lastMin ? max : round(Math.floor(value / size) * size));
+  return {
+    min: Number.isFinite(fieldMin) ? round(Math.ceil(fieldMin! / size) * size) : min,
+    max: Number.isFinite(fieldMax) ? toMax(fieldMax!) : max,
+  };
+}
+
+/** The size of the buckets of a number axis when all buckets have one size that is more than 0. */
+function getUniformBucketSize(bounds: BucketBounds): number | undefined {
+  if (bounds.ordinal) {
+    return undefined;
+  }
+  const sizes = new Set(bounds.mins.map((min, i) => round(bounds.maxs[i] - min)));
+  const [size] = [...sizes];
+  return sizes.size === 1 && size > 0 ? size : undefined;
 }
 
 /**
@@ -235,15 +271,18 @@ function getXLabelFormatter(model: HistogramModel, bounds: BucketBounds, theme: 
  * get this. Else ECharts selects the ticks.
  * https://echarts.apache.org/en/option.html#xAxis.interval
  */
-function getXTickInterval(bounds: BucketBounds, plotWidth: number | undefined): { interval?: number } {
+function getXTickInterval(
+  model: HistogramModel,
+  bounds: BucketBounds,
+  plotWidth: number | undefined
+): { interval?: number } {
   // Core has a tick for each position of an ordinal axis (`incrs: [1]`).
   if (bounds.ordinal) {
     return { interval: 1 };
   }
-  const sizes = new Set(bounds.mins.map((min, i) => round(bounds.maxs[i] - min)));
-  const { min, max } = getXAxisRange(bounds);
-  const [size] = [...sizes];
-  if (sizes.size !== 1 || !(size > 0) || min == null || max == null || max <= min) {
+  const size = getUniformBucketSize(bounds);
+  const { min, max } = getXAxisRange(model, bounds);
+  if (size == null || min == null || max == null || max <= min) {
     return {};
   }
   const bucketPx = plotWidth ? (plotWidth * size) / (max - min) : X_TICK_MIN_SPACE;

@@ -35,7 +35,7 @@ gdev Histogram dashboard next to a core Histogram twin. The tests are
 | Bucket size         | `bucketSize`, given to `buildHistogram`. A value of 0 uses the automatic size | Supported |
 | Bucket offset       | `bucketOffset`, given to `buildHistogram`                                     | Supported |
 | Combine series      | `combine`: one `Count` series                                                 | Supported |
-| Legend              | Legend options of the panel. The legend has no calcs                          | Partial   |
+| Legend              | Legend options of the panel. The calcs reduce the raw values of each field    | Supported |
 | Tooltip             | "Bucket" header with the range, and the counts. Hidden mode draws no tooltip  | Supported |
 
 ## Field config
@@ -48,7 +48,7 @@ gdev Histogram dashboard next to a core Histogram twin. The tests are
 | Fill opacity, line width    | The panel `barFillOpacity` and `lineWidth` options                              | Partial       |
 | Gradient mode               | none                                                                            | Not supported |
 | Hide in area                | The legend toggle hides the bars. The hidden field still counts for the buckets | Supported     |
-| Min, max (x range)          | none. The x axis spans the buckets                                              | Not supported |
+| Min, max (x range)          | The x range, rounded to the bucket size, as core                                | Supported     |
 
 ## Known differences
 

@@ -7,6 +7,7 @@ import {
   MAX_HISTOGRAM_BUCKETS,
 } from 'lib/echarts/converters/histogram';
 import { buildHistogramOption, getHistogramColors } from 'lib/echarts/options/histogram';
+import { getCalcDisplayValues } from 'lib/echarts/options/legendItems';
 import { getHiddenSeriesNames } from 'lib/grafana/fields/seriesConfig';
 import {
   type BaseOptionParts,
@@ -77,9 +78,10 @@ export function buildHistogramChartOption(
 
 /**
  * One legend item for each count field. A field hidden from the chart stays in the legend, so it can be
- * shown again. The legend calcs are not given (see the parity doc of the cartesian panel).
+ * shown again. The legend calcs reduce the raw values of the field, as core `PlotLegend` (`HistogramModel.legendFields`).
+ * https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/uPlot/PlotLegend.tsx
  */
-export function buildHistogramLegendItems(ctx: ChartContext): VizLegendItem[] {
+export function buildHistogramLegendItems(ctx: ChartContext, calcs: string[]): VizLegendItem[] {
   const model = getHistogramModel(ctx);
   if (!model) {
     return [];
@@ -93,5 +95,6 @@ export function buildHistogramLegendItems(ctx: ChartContext): VizLegendItem[] {
     yAxis: 1,
     disabled: hidden.has(name),
     getItemKey: () => `histogram-${index}`,
+    getDisplayValues: () => getCalcDisplayValues(calcs, model.legendFields[index], ctx.theme, ctx.timeZone),
   }));
 }

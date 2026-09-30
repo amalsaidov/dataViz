@@ -10,7 +10,11 @@ import { type PanelOptions } from 'types';
 //
 // `editorMode: 'advanced'` keeps `animation.enabled` off, so the draw calls are deterministic.
 
-const values = (fields: Record<string, number[]>, unit?: string): DataFrame =>
+const values = (
+  fields: Record<string, number[]>,
+  unit?: string,
+  config: { min?: number; max?: number } = {}
+): DataFrame =>
   toDataFrame({
     fields: [
       {
@@ -22,7 +26,7 @@ const values = (fields: Record<string, number[]>, unit?: string): DataFrame =>
         name,
         type: FieldType.number,
         values: data,
-        config: { unit },
+        config: { unit, ...config },
       })),
     ],
   });
@@ -91,6 +95,17 @@ describe('cartesian histogram', () => {
       ],
     });
     const { defaultEvents, axisEvents, seriesEvents } = await renderHistogram([frame]);
+    expect(normalizeCanvasEvents([...axisEvents, ...seriesEvents])).toMatchCanvasSnapshot(defaultEvents, {
+      width,
+      height,
+    });
+  });
+
+  it('draws the buckets in the field min and max', async () => {
+    const { defaultEvents, axisEvents, seriesEvents } = await renderHistogram(
+      [values({ Height: heights }, undefined, { min: 157.5, max: 182 })],
+      { bucketSize: 5 }
+    );
     expect(normalizeCanvasEvents([...axisEvents, ...seriesEvents])).toMatchCanvasSnapshot(defaultEvents, {
       width,
       height,

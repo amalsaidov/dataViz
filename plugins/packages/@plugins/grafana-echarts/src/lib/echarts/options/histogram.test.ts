@@ -89,6 +89,42 @@ describe('buildHistogramOption', () => {
     expect(option.xAxis).toMatchObject({ type: 'value', min: 0, max: 20, interval: 10 });
   });
 
+  describe('the field min and max, as core prepConfig', () => {
+    const limited = (config: { min?: number; max?: number }) =>
+      toDataFrame({ fields: [{ name: 'A', type: FieldType.number, values: [1, 2, 11, 25], config }] });
+    const optionOf = (config: { min?: number; max?: number }) =>
+      buildHistogramOption({
+        model: buildHistogramModel([limited(config)], { bucketSize: 10 }, theme)!,
+        theme,
+        options: { legend } as unknown as PanelOptions,
+        fieldConfig: noOverrides,
+        isGrafanaLegend: true,
+        plotWidth: 400,
+      });
+
+    it('rounds the min up and the max down to a multiple of the bucket size', () => {
+      expect(optionOf({ min: 5, max: 25 }).xAxis).toMatchObject({ min: 10, max: 20, interval: 10 });
+    });
+
+    it('adds one bucket when the max is the lower bound of the last bucket, as core', () => {
+      expect(optionOf({ max: 20 }).xAxis).toMatchObject({ min: 0, max: 30 });
+      expect(optionOf({ max: 19 }).xAxis).toMatchObject({ min: 0, max: 10 });
+    });
+
+    it('keeps the upper bound of the last bucket when only the min is set', () => {
+      expect(optionOf({ min: 5 }).xAxis).toMatchObject({ min: 10, max: 30 });
+    });
+
+    it('gives the buckets out of the range no bar, so they do not change the count axis', () => {
+      const [rows] = rowsOf(optionOf({ min: 5, max: 25 }).series as CustomSeriesOption[]);
+      expect(rows).toEqual([
+        [0, 10, 0, 0, 0],
+        [10, 20, 0, 1, 1],
+        [20, 30, 0, 0, 0],
+      ]);
+    });
+  });
+
   it('gives no more than 50 x ticks when the plot width is not known', () => {
     // Two buckets of size 1, 1000 buckets apart: one tick for each bucket would give 1001 ticks.
     const model = buildHistogramModel([frame({ A: [0.5, 1000.5] })], { bucketSize: 1 }, theme)!;
@@ -141,6 +177,23 @@ describe('histogram with buckets that have names', () => {
 
   it('ends the x axis at the last position, with a tick for each position', () => {
     expect(ordinalOption().xAxis).toMatchObject({ type: 'value', min: 0, max: 3, interval: 1 });
+  });
+
+  it('does not read the field min and max, as core with isOrdinalX', () => {
+    const model = buildHistogramModel([leFrame], {}, theme)!;
+    model.counts[0].config = { ...model.counts[0].config, min: 1, max: 2 };
+    const option = buildHistogramOption({
+      model,
+      theme,
+      options: { legend } as unknown as PanelOptions,
+      fieldConfig: noOverrides,
+      isGrafanaLegend: true,
+      plotWidth: 400,
+    });
+    expect(option.xAxis).toMatchObject({ min: 0, max: 3, interval: 1 });
+    expect(rowsOf(option.series as CustomSeriesOption[])).toEqual(
+      rowsOf(ordinalOption().series as CustomSeriesOption[])
+    );
   });
 
   it('labels each tick with the name of the lower bound of its bucket', () => {

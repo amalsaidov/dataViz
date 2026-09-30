@@ -75,6 +75,32 @@ describe('histogram mode against the core buckets', () => {
     expect(bars).toEqual(automatic);
   });
 
+  // Core sets the x range from the field min and max of the first count field. The min rounds up and the max
+  // rounds down to a multiple of the bucket size (`prepConfig`, the range of the `x` scale).
+  it('draws only the core buckets in the field min and max, rounded to the bucket size', async () => {
+    const options = { bucketSize: 5 };
+    const clipped = values('Height', heights.fields[1].values, { min: 155.5, max: 182 });
+    const core = buildHistogram([clipped], options, createTheme())!;
+    // The range is 160 to 180.
+    const inRange = core.xMin.values.filter((min, i) => min >= 160 && min + 5 <= 180 && core.counts[0].values[i] > 0);
+    const { series, axis } = await renderHistogram([clipped], options);
+    const bars = sortedBars(barRects(series));
+    expect(inRange.length).toBeGreaterThan(0);
+    expect(bars).toHaveLength(inRange.length);
+    expect(texts(axis)).toContain('160');
+    expect(texts(axis)).toContain('180');
+    expect(texts(axis)).not.toContain('150');
+
+    // The buckets out of the range do not change the count axis: the bars are as tall as the bars of the same
+    // buckets in a chart of only the values in the range.
+    const inRangeValues = values(
+      'Height',
+      heights.fields[1].values.filter((value: number) => value >= 160 && value < 180)
+    );
+    const expected = sortedBars(barRects((await renderHistogram([inRangeValues], options)).series));
+    expect(bars.map((bar) => Math.round(bar.height))).toEqual(expected.map((bar) => Math.round(bar.height)));
+  });
+
   it('keeps the gap of an empty bucket on the x axis', async () => {
     const bars = sortedBars(barRects((await renderHistogram([values('A', [1, 2, 35])], { bucketSize: 10 })).series));
     expect(bars).toHaveLength(2);

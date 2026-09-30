@@ -585,7 +585,7 @@ export const cartesianChartModule: ChartModule = {
 
   buildLegendItems(ctx, calcs) {
     if (isHistogramPanel(ctx.options)) {
-      return buildHistogramLegendItems(ctx);
+      return buildHistogramLegendItems(ctx, calcs);
     }
     const seriesType = ctx.seriesType;
     if (isMultiValueSeriesType(seriesType)) {
