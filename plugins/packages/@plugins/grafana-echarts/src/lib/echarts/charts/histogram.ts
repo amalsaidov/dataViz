@@ -4,7 +4,6 @@ import {
   buildHistogramModel,
   getHistogramOptions,
   type HistogramModel,
-  isOrdinalHistogram,
   MAX_HISTOGRAM_BUCKETS,
 } from 'lib/echarts/converters/histogram';
 import { buildHistogramOption, getHistogramColors } from 'lib/echarts/options/histogram';
@@ -39,11 +38,7 @@ export function getHistogramModel(ctx: ChartContext): HistogramModel | undefined
   return model;
 }
 
-/**
- * The data issue of the histogram, in this order:
- * 1. More buckets than `MAX_HISTOGRAM_BUCKETS`.
- * 2. Buckets with names (heatmap-rows `le` buckets). They need an ordinal axis, which the chart does not draw yet.
- */
+/** The data issue of the histogram: more buckets than `MAX_HISTOGRAM_BUCKETS`. */
 export function getHistogramDataIssue(ctx: ChartContext): ChartDataIssue | undefined {
   const model = getHistogramModel(ctx);
   if (model && model.xMin.values.length > MAX_HISTOGRAM_BUCKETS) {
@@ -52,12 +47,6 @@ export function getHistogramDataIssue(ctx: ChartContext): ChartDataIssue | undef
       message:
         `The histogram has ${model.xMin.values.length} buckets. The limit is ${MAX_HISTOGRAM_BUCKETS}. ` +
         'Use a larger bucket size or a smaller bucket count.',
-    };
-  }
-  if (model && isOrdinalHistogram(model)) {
-    return {
-      reason: 'histogram-ordinal-buckets',
-      message: 'The histogram cannot draw buckets that have names. Use buckets with number bounds (xMin, xMax).',
     };
   }
   return undefined;

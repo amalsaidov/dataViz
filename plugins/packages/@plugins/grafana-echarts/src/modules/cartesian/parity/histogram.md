@@ -17,6 +17,10 @@ The user transformations of the panel run before the buckets, because Grafana gi
 panel. Each bucket is one bar from its lower bound to its upper bound, on a linear x axis. The bars are an ECharts
 `custom` series (`lib/echarts/options/histogram.ts`). When the switch is on, the Series type is ignored.
 
+Buckets with names (heatmap-rows `le` buckets, from `getHistogramFields`) go on an ordinal x axis, as core
+`isOrdinalX`. Bucket `i` is from position `i` to `i + 1`. Each position has a tick with the name of the lower bound
+of its bucket. The axis ends at the lower bound of the last bucket, the empty `+Inf` bucket that core adds.
+
 The provisioned dashboard `provisioning/dashboards/cartesian/cartesian-histogram-parity.json` shows each case of the
 gdev Histogram dashboard next to a core Histogram twin. The tests are
 `src/lib/echarts/converters/histogram.test.ts` (the buckets against `buildHistogram`),
@@ -51,7 +55,6 @@ gdev Histogram dashboard next to a core Histogram twin. The tests are
 - Core pads the count axis above the highest bar. The ECharts count axis ends at the highest bar.
 - With a bucket offset, core puts the x ticks on multiples of the bucket size. ECharts starts the ticks at the
   lower bound of the first bucket.
-- Buckets with names (heatmap-rows `le` buckets) need an ordinal x axis. The panel shows a data issue for them.
 - A bucket option that is not valid does not show an error, as core. A negative size, or a size that is not a
   finite number, uses the automatic size, as core. A negative count, or a count that is not a finite number, uses
   the default count. For a negative count, core uses the smallest bucket size that is not less than the smallest

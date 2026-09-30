@@ -11,7 +11,7 @@ import { type CustomSeriesOption, type CustomSeriesRenderItem } from 'echarts';
 import { type TopLevelFormatterParams } from 'echarts/types/dist/shared';
 import { type XAXisOption, type YAXisOption } from 'echarts/types/src/coord/cartesian/AxisModel';
 import { CARTESIAN_BAR_BORDER_WIDTH_DEFAULT } from 'editor/cartesian';
-import { type HistogramModel } from 'lib/echarts/converters/histogram';
+import { type HistogramModel, isOrdinalHistogram } from 'lib/echarts/converters/histogram';
 import { getCartesianGrid } from 'lib/echarts/grid/grid';
 import { clipRectByRect } from 'lib/echarts/options/binnedHeatmap';
 import { getBarFillColor } from 'lib/echarts/options/bars';
@@ -26,6 +26,8 @@ import { getHiddenSeriesNames } from 'lib/grafana/fields/seriesConfig';
 import { type PanelOptions } from 'types';
 
 // The core Histogram panel draws each bucket as a bar from its lower to its upper bound, on a linear x axis.
+// Buckets with names (heatmap-rows `le` buckets) go on an ordinal x axis: bucket `i` is from position `i` to
+// `i + 1`, and the tick at position `i` has the name of the lower bound of bucket `i`.
 // Core source: https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
 // The bars are a `custom` series, because an ECharts `bar` series has one width for all bars.
 // https://echarts.apache.org/en/option.html#series-custom
@@ -70,7 +72,8 @@ export function buildHistogramOption(input: HistogramOptionInput): EChartCartesi
   const colors = getHistogramColors(model, theme);
   const percent = options.stacking === StackingMode.Percent;
   const stacked = options.stacking === StackingMode.Normal || percent;
-  const rows = getBarRows(model, hidden, stacked, percent);
+  const bounds = getBucketBounds(model);
+  const rows = getBarRows(model, bounds, hidden, stacked, percent);
   const axisStyle = getCartesianAxisStyle(theme);
   const countDisplay = getDisplay(model.counts[0], theme);
 
@@ -100,12 +103,9 @@ export function buildHistogramOption(input: HistogramOptionInput): EChartCartesi
     // The last x label is on the right edge of the plot. `containLabel` does not keep space for its right half.
     grid: getCartesianGrid(isGrafanaLegend ? undefined : options.legend, { right: X_LABEL_OVERHANG }),
     xAxis: mergeAxisStyle<XAXisOption>(
-      { type: 'value', ...getXAxisRange(model), ...getXTickInterval(model, input.plotWidth) },
+      { type: 'value', ...getXAxisRange(bounds), ...getXTickInterval(bounds, input.plotWidth) },
       axisStyle,
-      {
-        zlevel: options.zLevel?.axis,
-        axisLabel: { formatter: (value: number) => formattedValueToString(getDisplay(model.xMin, theme)(value)) },
-      }
+      { zlevel: options.zLevel?.axis, axisLabel: { formatter: getXLabelFormatter(model, bounds, theme) } }
     ),
     yAxis: mergeAxisStyle<YAXisOption>(
       // A count is a whole number, so the count axis has no ticks between two whole numbers.
@@ -124,7 +124,13 @@ export function buildHistogramOption(input: HistogramOptionInput): EChartCartesi
  * The bar rows of each count field. A stacked bar starts on the top of the bars of the same bucket before it.
  * Percent stacking divides by the total of the bucket. Hidden fields do not stack.
  */
-function getBarRows(model: HistogramModel, hidden: Set<string>, stacked: boolean, percent: boolean): number[][][] {
+function getBarRows(
+  model: HistogramModel,
+  bounds: BucketBounds,
+  hidden: Set<string>,
+  stacked: boolean,
+  percent: boolean
+): number[][][] {
   const buckets = model.xMin.values.length;
   const totals = new Array<number>(buckets).fill(0);
   model.counts.forEach((field, i) => {
@@ -141,7 +147,7 @@ function getBarRows(model: HistogramModel, hidden: Set<string>, stacked: boolean
       if (stacked && !hidden.has(model.names[i])) {
         bases[j] += height;
       }
-      return [Number(model.xMin.values[j]), Number(model.xMax.values[j]), base, base + height, count];
+      return [bounds.mins[j], bounds.maxs[j], base, base + height, count];
     })
   );
 }
@@ -176,13 +182,51 @@ function makeHistogramRenderItem(color: string, options: PanelOptions): CustomSe
   };
 }
 
-/** The x axis spans the lower bound of the first bucket to the upper bound of the last bucket, as core. */
-function getXAxisRange(model: HistogramModel): { min?: number; max?: number } {
-  const bounds = [...toNumbers(model.xMin), ...toNumbers(model.xMax)].filter(Number.isFinite);
-  // A loop, not `Math.min(...bounds)`: a spread of many buckets can exceed the call stack.
-  return bounds.length
-    ? { min: bounds.reduce((a, b) => Math.min(a, b)), max: bounds.reduce((a, b) => Math.max(a, b)) }
+/** The x positions of the buckets. On an ordinal axis, the positions are the bucket indexes. */
+interface BucketBounds {
+  mins: number[];
+  maxs: number[];
+  ordinal: boolean;
+}
+
+/**
+ * The x position of each bucket. On an ordinal axis, bucket `i` is from `i` to `i + 1`, as the core bars with
+ * `align: 1` and `size: [1, Infinity]`.
+ */
+function getBucketBounds(model: HistogramModel): BucketBounds {
+  if (isOrdinalHistogram(model)) {
+    const mins = model.xMin.values.map((_: unknown, i: number) => i);
+    return { mins, maxs: mins.map((i: number) => i + 1), ordinal: true };
+  }
+  return { mins: toNumbers(model.xMin), maxs: toNumbers(model.xMax), ordinal: false };
+}
+
+/**
+ * The x axis spans the lower bound of the first bucket to the upper bound of the last bucket, as core. On an
+ * ordinal axis, core ends the axis at the last position (`incrRoundDn(wantedMax, 1)`). The last bucket of
+ * heatmap-rows is an empty bucket for `+Inf`, so the axis ends at its lower bound.
+ */
+function getXAxisRange(bounds: BucketBounds): { min?: number; max?: number } {
+  if (bounds.ordinal) {
+    return bounds.mins.length ? { min: 0, max: Math.max(1, bounds.mins.length - 1) } : {};
+  }
+  const values = [...bounds.mins, ...bounds.maxs].filter(Number.isFinite);
+  // A loop, not `Math.min(...values)`: a spread of many buckets can exceed the call stack.
+  return values.length
+    ? { min: values.reduce((a, b) => Math.min(a, b)), max: values.reduce((a, b) => Math.max(a, b)) }
     : {};
+}
+
+/**
+ * The x tick labels. A number bound uses the display of the field. On an ordinal axis, the tick at position `i`
+ * is the name of the lower bound of bucket `i`, with no format, as core (`values: (u, splits) => splits`).
+ */
+function getXLabelFormatter(model: HistogramModel, bounds: BucketBounds, theme: GrafanaTheme2) {
+  if (bounds.ordinal) {
+    return (value: number) => String(model.xMin.values[value] ?? '');
+  }
+  const display = getDisplay(model.xMin, theme);
+  return (value: number) => formattedValueToString(display(value));
 }
 
 /**
@@ -191,10 +235,13 @@ function getXAxisRange(model: HistogramModel): { min?: number; max?: number } {
  * get this. Else ECharts selects the ticks.
  * https://echarts.apache.org/en/option.html#xAxis.interval
  */
-function getXTickInterval(model: HistogramModel, plotWidth: number | undefined): { interval?: number } {
-  const maxes = toNumbers(model.xMax);
-  const sizes = new Set(toNumbers(model.xMin).map((min, i) => round(maxes[i] - min)));
-  const { min, max } = getXAxisRange(model);
+function getXTickInterval(bounds: BucketBounds, plotWidth: number | undefined): { interval?: number } {
+  // Core has a tick for each position of an ordinal axis (`incrs: [1]`).
+  if (bounds.ordinal) {
+    return { interval: 1 };
+  }
+  const sizes = new Set(bounds.mins.map((min, i) => round(bounds.maxs[i] - min)));
+  const { min, max } = getXAxisRange(bounds);
   const [size] = [...sizes];
   if (sizes.size !== 1 || !(size > 0) || min == null || max == null || max <= min) {
     return {};

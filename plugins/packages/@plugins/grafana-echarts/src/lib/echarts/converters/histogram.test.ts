@@ -4,6 +4,7 @@ import {
   type DataFrame,
   DataFrameType,
   FieldType,
+  getHistogramFields,
   type HistogramTransformerOptions,
   toDataFrame,
 } from '@grafana/data';
@@ -162,6 +163,25 @@ describe('buildHistogramModel', () => {
     });
     const model = buildHistogramModel([frame], {}, theme);
     expect(model && isOrdinalHistogram(model)).toBe(true);
+  });
+
+  it('gives the named buckets of core getHistogramFields for a heatmap-rows frame', () => {
+    const frame = toDataFrame({
+      meta: { type: DataFrameType.HeatmapRows },
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1, 2] },
+        { name: '0.1', type: FieldType.number, values: [1, 2] },
+        { name: '1', type: FieldType.number, values: [3, 4] },
+        { name: '+Inf', type: FieldType.number, values: [0, 1] },
+      ],
+    });
+    // Core: one bucket for each field, from the name of the field before it, and an empty `+Inf` bucket.
+    expect(bucketsOf(buildHistogramModel([frame], {}, theme)!)).toEqual(bucketsOf(getHistogramFields(frame)!));
+    expect(bucketsOf(buildHistogramModel([frame], {}, theme)!)).toEqual({
+      xMin: ['0', '0.1', '1', '+Inf'],
+      xMax: ['0.1', '1', '+Inf', '+Inf'],
+      counts: [[3, 7, 1, 0]],
+    });
   });
 });
 

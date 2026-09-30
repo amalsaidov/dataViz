@@ -1,4 +1,4 @@
-import { createTheme, dateTime, type DataFrame, FieldType, toDataFrame } from '@grafana/data';
+import { createTheme, DataFrameType, dateTime, type DataFrame, FieldType, toDataFrame } from '@grafana/data';
 import { LegendDisplayMode, StackingMode, TooltipDisplayMode } from '@grafana/schema';
 import { type CustomSeriesOption } from 'echarts';
 import { type TopLevelFormatterParams } from 'echarts/types/dist/shared';
@@ -101,6 +101,59 @@ describe('buildHistogramOption', () => {
       plotWidth: undefined,
     });
     expect(option.xAxis).toMatchObject({ min: 0, max: 1001, interval: 21 });
+  });
+});
+
+// Core draws buckets with names on an ordinal x axis: bucket `i` is from position `i` to `i + 1`, the axis ends
+// at the last position, and each position has a tick with the name of its lower bound (`isOrdinalX`).
+// https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
+describe('histogram with buckets that have names', () => {
+  const leFrame = toDataFrame({
+    meta: { type: DataFrameType.HeatmapRows },
+    fields: [
+      { name: 'time', type: FieldType.time, values: [1, 2] },
+      { name: '0.1', type: FieldType.number, values: [1, 2] },
+      { name: '1', type: FieldType.number, values: [3, 4] },
+      { name: '+Inf', type: FieldType.number, values: [0, 1] },
+    ],
+  });
+  const ordinalOption = (options: Partial<PanelOptions> = {}, sink?: (model: TooltipModel) => void) =>
+    buildHistogramOption({
+      model: buildHistogramModel([leFrame], {}, theme)!,
+      theme,
+      options: { legend, ...options } as PanelOptions,
+      fieldConfig: noOverrides,
+      isGrafanaLegend: true,
+      plotWidth: 400,
+      tooltipSink: sink,
+    });
+
+  it('puts bucket i from position i to i + 1', () => {
+    expect(rowsOf(ordinalOption().series as CustomSeriesOption[])).toEqual([
+      [
+        [0, 1, 0, 3, 3],
+        [1, 2, 0, 7, 7],
+        [2, 3, 0, 1, 1],
+        [3, 4, 0, 0, 0],
+      ],
+    ]);
+  });
+
+  it('ends the x axis at the last position, with a tick for each position', () => {
+    expect(ordinalOption().xAxis).toMatchObject({ type: 'value', min: 0, max: 3, interval: 1 });
+  });
+
+  it('labels each tick with the name of the lower bound of its bucket', () => {
+    const { axisLabel } = ordinalOption().xAxis as { axisLabel: { formatter: (value: number) => string } };
+    expect([0, 1, 2, 3].map(axisLabel.formatter)).toEqual(['0', '0.1', '1', '+Inf']);
+  });
+
+  it('gives the bucket names in the tooltip header', () => {
+    const models: TooltipModel[] = [];
+    const [series] = ordinalOption({}, (model) => models.push(model)).series as CustomSeriesOption[];
+    const { formatter } = series.tooltip as { formatter: (params: TopLevelFormatterParams) => string };
+    formatter({ dataIndex: 1, seriesIndex: 0 } as TopLevelFormatterParams);
+    expect(models[0].header).toEqual({ label: 'Bucket', value: '0.1 - 1' });
   });
 });
 

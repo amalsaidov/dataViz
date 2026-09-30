@@ -1,4 +1,4 @@
-import { type DataFrame, FieldType, toDataFrame } from '@grafana/data';
+import { type DataFrame, DataFrameType, FieldType, toDataFrame } from '@grafana/data';
 import { StackingMode } from '@grafana/schema';
 import { render } from '@testing-library/react';
 import { AXIS_ZLEVEL, normalizeCanvasEvents, SERIES_ZLEVEL } from 'test/canvas';
@@ -88,6 +88,25 @@ describe('cartesian histogram', () => {
         { name: 'xMin', type: FieldType.number, values: [0, 100, 200, 300], config: { unit: 'ms' } },
         { name: 'xMax', type: FieldType.number, values: [100, 200, 300, 400], config: { unit: 'ms' } },
         { name: 'count', type: FieldType.number, values: [12, 30, 0, 5] },
+      ],
+    });
+    const { defaultEvents, axisEvents, seriesEvents } = await renderHistogram([frame]);
+    expect(normalizeCanvasEvents([...axisEvents, ...seriesEvents])).toMatchCanvasSnapshot(defaultEvents, {
+      width,
+      height,
+    });
+  });
+
+  it('draws the named buckets of a heatmap-rows frame on an ordinal axis', async () => {
+    const frame = toDataFrame({
+      meta: { type: DataFrameType.HeatmapRows },
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1783137600000, 1783137660000, 1783137720000] },
+        { name: '0.005', type: FieldType.number, values: [2, 3, 1] },
+        { name: '0.01', type: FieldType.number, values: [5, 4, 6] },
+        { name: '0.1', type: FieldType.number, values: [9, 12, 10] },
+        { name: '1', type: FieldType.number, values: [3, 2, 4] },
+        { name: '+Inf', type: FieldType.number, values: [1, 0, 1] },
       ],
     });
     const { defaultEvents, axisEvents, seriesEvents } = await renderHistogram([frame]);

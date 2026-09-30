@@ -1,4 +1,4 @@
-import { createTheme, type DataFrame, FieldType, toDataFrame } from '@grafana/data';
+import { createTheme, type DataFrame, DataFrameType, FieldType, toDataFrame } from '@grafana/data';
 import { MAX_HISTOGRAM_BUCKETS } from 'lib/echarts/converters/histogram';
 import { buildHistogramChartOption, getHistogramDataIssue, getHistogramModel } from './histogram';
 import { type BaseOptionParts, type ChartContext } from './types';
@@ -43,6 +43,20 @@ describe('getHistogramDataIssue', () => {
       message: `The histogram has ${MAX_HISTOGRAM_BUCKETS + 1} buckets. The limit is ${MAX_HISTOGRAM_BUCKETS}. Use a larger bucket size or a smaller bucket count.`,
     });
     expect(buildHistogramChartOption(ctx, parts)).toBeNull();
+  });
+
+  it('gives no issue and draws the chart for buckets that have names (heatmap-rows)', () => {
+    const frame = toDataFrame({
+      meta: { type: DataFrameType.HeatmapRows },
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1, 2] },
+        { name: '0.1', type: FieldType.number, values: [1, 2] },
+        { name: '1', type: FieldType.number, values: [3, 4] },
+      ],
+    });
+    const ctx = { ...contextOf([], {}), frames: [frame] };
+    expect(getHistogramDataIssue(ctx)).toBeUndefined();
+    expect(buildHistogramChartOption(ctx, parts)).not.toBeNull();
   });
 
   it('gives no issue at the limit', () => {

@@ -943,6 +943,105 @@
       "title": "ECharts: bucket count -1",
       "type": "grafana-echartscartesian-panel",
       "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A heatmap-rows frame with one field for each le bucket. The buckets have names, so they go on an ordinal x axis.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 72
+      },
+      "id": 19,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"refId\":\"A\",\"meta\":{\"type\":\"heatmap-rows\"},\"fields\":[{\"name\":\"time\",\"type\":\"time\"},{\"name\":\"0.005\",\"type\":\"number\"},{\"name\":\"0.01\",\"type\":\"number\"},{\"name\":\"0.1\",\"type\":\"number\"},{\"name\":\"1\",\"type\":\"number\"},{\"name\":\"+Inf\",\"type\":\"number\"}]},\"data\":{\"values\":[[1783137600000,1783137660000,1783137720000],[2,3,1],[5,4,6],[9,12,10],[3,2,4],[1,0,1]]}}]"
+        }
+      ],
+      "title": "Core: heatmap-rows buckets with names (le)",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A heatmap-rows frame with one field for each le bucket. The buckets have names, so they go on an ordinal x axis.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 72
+      },
+      "id": 20,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"refId\":\"A\",\"meta\":{\"type\":\"heatmap-rows\"},\"fields\":[{\"name\":\"time\",\"type\":\"time\"},{\"name\":\"0.005\",\"type\":\"number\"},{\"name\":\"0.01\",\"type\":\"number\"},{\"name\":\"0.1\",\"type\":\"number\"},{\"name\":\"1\",\"type\":\"number\"},{\"name\":\"+Inf\",\"type\":\"number\"}]},\"data\":{\"values\":[[1783137600000,1783137660000,1783137720000],[2,3,1],[5,4,6],[9,12,10],[3,2,4],[1,0,1]]}}]"
+        }
+      ],
+      "title": "ECharts: heatmap-rows buckets with names (le)",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
     }
   ],
   "refresh": "",

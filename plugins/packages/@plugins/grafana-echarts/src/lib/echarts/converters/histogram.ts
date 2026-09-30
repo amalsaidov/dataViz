@@ -106,7 +106,8 @@ export const MAX_HISTOGRAM_BUCKETS = 10_000;
 
 /**
  * True when the buckets are names, not numbers. Core gives such buckets for heatmap-rows frames (`le` buckets),
- * and draws them on an ordinal axis. The chart does not draw them yet.
+ * and draws them on an ordinal axis (`isOrdinalX` in core `prepConfig`).
+ * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
  */
 export function isOrdinalHistogram(model: HistogramModel): boolean {
   return model.xMin.type === FieldType.string || model.xMax.type === FieldType.string;

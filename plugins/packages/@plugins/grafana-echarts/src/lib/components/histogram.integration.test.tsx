@@ -1,6 +1,14 @@
-import { buildHistogram, createTheme, type DataFrame, FieldType, toDataFrame } from '@grafana/data';
+import {
+  buildHistogram,
+  createTheme,
+  type DataFrame,
+  DataFrameType,
+  FieldType,
+  getHistogramFields,
+  toDataFrame,
+} from '@grafana/data';
 import { StackingMode } from '@grafana/schema';
-import { barRects, type DrawnRect, renderBars, texts } from 'test/barCanvas';
+import { type BarCanvasEvent, barRects, type DrawnRect, drawnTexts, renderBars, texts } from 'test/barCanvas';
 import { type PanelOptions } from 'types';
 
 // The histogram mode of the cartesian panel against the buckets of the core Histogram panel. Core buckets
@@ -117,5 +125,60 @@ describe('histogram mode against the core buckets', () => {
     const hidden = barRects((await renderBars(frames, { histogram: true, bucketSize: 10 }, {}, hideB)).series);
     expect(shown).toHaveLength(4);
     expect(hidden).toHaveLength(2);
+  });
+});
+
+// Core draws the buckets of a heatmap-rows frame, which have names, on an ordinal x axis (`isOrdinalX` in
+// `prepConfig`). Bucket `i` is one position wide and starts at position `i`. The axis ends at the last
+// position, the lower bound of the empty `+Inf` bucket. Each position has a tick with the name of its lower bound.
+// https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
+describe('histogram mode against the core ordinal buckets', () => {
+  const leFrame = toDataFrame({
+    meta: { type: DataFrameType.HeatmapRows },
+    fields: [
+      { name: 'time', type: FieldType.time, values: [1783137600000, 1783137660000, 1783137720000] },
+      { name: '0.005', type: FieldType.number, values: [2, 3, 1] },
+      { name: '0.01', type: FieldType.number, values: [5, 4, 6] },
+      { name: '0.1', type: FieldType.number, values: [9, 12, 10] },
+      { name: '1', type: FieldType.number, values: [3, 2, 4] },
+      { name: '+Inf', type: FieldType.number, values: [1, 0, 1] },
+    ],
+  });
+  const core = getHistogramFields(leFrame)!;
+
+  /** The labels of the x axis, from left to right: the texts on the lowest line of the axis layer. */
+  const xLabels = (axis: BarCanvasEvent[]) => {
+    const drawn = drawnTexts(axis);
+    const bottom = Math.max(...drawn.map(({ y }) => y));
+    return drawn.filter(({ y }) => y === bottom).sort((a, b) => a.x - b.x);
+  };
+
+  it('draws one bar of the same width for each core bucket, side by side, with the core counts', async () => {
+    const counts = core.counts[0].values.filter((count) => count > 0);
+    const bars = sortedBars(barRects((await renderHistogram([leFrame])).series));
+    expect(bars).toHaveLength(counts.length);
+    const [first] = bars;
+    const pxPerCount = first.height / counts[0];
+    bars.forEach((bar, i) => {
+      expect(bar.width).toBeCloseTo(first.width, 0);
+      expect(bar.x).toBeCloseTo(first.x + i * first.width, 0);
+      expect(bar.height).toBeCloseTo(counts[i] * pxPerCount, 0);
+    });
+  });
+
+  it('labels the positions of the x axis with the core bucket names, in order', async () => {
+    const { axis } = await renderHistogram([leFrame]);
+    expect(xLabels(axis).map(({ text }) => text)).toEqual(core.xMin.values);
+  });
+
+  it('puts the tick of the name of a lower bound at the left edge of its bar', async () => {
+    const { series, axis } = await renderHistogram([leFrame]);
+    const bars = sortedBars(barRects(series));
+    const labels = xLabels(axis);
+    expect(labels.length).toBeGreaterThan(bars.length);
+    bars.forEach((bar, i) => expect(labels[i].x).toBeCloseTo(bar.x, 0));
+    // The last tick is the right edge of the last bar.
+    const last = bars[bars.length - 1];
+    expect(labels[bars.length].x).toBeCloseTo(last.x + last.width, 0);
   });
 });
