@@ -40,7 +40,10 @@ export type EChartsAxisType = 'value' | 'category' | 'time' | 'log';
  * Look into what the various echart axis types support and when we want to use them and revisit this method
  * Leaving explicit for now under the assumption we will refactor this later.
  */
-export const panelTypeToAxis = (ctx: ChartContext, hasTimeField = true): EChartsAxisType => {
+export const panelTypeToAxis = (
+  ctx: Pick<ChartContext, 'seriesType' | 'options'>,
+  hasTimeField = true
+): EChartsAxisType => {
   const seriesType = ctx.seriesType;
   if (!supportedChartSeriesTypes.includes(seriesType)) {
     throw new Error(`Unsupported axis for series type: ${seriesType}`);
