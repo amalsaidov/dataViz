@@ -102,7 +102,7 @@ jobs:
         with:
           # One branch per plugin id. Sharing a branch across packages loses
           # translations — see the action's header.
-          branch_name: i18n_crowdin_translations_${{ matrix.slug }}
+          localization_branch_name: i18n_crowdin_translations_${{ matrix.slug }}
           pr_title: 'I18n: Download ${{ matrix.slug }} translations from Crowdin'
           commit_message: New Crowdin translations for ${{ matrix.slug }} by GitHub Action
           # get-vault-secrets sets exportEnv: false, so secrets arrive as a JSON

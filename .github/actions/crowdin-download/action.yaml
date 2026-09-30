@@ -1,12 +1,13 @@
-# Local version of grafana/grafana-github-actions/crowdin-download that takes a
-# branch_name, so each plugin downloads onto its own branch. Upstream hardcodes
-# one branch, and with several plugins every job overwrites the others'
+# Local version of grafana/grafana-github-actions/crowdin-download that takes
+# a localization_branch_name, so each plugin downloads onto its own branch.
+# Upstream hardcodes one branch, and with several plugins every job
+# overwrites the others'
 # translations. See ../README.md for this and the other differences.
 name: Crowdin download (local)
 description: Download translations from Crowdin and open a pull request on a caller-chosen branch.
 
 inputs:
-  branch_name:
+  localization_branch_name:
     description: |
       Git branch to force-push translations to, and the head branch of the pull
       request. Must be unique per Crowdin project — two callers sharing a
@@ -118,7 +119,7 @@ runs:
       if: steps.detect-changes.outputs.has_changes == 'true'
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       env:
-        BRANCH_NAME: ${{ inputs.branch_name }}
+        BRANCH_NAME: ${{ inputs.localization_branch_name }}
         COMMIT_MESSAGE: ${{ inputs.commit_message }}
       with:
         github-token: ${{ inputs.github_repo_token }}
@@ -219,7 +220,7 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github_repo_token }}
-        BRANCH_NAME: ${{ inputs.branch_name }}
+        BRANCH_NAME: ${{ inputs.localization_branch_name }}
         BASE_BRANCH: ${{ steps.signed-commit.outputs.base_branch }}
         PR_TITLE: ${{ inputs.pr_title }}
         PR_LABELS: ${{ inputs.pr_labels }}
@@ -278,7 +279,7 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github_repo_token }}
-        BRANCH_NAME: ${{ inputs.branch_name }}
+        BRANCH_NAME: ${{ inputs.localization_branch_name }}
       run: |
         set -euo pipefail
         pr="$(gh pr list --head "$BRANCH_NAME" --state open \
