@@ -31,6 +31,7 @@ export function addGeoControlsOptions(builder: PanelOptionsEditorBuilder<PanelOp
       category,
       path: 'tooltip.mode',
       name: 'Tooltip',
+      description: 'Show the tooltip on hover, or on click only',
       // The values of the core `TooltipMode` of Geomap.
       defaultValue: 'details',
       settings: {

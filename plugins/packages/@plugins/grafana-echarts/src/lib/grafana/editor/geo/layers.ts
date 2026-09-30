@@ -146,6 +146,7 @@ export function addGeoLayerOptions(
     id: 'layers',
     path: 'layers',
     name: '',
+    description: 'The map layers. Each markers layer draws the rows of its query as markers.',
     category: layersCategory,
     editor: GeoLayersEditor,
   });
