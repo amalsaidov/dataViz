@@ -1,4 +1,4 @@
-import { dateTimeFormat, systemDateFormats, type TimeRange } from '@grafana/data';
+import { dateTimeFormat, getTimeZone, systemDateFormats, type TimeRange } from '@grafana/data';
 
 // ECharts only exposes a global `useUTC` toggle and has no arbitrary IANA
 // timezone support, so its built-in time-axis labels always render in browser
@@ -10,7 +10,17 @@ const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
+const WEEK = 7 * DAY;
 const YEAR = 365 * DAY;
+
+/**
+ * True when Grafana resolves `timeZone` to UTC. The ECharts time axis then sets `useUTC`,
+ * so its ticks fall on UTC midnight, not browser-local midnight.
+ * https://grafana.com/docs/grafana/latest/dashboards/build-dashboards/modify-dashboard-settings/#time-settings
+ */
+export function isUtcTimeZone(timeZone: string): boolean {
+  return getTimeZone({ timeZone }) === 'utc';
+}
 
 /** Format one tick value (epoch ms) in the given timezone with `format`. */
 function format(ms: number, fmt: string, timeZone: string): string {
@@ -28,6 +38,11 @@ function format(ms: number, fmt: string, timeZone: string): string {
  * `00:00` on every day-boundary tick (which then overlap). Instead the day-scale
  * band labels midnight ticks with the date and intraday ticks with the time
  * (mirroring how uPlot/ECharts read), so daily ticks show just `MM/DD`.
+ *
+ * From one week up, ECharts ticks are one day or more apart, so each tick shows the date.
+ * ECharts places ticks at browser-local midnight, which is not midnight in another
+ * timeZone (for example 04:00 in UTC). Core Grafana also picks the format from the tick
+ * increment, not from the tick hour.
  */
 function pickTickFormatter(spanMs: number, timeZone: string): (ms: number) => string {
   const { interval } = systemDateFormats;
@@ -40,6 +55,9 @@ function pickTickFormatter(spanMs: number, timeZone: string): (ms: number) => st
   }
   if (spanMs <= DAY) {
     return (ms) => format(ms, interval.minute, timeZone);
+  }
+  if (spanMs >= WEEK && spanMs < YEAR) {
+    return (ms) => format(ms, interval.day, timeZone);
   }
   if (spanMs < YEAR) {
     // Day scale: date on midnight ticks, time on intraday ticks.

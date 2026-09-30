@@ -65,7 +65,7 @@ import {
   thresholdDisplayForMode,
 } from 'lib/grafana/fields/thresholds';
 import { isNumberField } from 'lib/grafana/narrowing';
-import { getTimeAxisLabelFormatter } from 'lib/grafana/timeAxisFormat';
+import { getTimeAxisLabelFormatter, isUtcTimeZone } from 'lib/grafana/timeAxisFormat';
 import { countAnnotationLanes, readAnnotationDisplay, readAnnotations } from 'lib/grafana/annotations';
 import { type FieldTypedDataFrame } from 'lib/grafana/types';
 import { type PanelOptions } from 'types';
@@ -144,6 +144,9 @@ function buildTimeOption(
 
   return {
     ...cartesianTimeDefaultOptions,
+    // Place time ticks on UTC boundaries for a UTC dashboard. Omitted otherwise (default false).
+    // https://echarts.apache.org/en/option.html#useUTC
+    ...(isUtcTimeZone(timeZone) ? { useUTC: true } : {}),
     legend: resolveEChartsLegend(isGrafanaLegend, options.legend, theme),
     grid: getTimeCartesianGrid(isGrafanaLegend ? undefined : options.legend, getBarLabelSpace(cartSeries)),
     xAxis,
