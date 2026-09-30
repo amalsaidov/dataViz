@@ -272,6 +272,51 @@ describe('buildCartesianYAxes: core axis options', () => {
   });
 });
 
+describe('buildCartesianYAxes: percent stacking', () => {
+  const percentAxes = (fields: Field[], percentFields: Field[]) =>
+    buildCartesianYAxes({
+      fields,
+      baseYAxis,
+      axisStyle,
+      theme,
+      fallbackFormatter: fallback,
+      percentFields: new Set(percentFields),
+    });
+  const ends = (axis: { min?: unknown; max?: unknown }, extent: { min: number; max: number }) =>
+    [axis.min, axis.max].map((value) => (typeof value === 'function' ? value(extent) : value));
+
+  it('draws only stacked fields on a fixed 0% to 100% axis', () => {
+    const a = field('a');
+    const b = field('b');
+    const { yAxis, seriesYAxisIndex } = percentAxes([a, b], [a, b]);
+    expect(yAxis).toHaveLength(1);
+    expect(seriesYAxisIndex).toEqual([0, 0]);
+    expect(ends(yAxis[0], { min: 0.2, max: 0.9 })).toEqual([0, 1]);
+  });
+
+  it('draws a field that does not stack, with the unit of a stacked field, on the percent axis (#504)', () => {
+    const a = field('a');
+    const b = field('b');
+    const c = field('c');
+    const { yAxis, seriesYAxisIndex } = percentAxes([a, b, c], [a, b]);
+    expect(yAxis).toHaveLength(1);
+    expect(seriesYAxisIndex).toEqual([0, 0, 0]);
+    // As core: 0% and 100% are soft limits, so the axis grows to the raw value 3 (300%).
+    expect(ends(yAxis[0], { min: 0.2, max: 3 })).toEqual([0, 3]);
+    expect(ends(yAxis[0], { min: 0.2, max: 0.5 })).toEqual([0, 1]);
+    const formatter = (yAxis[0].axisLabel as { formatter: (value: number) => string }).formatter;
+    expect(formatter(3)).toBe('300%');
+  });
+
+  it('gives a field that does not stack, with a different unit, its own axis', () => {
+    const a = field('a');
+    const c = field('c', 'ms');
+    const { yAxis, seriesYAxisIndex } = percentAxes([a, c], [a]);
+    expect(yAxis).toHaveLength(2);
+    expect(seriesYAxisIndex).toEqual([0, 1]);
+  });
+});
+
 describe('getAxisRange', () => {
   const extent = { min: 5, max: 50 };
   const end = (value: unknown) => (typeof value === 'function' ? value(extent) : value);

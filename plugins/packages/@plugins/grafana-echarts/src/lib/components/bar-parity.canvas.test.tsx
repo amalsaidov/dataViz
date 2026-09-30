@@ -57,6 +57,16 @@ describe('cartesian bars: core Bar chart parity', () => {
     expect(normalizeCanvasEvents(seriesEvents)).toMatchCanvasSnapshot(defaultEvents, { width, height });
   });
 
+  it('draws a field that does not stack on the percent axis of its unit (#504)', async () => {
+    const frame = categoryFrame([
+      { name: 'Budget', values: [110, 102, 130, 105] },
+      { name: 'Actual', values: [125, 98, 121, 112] },
+      { name: 'Target', values: [2, 2, 2, 2], config: { custom: { stackSeries: false } } },
+    ]);
+    const { defaultEvents, seriesEvents } = await renderBars([frame], { stacking: StackingMode.Percent });
+    expect(normalizeCanvasEvents(seriesEvents)).toMatchCanvasSnapshot(defaultEvents, { width, height });
+  });
+
   it('draws horizontal bars, first category at the top', async () => {
     const frame = categoryFrame([
       { name: 'Budget', values: [110, 102, 130, 105] },

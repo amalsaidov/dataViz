@@ -115,4 +115,19 @@ describe('bar value axis', () => {
     );
     expect(labels).toEqual(expect.arrayContaining(['0%', '100%']));
   });
+
+  // Core gives one scale to each unit (`buildScaleKey`), and 0% and 100% are soft limits of a percent scale
+  // (`UPlotScaleBuilder`). So a field that does not stack draws its raw value on the percent axis (#504).
+  it('draws a field that does not stack on the percent axis of its unit', async () => {
+    const three = categoryFrame([
+      { name: 'A', values: [1, 2, 3, 4] },
+      { name: 'B', values: [4, 3, 2, 1] },
+      { name: 'C', values: [3, 3, 3, 3], config: custom({ stackSeries: false }) },
+    ]);
+    const { axis } = await renderBars([three], { stacking: StackingMode.Percent });
+    const labels = drawnTexts(axis).map(({ text }) => text);
+    const values = ticks(axis);
+    expect(labels.filter((label) => /\d/.test(label)).every((label) => label.endsWith('%'))).toBe(true);
+    expect([Math.min(...values), Math.max(...values)]).toEqual([0, 300]);
+  });
 });

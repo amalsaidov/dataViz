@@ -12,18 +12,26 @@ import { getFieldConfigFromField, getFieldMinMax } from 'lib/grafana/fields/fiel
 export const AXIS_OFFSET_STEP = 50;
 /** Space (px) an axis name ("Axis > Label") takes beside the tick labels. */
 export const AXIS_NAME_SPACE = 20;
-/** Unit group of the stacked bars in percent stacking: they share one 0% to 100% axis. */
+/** Unit group of the stacked fields in percent stacking: they share one percent axis. */
 const PERCENT_GROUP = '\0percent';
 
 type Side = 'left' | 'right';
 
-/** Unit group of a field: its unit, or the shared percent group. */
+/** Undefined/empty units collapse into one default group. */
+const unitOf = (field: Field) => getFieldConfigFromField(field).unit ?? '';
+
+/**
+ * Unit group of a field: its unit, or the shared percent group. A field that does not stack goes on the
+ * percent axis when a stacked field has its unit, because core gives one scale to each unit
+ * (`buildScaleKey` in
+ * https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/uPlot/internal.ts).
+ */
 function unitGroupOf(field: Field, percentFields: Set<Field> | undefined): string {
   if (percentFields?.has(field)) {
     return PERCENT_GROUP;
   }
-  // Undefined/empty units collapse into one default group.
-  return getFieldConfigFromField(field).unit ?? '';
+  const unit = unitOf(field);
+  return percentFields && [...percentFields].some((stacked) => unitOf(stacked) === unit) ? PERCENT_GROUP : unit;
 }
 
 /** Group fields by unit, preserving first-appearance order. */
@@ -98,7 +106,10 @@ export function buildCartesianYAxes(params: {
   initialRightCount?: number;
   /** Fields drawn as bars. Their axis includes zero unless a min or max is set, as core Bar chart. */
   barFields?: Set<Field>;
-  /** Stacked bar fields in percent stacking. They share one axis from 0% to 100%. */
+  /**
+   * Stacked fields in percent stacking. They share one axis from 0% to 100%. The axis grows to show
+   * the fields that do not stack and have the unit of a stacked field.
+   */
   percentFields?: Set<Field>;
   /** Horizontal bars: the value axes lie along x, `left` draws at the bottom and `right` at the top. */
   horizontal?: boolean;
@@ -186,7 +197,7 @@ export function buildCartesianYAxes(params: {
       ...getFieldMinMax(representative),
       custom,
       includeZero: groupFields.some((field) => barFields?.has(field)),
-      percent,
+      percent: percent ? (groupFields.every((field) => percentFields?.has(field)) ? 'fixed' : 'soft') : false,
     });
     const color = custom.axisColorMode === AxisColorMode.Series ? colorOf?.(representative) : undefined;
     const name = !hidden && custom.axisLabel ? custom.axisLabel : undefined;
@@ -244,7 +255,9 @@ export function buildCartesianYAxes(params: {
  * Value axis range and scale from the core axis options, as core Bar chart and
  * Time series. Explicit Min/Max pin the ends. "Soft min/max" extend the data
  * range to include them. "Centered zero" makes the range symmetric around 0. A
- * bar axis includes zero (core Bar chart sets a soft min and max of 0). Else
+ * bar axis includes zero (core Bar chart sets a soft min and max of 0). A percent axis is 0% to 100%.
+ * With fields that do not stack, 0% and 100% are soft limits, as the core `UPlotScaleBuilder` for
+ * `StackingMode.Percent`. Else
  * ECharts fits the data (`scale: true` from the base axis). "Scale:
  * Logarithmic" makes a log axis; symlog draws linear, ECharts has no symlog axis.
  * https://echarts.apache.org/en/option.html#yAxis.min
@@ -255,13 +268,20 @@ export function getAxisRange(params: {
   max?: number;
   custom: GraphFieldConfig;
   includeZero: boolean;
-  percent: boolean;
+  /** `fixed`: only stacked fields, `soft`: also fields that do not stack, `false`: no percent axis. */
+  percent: 'fixed' | 'soft' | false;
 }): AxisRange {
   const { custom, includeZero, percent } = params;
   const log = custom.scaleDistribution?.type === ScaleDistribution.Log;
   const logScale = log ? { type: 'log' as const, logBase: custom.scaleDistribution?.log ?? 2 } : {};
-  if (percent) {
+  if (percent === 'fixed') {
     return { min: params.min ?? 0, max: params.max ?? 1, scale: false };
+  }
+  if (percent === 'soft') {
+    return {
+      min: params.min ?? ((value) => Math.min(value.min, 0)),
+      max: params.max ?? ((value) => Math.max(value.max, 1)),
+    };
   }
   if (custom.axisCenteredZero && !log) {
     const extent = (value: { min: number; max: number }) => Math.max(Math.abs(value.min), Math.abs(value.max));
