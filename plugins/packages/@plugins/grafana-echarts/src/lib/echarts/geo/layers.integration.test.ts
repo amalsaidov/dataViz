@@ -61,6 +61,14 @@ describe('Geo layers render', () => {
     expect(drawn[0].y).toBe(drawn[1].y);
   });
 
+  // contract-rule: 28.1-rule-3-layer-types
+  it('draws nothing for a layer of a type that the renderer does not draw, and the other layers draw', () => {
+    const other = { type: 'dayNight', name: 'night', config: {} };
+    const drawn = draw(geoContext([frame], options([markersLayer('a', '#ff0000'), other])));
+    expect(drawn.map((d) => d.fill)).toEqual(['#ff0000']);
+    expect(draw(geoContext([frame], options([other])))).toEqual([]);
+  });
+
   it('draws the layers in the new order after a move', () => {
     const drawn = draw(geoContext([frame], options([markersLayer('b', '#0000ff'), markersLayer('a', '#ff0000')])));
     expect(drawn.map((d) => d.fill)).toEqual(['#0000ff', '#ff0000']);

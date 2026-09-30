@@ -75,6 +75,7 @@ function readStrokes(events: CanvasRenderingContext2DEvent[]): { strokes: Stroke
   return { strokes, arrowTips };
 }
 
+// contract-rule: 28.1-rule-3-layer-types
 describe('Geo route layer render', () => {
   beforeAll(() => {
     registerGeoChart();

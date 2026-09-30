@@ -57,6 +57,7 @@ const frame = createDataFrame({
 });
 const context = (layers: object[]) => geoContext([frame], { view, layers } as Partial<ChartContext['options']>);
 
+// contract-rule: 28.1-rule-3-layer-types
 describe('Geo heatmap layer render', () => {
   beforeAll(() => {
     registerGeoChart();

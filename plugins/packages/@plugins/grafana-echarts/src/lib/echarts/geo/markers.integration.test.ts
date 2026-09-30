@@ -67,6 +67,7 @@ function drawMarkers(ctx: ChartContext, width: number, height: number, resize?: 
   return markers;
 }
 
+// contract-rule: 28.1-rule-3-layer-types
 describe('Geo markers render', () => {
   beforeAll(() => {
     registerGeoChart();
