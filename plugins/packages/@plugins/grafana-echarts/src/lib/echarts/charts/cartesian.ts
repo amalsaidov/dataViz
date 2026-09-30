@@ -33,7 +33,7 @@ import {
   resolveMultiValueSources,
 } from 'lib/echarts/converters/multiValueCartesian';
 import { getDrawnSeries, isTimeSeriesStacked, timeSeriesToEChartsOption } from 'lib/echarts/converters/timeSeries';
-import { getCartesianGrid } from 'lib/echarts/grid/grid';
+import { getCartesianGrid, getTimeCartesianGrid } from 'lib/echarts/grid/grid';
 import { ANNOTATION_LANE_SIZE, buildAnnotationMarkerSeries } from 'lib/echarts/options/annotationMarkers';
 import { buildAnnotationSeries, buildCategoryAnnotationSeries } from 'lib/echarts/options/annotations';
 import { AXIS_FONT_SIZE } from 'lib/echarts/options/base';
@@ -145,10 +145,7 @@ function buildTimeOption(
   return {
     ...cartesianTimeDefaultOptions,
     legend: resolveEChartsLegend(isGrafanaLegend, options.legend, theme),
-    grid: getCartesianGrid(isGrafanaLegend ? undefined : options.legend, {
-      ...getAxisGridSpacing(axes),
-      top: getBarLabelSpace(cartSeries),
-    }),
+    grid: getTimeCartesianGrid(isGrafanaLegend ? undefined : options.legend, getBarLabelSpace(cartSeries)),
     xAxis,
     yAxis: axes.yAxis,
     series,

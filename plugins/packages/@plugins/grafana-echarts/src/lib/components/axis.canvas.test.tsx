@@ -206,6 +206,22 @@ describe('Panel canvas axis renders', () => {
     });
   });
 
+  // A named right axis and points on the last time (#565): the name and the whole last point stay in the panel.
+  it('right axis name and edge points', async () => {
+    const field = generateNumberField('requests', [1, 3, 2, 4], undefined, AxisPlacement.Right);
+    field.config.custom = { ...field.config.custom, axisLabel: 'Requests', showPoints: 'always', pointSize: 8 };
+    const frame = toDataFrame({ fields: [generateTimeField(times), field] });
+
+    const { container } = render(getComponent([frame], 'line', { zLevel, animation: { enabled: false } }));
+
+    const { defaultEvents, seriesEvents, axisEvents } = await getAxisCanvasEvents(container);
+
+    expect(normalizeCanvasEvents([...axisEvents, ...seriesEvents])).toMatchCanvasSnapshot(defaultEvents, {
+      width,
+      height,
+    });
+  });
+
   // Three distinct units placed left-left-right: two stacked (offset) left axes
   // and one right axis.
   it('three y-axes (left-left-right)', async () => {

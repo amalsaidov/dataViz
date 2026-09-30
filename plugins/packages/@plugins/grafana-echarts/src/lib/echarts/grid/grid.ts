@@ -26,6 +26,19 @@ export function getCartesianGrid(
 }
 
 /**
+ * The grid of the time cartesian chart. As the core Time series panel, it keeps all axis labels and axis names
+ * (also of offset axes) inside the panel, and keeps room at the right edge for the points on the last time (#565).
+ * `outerBoundsMode: 'same'` with `outerBoundsContain: 'all'` shrinks the grid to hold the axis names, which
+ * `containLabel` does not do.
+ * https://echarts.apache.org/en/option.html#grid.outerBoundsMode
+ * https://echarts.apache.org/en/option.html#grid.outerBoundsContain
+ */
+export function getTimeCartesianGrid(legend: VizLegendOptions | undefined, top: number): GridOption {
+  const grid = getCartesianGrid(legend, { top, right: DEFAULT_GRID_PADDING });
+  return { ...grid, containLabel: false, outerBoundsMode: 'same', outerBoundsContain: 'all' };
+}
+
+/**
  * Reserve space for the visualMap color scale (eCharts native heatmap legend) on whichever side it sits.
  *
  * `extraAxisSpacing` reserves additional px for stacked (offset) overlay y-axes
