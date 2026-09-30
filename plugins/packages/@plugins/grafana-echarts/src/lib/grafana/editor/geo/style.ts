@@ -26,9 +26,9 @@ const alignOptions = <T extends string>(values: T[]) =>
   values.map((value) => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) }));
 
 /**
- * The style options of a markers layer (`config.style`), as core `StyleEditor` with `displayRotation`, in the
- * fixed mode. Core shows them in one editor. Here each option is an item, so the options pane search finds it.
- * The size, color, rotation and text items are dimension editors: #566 adds their field mode.
+ * The style options of a markers layer (`config.style`), as core `StyleEditor` with `displayRotation`. Core shows
+ * them in one editor. Here each option is an item, so the options pane search finds it. The size, color, rotation
+ * and text items are dimension editors, with a fixed mode and a field mode.
  * Core: https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/editor/StyleEditor.tsx
  * and `registerOptionsUI` in
  * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/layers/data/markersLayer.tsx

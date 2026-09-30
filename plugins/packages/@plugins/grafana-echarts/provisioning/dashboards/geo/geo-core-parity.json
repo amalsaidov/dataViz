@@ -2325,6 +2325,203 @@
           "csvContent": "name,lat,lon\nBerlin,52.52,13.405\nParis,48.8566,2.3522\nMadrid,40.4168,-3.7038\nRome,41.9028,12.4964"
         }
       ]
+    },
+    {
+      "type": "geomap",
+      "title": "Core Geomap: Size range, clamped rotation and text from fields",
+      "description": "Triangles from 4 to 20 px by the `value` field, in the color of `value`. The `turn` field turns each triangle, clamped to 360 degrees. The `value` field is the text.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 121
+      },
+      "id": 23,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        },
+        "basemap": {
+          "type": "osm-standard",
+          "name": "Basemap"
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Layer 1",
+            "config": {
+              "showLegend": false,
+              "style": {
+                "size": {
+                  "field": "value",
+                  "fixed": 5,
+                  "min": 4,
+                  "max": 20
+                },
+                "color": {
+                  "field": "value",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.8,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/triangle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "left",
+                  "textBaseline": "middle",
+                  "offsetX": 14,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "field": "turn",
+                  "fixed": 0,
+                  "mode": "clamped",
+                  "min": -360,
+                  "max": 360
+                },
+                "text": {
+                  "mode": "field",
+                  "field": "value",
+                  "fixed": ""
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,turn\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,90\nMadrid,40.4168,-3.7038,50,180\nRome,41.9028,12.4964,30,270\nWarsaw,52.2297,21.0122,10,360\nStockholm,59.3293,18.0686,60,450\nAthens,37.9838,23.7275,80,540\nLisbon,38.7223,-9.1393,20,630"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "ECharts Geo: Size range, clamped rotation and text from fields",
+      "description": "Triangles from 4 to 20 px by the `value` field, in the color of `value`. The `turn` field turns each triangle, clamped to 360 degrees. The `value` field is the text.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 121
+      },
+      "id": 24,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Layer 1",
+            "config": {
+              "showLegend": false,
+              "style": {
+                "size": {
+                  "field": "value",
+                  "fixed": 5,
+                  "min": 4,
+                  "max": 20
+                },
+                "color": {
+                  "field": "value",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.8,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/triangle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "left",
+                  "textBaseline": "middle",
+                  "offsetX": 14,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "field": "turn",
+                  "fixed": 0,
+                  "mode": "clamped",
+                  "min": -360,
+                  "max": 360
+                },
+                "text": {
+                  "mode": "field",
+                  "field": "value",
+                  "fixed": ""
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,turn\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,90\nMadrid,40.4168,-3.7038,50,180\nRome,41.9028,12.4964,30,270\nWarsaw,52.2297,21.0122,10,360\nStockholm,59.3293,18.0686,60,450\nAthens,37.9838,23.7275,80,540\nLisbon,38.7223,-9.1393,20,630"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,
