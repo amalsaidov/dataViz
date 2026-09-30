@@ -1,4 +1,14 @@
-import { createTheme, DataFrameType, dateTime, type DataFrame, FieldType, toDataFrame } from '@grafana/data';
+import {
+  createTheme,
+  DataFrameType,
+  dateTime,
+  type DataFrame,
+  type FieldConfig,
+  FieldType,
+  MappingType,
+  toDataFrame,
+  type ValueMapping,
+} from '@grafana/data';
 import { GraphGradientMode, LegendDisplayMode, StackingMode, TooltipDisplayMode } from '@grafana/schema';
 import { type CustomSeriesOption } from 'echarts';
 import { type TopLevelFormatterParams } from 'echarts/types/dist/shared';
@@ -342,6 +352,34 @@ describe('histogram tooltip', () => {
       ['A', '2', false],
       ['B', '1', true],
     ]);
+  });
+
+  // Core changes a count of 0 to null (`preparePlotData` in `Histogram.tsx`), so a value mapping of 0 does not
+  // apply. The row shows the "No value" text, or the row is not shown (`getFieldDisplayItems`).
+  describe('a count of 0', () => {
+    const multi = { tooltip: { mode: TooltipDisplayMode.Multi } as never };
+    const zeroMapping: ValueMapping[] = [{ type: MappingType.ValueToText, options: { '0': { text: 'zero' } } }];
+    const withConfig = (config: FieldConfig) =>
+      toDataFrame({
+        fields: [
+          { name: 'time', type: FieldType.time, values: [1, 2, 3] },
+          { name: 'A', type: FieldType.number, values: [1, 2, 11], config },
+          { name: 'B', type: FieldType.number, values: [12, 13, 14], config },
+        ],
+      });
+
+    it('shows the "No value" text of the field, not the value mapping of 0', () => {
+      const model = tooltipOf([withConfig({ mappings: zeroMapping, noValue: 'none' })], multi, 0, 0);
+      expect(model.rows.map(({ label, value }) => [label, value])).toEqual([
+        ['A', '2'],
+        ['B', 'none'],
+      ]);
+    });
+
+    it('shows no row for a field with no "No value" text', () => {
+      const model = tooltipOf([withConfig({ mappings: zeroMapping })], multi, 0, 0);
+      expect(model.rows.map(({ label, value }) => [label, value])).toEqual([['A', '2']]);
+    });
   });
 
   it('formats the bucket range with the unit of the bucketed field', () => {

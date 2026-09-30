@@ -18,6 +18,7 @@ import {
   renderBars,
   texts,
 } from 'test/barCanvas';
+import { dispatch, renderTooltipPanel, tooltipText } from 'test/tooltipPointer';
 import { type PanelOptions } from 'types';
 
 // The histogram mode of the cartesian panel against the buckets of the core Histogram panel. Core buckets
@@ -284,5 +285,49 @@ describe('histogram mode against the core ordinal buckets', () => {
     // The last tick is the right edge of the last bar.
     const last = bars[bars.length - 1];
     expect(labels[bars.length].x).toBeCloseTo(last.x + last.width, 0);
+  });
+});
+
+// Core selects the hovered bar with the uPlot cursor focus `{ prox: 1e6, bias: 1 }` (`prepConfig`): the bar with
+// the lowest top at or above the cursor. ECharts draws the bar of the last series on top of the others.
+// https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
+describe('histogram tooltip of overlapping bars, as the core cursor focus', () => {
+  // With a bucket size of 10, bucket 0 - 10 has a count of 1 for A and 4 for B. B is drawn on top of A.
+  const frames = [values('A', [1, 11, 12]), values('B', [2, 3, 4, 5, 13])];
+
+  const hoverAt = async (count: number, data = frames) => {
+    const chart = await renderTooltipPanel({
+      frames: data,
+      seriesType: 'bar',
+      family: 'cartesian',
+      options: { histogram: true, bucketSize: 10, animation: { enabled: false } } as Partial<PanelOptions>,
+    });
+    const [x, y] = chart.convertToPixel({ seriesIndex: 0 }, [5, count]) as number[];
+    await dispatch(chart, 'mousemove', x, y);
+    return tooltipText();
+  };
+
+  it('shows the lower bar when the cursor is in both bars', async () => {
+    expect(await hoverAt(0.5)).toBe('Bucket0 - 10A1');
+  });
+
+  it('shows the higher bar when the cursor is above the lower bar', async () => {
+    expect(await hoverAt(2.5)).toBe('Bucket0 - 10B4');
+  });
+
+  // Bucket 0 - 10: A is 0 - 1 and B is 1 - 2 in group A. C is 0 - 4 in group B.
+  const group = (name: string) => ({ custom: { stacking: { mode: StackingMode.Normal, group: name } } });
+  const grouped = [
+    values('A', [1, 11, 12], group('A')),
+    values('B', [2, 13], group('A')),
+    values('C', [3, 4, 5, 6, 14], group('B')),
+  ];
+
+  it.each([
+    [0.5, 'Bucket0 - 10A1'],
+    [1.5, 'Bucket0 - 10B1'],
+    [3, 'Bucket0 - 10C4'],
+  ])('shows the bar with the lowest top at %s when the bars of two stacking groups overlap', async (count, text) => {
+    expect(await hoverAt(count, grouped)).toBe(text);
   });
 });

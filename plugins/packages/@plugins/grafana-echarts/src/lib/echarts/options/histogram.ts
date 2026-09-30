@@ -84,6 +84,7 @@ export function buildHistogramOption(input: HistogramOptionInput): EChartCartesi
   const rows = getBarRows(model, bounds, groups, range);
   const axisStyle = getCartesianAxisStyle(theme);
   const countDisplay = getDisplay(model.counts[0], theme);
+  const hoverOrder = getHoverOrder(model, rows, hidden);
 
   const series: CustomSeriesOption[] = model.counts.flatMap((field, i) =>
     hidden.has(model.names[i])
@@ -94,7 +95,7 @@ export function buildHistogramOption(input: HistogramOptionInput): EChartCartesi
             type: 'custom',
             coordinateSystem: 'cartesian2d',
             zlevel: options.zLevel?.series,
-            renderItem: makeHistogramRenderItem(colors[i], styles[i], theme),
+            renderItem: makeHistogramRenderItem(colors[i], styles[i], theme, hoverOrder[i]),
             // The x extent spans both bounds, and the y extent spans the base and the top of each bar.
             // https://echarts.apache.org/en/option.html#series-custom.encode
             encode: { x: [X_MIN, X_MAX], y: [BASE, TOP], tooltip: [COUNT] },
@@ -176,14 +177,35 @@ function getBarRows(
 }
 
 /**
+ * The hover order of each bar, as core: the cursor focus of uPlot selects the bar with the lowest top at or above
+ * the cursor (`focus: { prox: 1e6, bias: 1 }` in core `prepConfig`). On a tie, the first series wins. Thus the
+ * bar with the lowest top gets the highest order, and the first series gets the higher order on a tie. The bars of one
+ * stacking group do not overlap. The bars of two groups overlap as the bars of two unstacked series.
+ * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
+ */
+function getHoverOrder(model: HistogramModel, rows: number[][][], hidden: Set<string>): number[][] {
+  const shown = model.counts.map((_, i) => i).filter((i) => !hidden.has(model.names[i]));
+  const order = model.counts.map(() => new Array<number>(model.xMin.values.length).fill(0));
+  for (let j = 0; j < model.xMin.values.length; j++) {
+    const sorted = [...shown].sort((a, b) => rows[b][j][TOP] - rows[a][j][TOP] || b - a);
+    sorted.forEach((i, rank) => (order[i][j] = rank + 1));
+  }
+  return order;
+}
+
+/**
  * Draw one bar from `xMin` to `xMax` and from its base to its top, clipped to the grid. As core, a bucket with
  * a count of 0 draws no bar. The fill and the border come from the field style (`getHistogramFill`).
+ * An invisible copy of the bar on top of all bars is the hover area. Its `z2` is the hover order of the bar, so
+ * the tooltip shows the bar that core shows. ZRender does not draw an invisible element, but it hit-tests it.
  * https://echarts.apache.org/en/option.html#series-custom.renderItem
+ * https://echarts.apache.org/en/option.html#series-custom.renderItem.return_rect.invisible
  */
 function makeHistogramRenderItem(
   color: string,
   style: HistogramFieldStyle,
-  theme: GrafanaTheme2
+  theme: GrafanaTheme2,
+  hoverOrder: number[]
 ): CustomSeriesRenderItem {
   const { lineWidth } = style;
   return (params, api) => {
@@ -204,7 +226,13 @@ function makeHistogramRenderItem(
     if (!shape) {
       return;
     }
-    return { type: 'rect', shape, style: { ...getHistogramFill(color, style, theme, params.coordSys), lineWidth } };
+    return {
+      type: 'group',
+      children: [
+        { type: 'rect', shape, style: { ...getHistogramFill(color, style, theme, params.coordSys), lineWidth } },
+        { type: 'rect', shape, style: { fill: color }, invisible: true, z2: hoverOrder[params.dataIndex] },
+      ],
+    };
   };
 }
 
@@ -363,6 +391,11 @@ function getDisplay(field: Field | undefined, theme: GrafanaTheme2): DisplayProc
 /**
  * The tooltip of a bar, as core `HistogramTooltip`: the header is the bucket range, and the rows are the counts.
  * "All" lists the count of each shown series in the bucket. "Single" lists the hovered series.
+ * Core changes a count of 0 to null before it draws (`preparePlotData` in `Histogram.tsx`). Thus the tooltip
+ * shows the "No value" text of the field for a count of 0, and not a value mapping of 0. A field with no
+ * "No value" text gets no row, as core `getFieldDisplayItems`.
+ * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/HistogramTooltip.tsx
+ * https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/VizTooltip/utils.ts
  */
 function buildHistogramTooltip(
   { model, theme, options }: HistogramOptionInput,
@@ -377,17 +410,20 @@ function buildHistogramTooltip(
     const item = Array.isArray(params) ? params[0] : params;
     const rowIndex = item?.dataIndex ?? 0;
     const value = (field: Field): unknown => field.values[rowIndex];
+    const count = (i: number): unknown => (value(model.counts[i]) === 0 ? null : value(model.counts[i]));
     const row = (i: number): TooltipRow => {
       const field = model.counts[i];
       return {
         color: colors[i],
         label: model.names[i],
-        value: formattedValueToString(getDisplay(field, theme)(value(field))),
+        value: formattedValueToString(getDisplay(field, theme)(count(i))),
         emphasis: multi && i === seriesField,
         source: { field, rowIndex },
       };
     };
-    const indexes = multi ? model.counts.map((_, i) => i).filter((i) => !hidden.has(model.names[i])) : [seriesField];
+    const indexes = (multi ? model.counts.map((_, i) => i) : [seriesField]).filter(
+      (i) => !hidden.has(model.names[i]) && (count(i) != null || model.counts[i].config.noValue != null)
+    );
     return {
       header: {
         label: 'Bucket',
