@@ -1,5 +1,5 @@
 import { type DataFrame, DataFrameType, type Field, FieldType, toDataFrame } from '@grafana/data';
-import { AxisPlacement } from '@grafana/schema';
+import { AxisPlacement, ScaleDistribution } from '@grafana/schema';
 import { render } from '@testing-library/react';
 import { type SeriesType } from 'editor/types';
 import { AXIS_ZLEVEL, normalizeCanvasEvents, SERIES_ZLEVEL } from 'test/canvas';
@@ -134,6 +134,31 @@ describe('Panel canvas axis renders', () => {
   it('value axis honors explicit Min/Max bounds', async () => {
     const frame = toDataFrame({
       fields: [generateTimeField(times), generateBoundedField('cpu', [10, 20, 30, 10], 0, 100)],
+    });
+
+    const { container } = render(getComponent([frame], 'line', { zLevel, animation: { enabled: false } }));
+
+    const { defaultEvents, seriesEvents, axisEvents } = await getAxisCanvasEvents(container);
+
+    expect(normalizeCanvasEvents(axisEvents)).toMatchCanvasSnapshot([...defaultEvents, ...seriesEvents], {
+      width,
+      height,
+    });
+  });
+
+  // A log 2 axis ignores "Soft max", as core `uPlot.rangeLog`: the axis stops at the data max 4, not at 10 (#564).
+  it('log axis ignores the soft max', async () => {
+    const frame = toDataFrame({
+      fields: [
+        generateTimeField(times),
+        {
+          ...generateNumberField('cpu', [1, 2, 3, 4]),
+          config: {
+            displayName: 'cpu',
+            custom: { scaleDistribution: { type: ScaleDistribution.Log, log: 2 }, axisSoftMax: 10 },
+          },
+        },
+      ],
     });
 
     const { container } = render(getComponent([frame], 'line', { zLevel, animation: { enabled: false } }));

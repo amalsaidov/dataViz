@@ -345,4 +345,13 @@ describe('getAxisRange', () => {
     expect(range).toMatchObject({ type: 'log', logBase: 10 });
     expect(range).not.toHaveProperty('scale');
   });
+
+  it('ignores soft limits on a log axis, as core uPlot.rangeLog', () => {
+    const range = getAxisRange({
+      custom: { scaleDistribution: { type: ScaleDistribution.Log, log: 2 }, axisSoftMin: 0.1, axisSoftMax: 10 },
+      includeZero: false,
+      percent: false,
+    });
+    expect(range).toMatchObject({ type: 'log', min: undefined, max: undefined });
+  });
 });

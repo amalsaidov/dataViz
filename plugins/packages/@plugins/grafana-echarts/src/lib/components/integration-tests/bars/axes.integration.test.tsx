@@ -54,6 +54,17 @@ describe('bar value axis', () => {
     expect(ticks((await renderBars([logFrame])).axis)).toEqual(expect.arrayContaining([1, 10, 100, 1000, 10000]));
   });
 
+  it('ignores the soft max on a log axis, as core uPlot.rangeLog (#564)', async () => {
+    const logFrame = categoryFrame([
+      {
+        name: 'A',
+        values: [1, 2, 3, 4],
+        config: custom({ scaleDistribution: { type: ScaleDistribution.Log, log: 2 }, axisSoftMax: 10 }),
+      },
+    ]);
+    expect(Math.max(...ticks((await renderBars([logFrame], { seriesType: 'line' })).axis))).toBe(4);
+  });
+
   it('centers zero with "Centered zero"', async () => {
     const values = ticks((await renderBars([frame(custom({ axisCenteredZero: true }))])).axis);
     expect(Math.min(...values)).toBe(-Math.max(...values));

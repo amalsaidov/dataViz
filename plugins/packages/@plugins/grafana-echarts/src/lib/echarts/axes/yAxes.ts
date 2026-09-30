@@ -259,7 +259,7 @@ export function buildCartesianYAxes(params: {
  * With fields that do not stack, 0% and 100% are soft limits, as the core `UPlotScaleBuilder` for
  * `StackingMode.Percent`. Else
  * ECharts fits the data (`scale: true` from the base axis). "Scale:
- * Logarithmic" makes a log axis; symlog draws linear, ECharts has no symlog axis.
+ * Logarithmic" makes a log axis, without soft limits (as core); symlog draws linear, ECharts has no symlog axis.
  * https://echarts.apache.org/en/option.html#yAxis.min
  * https://echarts.apache.org/en/option.html#yAxis.type
  */
@@ -290,7 +290,9 @@ export function getAxisRange(params: {
       max: params.max ?? ((value) => extent(value)),
     };
   }
-  const { axisSoftMin: softMin, axisSoftMax: softMax } = custom;
+  // Core `UPlotScaleBuilder` ignores soft limits on a log scale: `uPlot.rangeLog` fits the data only.
+  const softMin = log ? undefined : custom.axisSoftMin;
+  const softMax = log ? undefined : custom.axisSoftMax;
   const min = params.min ?? (softMin != null ? (value: { min: number }) => Math.min(value.min, softMin) : undefined);
   const max = params.max ?? (softMax != null ? (value: { max: number }) => Math.max(value.max, softMax) : undefined);
   return {
