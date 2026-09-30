@@ -30,6 +30,11 @@ describe('getGraphLayout', () => {
     expect(getGraphLayout(data(), baseOptions({ relationsLayout: 'circular' }))).toBe('circular');
   });
 
+  it('uses force for a layout that the graph series does not know', () => {
+    const options = baseOptions({ relationsLayout: 'sankey' as unknown as 'force' });
+    expect(getGraphLayout(data(), options)).toBe('force');
+  });
+
   it('uses none when every node pins fixedx/fixedy', () => {
     const pinned = data({
       nodes: [
