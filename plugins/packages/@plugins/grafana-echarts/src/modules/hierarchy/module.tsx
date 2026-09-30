@@ -4,6 +4,7 @@ import { commonOptionsBuilder } from '@grafana/ui';
 import { hierarchySeriesTypeOptions, seriesTypePath } from 'editor/constants';
 import { type EChartsFieldConfig } from 'editor/types';
 import { makeLazyPanel } from 'lib/components/LazyPanel';
+import { describeCommonOptions } from 'lib/grafana/editor/common/describe-common-options';
 import { STANDARD_FIELD_OPTIONS } from 'lib/grafana/editor/common/fieldConfig';
 import { type PanelOptions } from 'types';
 import { hierarchySuggestionsSupplier } from './suggestions';
@@ -29,6 +30,7 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(makeLazy
     builder.addRadio({
       path: seriesTypePath,
       name: 'Chart type',
+      description: 'The chart that shows the hierarchy.',
       category: ['Hierarchy'],
       defaultValue: 'treemap',
       settings: {
@@ -42,6 +44,7 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(makeLazy
     // dashboard saved with `multi` before this still builds an axis trigger; see
     // `ChartModule.singleTooltipOnly`.
     commonOptionsBuilder.addTooltipOptions(builder, true);
+    describeCommonOptions(builder);
 
     return builder;
   })

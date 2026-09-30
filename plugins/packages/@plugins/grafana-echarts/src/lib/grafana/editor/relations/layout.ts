@@ -8,7 +8,7 @@ import {
   relationsLayoutCategoryName,
 } from 'editor/relations/constants';
 import { isGraphVariant } from 'editor/relations/variants';
-import { RelationsLayoutEditor } from 'lib/grafana/editor/relations/RelationsLayoutEditor';
+import { layoutChoiceOptions, RelationsLayoutEditor } from 'lib/grafana/editor/relations/RelationsLayoutEditor';
 /**
  * The "Layout" section: where marks are positioned and how big they are.
  * https://echarts.apache.org/en/option.html#series-graph.layout
@@ -24,6 +24,8 @@ export function addRelationsLayoutOptions(builder: PanelOptionsEditorBuilder<Pan
     category: [relationsLayoutCategoryName],
     editor: RelationsLayoutEditor,
     defaultValue: RELATIONS_LAYOUT_DEFAULT,
+    // The editor does not read `options`. viz-options.json gives them as the values of the layout.
+    settings: { options: layoutChoiceOptions },
     showIf: isGraphVariant,
   });
 

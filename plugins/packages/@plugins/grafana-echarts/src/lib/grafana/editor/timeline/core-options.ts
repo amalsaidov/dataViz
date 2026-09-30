@@ -28,6 +28,7 @@ export function addMergeValuesOption(builder: Builder, category: string[]) {
   builder.addBooleanSwitch({
     path: 'mergeValues',
     name: 'Merge equal consecutive values',
+    description: 'Show one bar for consecutive equal values.',
     category,
     defaultValue: TIMELINE_MERGE_VALUES_DEFAULT,
   });
@@ -37,6 +38,7 @@ export function addShowValueOption(builder: Builder, category: string[]) {
   builder.addRadio({
     path: 'showValue',
     name: 'Show values',
+    description: 'Show the value text on the bars.',
     category,
     settings: { options: timelineShowValueOptions },
     defaultValue: TIMELINE_SHOW_VALUE_DEFAULT,
@@ -47,6 +49,7 @@ export function addAlignValueOption(builder: Builder, category: string[]) {
   builder.addRadio({
     path: 'alignValue',
     name: 'Align values',
+    description: 'The position of the value text on the bar.',
     category,
     settings: { options: timelineAlignValueOptions },
     defaultValue: TIMELINE_ALIGN_VALUE_DEFAULT,
@@ -57,6 +60,7 @@ export function addRowHeightOption(builder: Builder, category: string[], default
   builder.addSliderInput({
     path: 'rowHeight',
     name: 'Row height',
+    description: 'The height of each row, as a part of the space for the row.',
     category,
     settings: { min: 0, max: 1, step: 0.01 },
     defaultValue,
@@ -68,6 +72,7 @@ export function addColWidthOption(builder: Builder, category: string[]) {
   builder.addSliderInput({
     path: 'colWidth',
     name: 'Column width',
+    description: 'The width of each cell, as a part of the time between the values.',
     category,
     settings: { min: 0, max: 1, step: 0.01 },
     defaultValue: STATUS_HISTORY_COL_WIDTH_DEFAULT,

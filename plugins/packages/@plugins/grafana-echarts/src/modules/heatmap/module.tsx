@@ -77,6 +77,7 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(
     builder.addSelect({
       path: 'heatmapColorScheme',
       name: 'Heatmap color scheme',
+      description: 'The color gradient of the cells.',
       defaultValue: heatmapColorSchemeDefault,
       settings: {
         options: heatmapColorSchemeOptions,

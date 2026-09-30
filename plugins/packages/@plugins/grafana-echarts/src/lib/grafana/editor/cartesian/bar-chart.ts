@@ -44,6 +44,7 @@ export function addCartesianBarChartOptions(builder: PanelOptionsEditorBuilder<P
     .addBooleanSwitch({
       path: fullHighlightPath,
       name: 'Highlight full area on hover',
+      description: 'On hover, highlight the full area of the category, not only the bar.',
       category,
       defaultValue: false,
       showIf: (options) => resolvePanelStacking(options) === StackingMode.None,

@@ -59,6 +59,7 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(makeLazy
       builder.addRadio({
         path: seriesTypePath,
         name: 'Chart type',
+        description: 'The chart that shows the fields of each row.',
         category: ['Multivariate'],
         defaultValue: 'radar',
         settings: { options: MULTIVARIATE_SERIES_TYPE_OPTIONS },

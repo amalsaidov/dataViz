@@ -31,7 +31,9 @@ export function addCartesianHistogramOptions(builder: PanelOptionsEditorBuilder<
       path: 'bucketSize',
       name: histogramFieldInfo.bucketSize.name,
       category,
-      description: histogramFieldInfo.bucketSize.description,
+      // Grafana gives no description for the bucket size.
+      description:
+        histogramFieldInfo.bucketSize.description ?? 'The size of each bucket. Empty picks a size from the data.',
       settings: { placeholder: 'Auto', min: 0 },
       showIf: isHistogram,
     })

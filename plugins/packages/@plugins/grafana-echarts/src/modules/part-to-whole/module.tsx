@@ -81,6 +81,7 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(makeLazy
     builder.addRadio({
       path: seriesTypePath,
       name: 'Chart type',
+      description: 'The chart that shows each part of the total.',
       defaultValue: 'pie',
       settings: {
         options: partToWholeSeriesTypeOptions,

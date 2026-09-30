@@ -2,6 +2,7 @@ import { type PanelOptionsEditorBuilder } from '@grafana/data';
 import { commonOptionsBuilder } from '@grafana/ui';
 import { TOOLTIP_DEFAULT_OPTIONS } from 'editor/constants';
 import { type PanelOptions } from 'types';
+import { describeCommonOptions } from './describe-common-options';
 
 /**
  * Register the standard Grafana "Legend" + "Tooltip" option pair shared by the
@@ -32,4 +33,5 @@ export function addCommonLegendAndTooltip(
 ): void {
   commonOptionsBuilder.addLegendOptions(builder, includeLegendCalcs);
   commonOptionsBuilder.addTooltipOptions(builder, singleTooltipOnly, false, TOOLTIP_DEFAULT_OPTIONS);
+  describeCommonOptions(builder);
 }

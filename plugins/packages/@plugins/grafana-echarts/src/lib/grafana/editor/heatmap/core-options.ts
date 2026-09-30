@@ -22,6 +22,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addRadio({
       path: 'calculate',
       name: 'Calculate from data',
+      description: 'Yes: make the buckets from the data. No: use the buckets of the data.',
       defaultValue: false,
       category: heatmapCategory,
       settings: {
@@ -44,6 +45,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
       id: 'calculation.yBuckets.scale',
       path: 'calculation.yBuckets.scale',
       name: 'Y bucket scale',
+      description: 'The scale of the calculated Y buckets.',
       category: heatmapCategory,
       editor: ScaleEditor,
       showIf: isCalculated,
@@ -67,10 +69,17 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
       settings: { allowAuto: true },
       showIf: (options) => isBinned(options) && options.calculate !== true,
     })
-    .addUnitPicker({ path: 'yAxis.unit', name: 'Unit', category: yAxisCategory, showIf: isBinned })
+    .addUnitPicker({
+      path: 'yAxis.unit',
+      name: 'Unit',
+      description: 'The unit of the Y axis values.',
+      category: yAxisCategory,
+      showIf: isBinned,
+    })
     .addNumberInput({
       path: 'yAxis.decimals',
       name: 'Decimals',
+      description: 'The number of decimals of the Y axis values. Empty picks a number.',
       category: yAxisCategory,
       settings: { placeholder: 'Auto' },
       showIf: isBinned,
@@ -78,6 +87,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addNumberInput({
       path: 'yAxis.min',
       name: 'Min value',
+      description: 'The lowest value of the Y axis. Empty uses the data.',
       category: yAxisCategory,
       settings: { placeholder: 'Auto' },
       showIf: isBinned,
@@ -85,6 +95,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addNumberInput({
       path: 'yAxis.max',
       name: 'Max value',
+      description: 'The highest value of the Y axis. Empty uses the data.',
       category: yAxisCategory,
       settings: { placeholder: 'Auto' },
       showIf: isBinned,
@@ -92,6 +103,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addBooleanSwitch({
       path: 'yAxis.reverse',
       name: 'Reverse',
+      description: 'Show the Y axis from top to bottom.',
       defaultValue: false,
       category: yAxisCategory,
       showIf: isBinned,
@@ -99,6 +111,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addRadio({
       path: 'color.mode',
       name: 'Mode',
+      description: 'Scheme: a color gradient. Opacity: one color with a different opacity.',
       defaultValue: 'scheme',
       category: colorsCategory,
       settings: {
@@ -112,6 +125,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addColorPicker({
       path: 'color.fill',
       name: 'Color',
+      description: 'The color of the cells in opacity mode.',
       defaultValue: 'dark-orange',
       category: colorsCategory,
       showIf: isOpacity,
@@ -119,6 +133,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addRadio({
       path: 'color.scale',
       name: 'Scale',
+      description: 'How the opacity changes with the value.',
       defaultValue: 'exponential',
       category: colorsCategory,
       settings: {
@@ -132,6 +147,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addSliderInput({
       path: 'color.exponent',
       name: 'Exponent',
+      description: 'The exponent of the exponential opacity scale.',
       defaultValue: 0.5,
       category: colorsCategory,
       settings: { min: 0.1, max: 2, step: 0.1 },
@@ -140,6 +156,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addNumberInput({
       path: 'color.min',
       name: 'Start color from value',
+      description: 'The value that gets the first color. Empty uses the lowest value.',
       category: colorsCategory,
       settings: { placeholder: 'Auto (min)' },
       showIf: isBinned,
@@ -147,6 +164,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addNumberInput({
       path: 'color.max',
       name: 'End color from value',
+      description: 'The value that gets the last color. Empty uses the highest value.',
       category: colorsCategory,
       settings: { placeholder: 'Auto (max)' },
       showIf: isBinned,
@@ -154,6 +172,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addSliderInput({
       path: 'cellGap',
       name: 'Cell gap',
+      description: 'The gap between the cells, in pixels.',
       defaultValue: 1,
       category: cellCategory,
       settings: { min: 0, max: 25 },
@@ -162,6 +181,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addNumberInput({
       path: 'filterValues.le',
       name: 'Hide cells with values <=',
+      description: 'Do not show a cell with a value that is this value or less.',
       defaultValue: 1e-9,
       category: cellCategory,
       settings: { placeholder: 'None' },
@@ -170,6 +190,7 @@ export function addCoreHeatmapOptions(builder: PanelOptionsEditorBuilder<PanelOp
     .addNumberInput({
       path: 'filterValues.ge',
       name: 'Hide cells with values >=',
+      description: 'Do not show a cell with a value that is this value or more.',
       category: cellCategory,
       settings: { placeholder: 'None' },
       showIf: isBinned,

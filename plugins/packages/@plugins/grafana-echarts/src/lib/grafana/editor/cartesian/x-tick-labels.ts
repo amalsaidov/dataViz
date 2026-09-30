@@ -24,6 +24,7 @@ export function addCartesianXTickLabelOptions(builder: PanelOptionsEditorBuilder
   builder.addRadio({
     path: xTickLabelSpacingPath,
     name: 'X-axis labels minimum spacing',
+    description: 'The minimum space between the X axis labels. Labels that do not fit are hidden.',
     category: [cartesianAxisCategoryName],
     defaultValue: 0,
     settings: { options: xTickLabelSpacingOptions },

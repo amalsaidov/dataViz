@@ -29,6 +29,7 @@ import { addCartesianSpanNullsFieldConfig } from 'lib/grafana/editor/cartesian/s
 import { addCartesianValueLabelOptions } from 'lib/grafana/editor/cartesian/value-labels';
 import { addCartesianXTickLabelOptions } from 'lib/grafana/editor/cartesian/x-tick-labels';
 import { addCartesianXTickRotateOptions } from 'lib/grafana/editor/cartesian/x-tick-rotate';
+import { describeCommonOptions } from 'lib/grafana/editor/common/describe-common-options';
 import { addEditorModeOption } from 'lib/grafana/editor/common/editor-mode';
 import { STANDARD_FIELD_OPTIONS } from 'lib/grafana/editor/common/fieldConfig';
 import { addCommonLegendAndTooltip } from 'lib/grafana/editor/common/legend-and-tooltip';
@@ -207,6 +208,7 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
     addCommonLegendAndTooltip(builder);
     // "Text size > Value" sets the bar value label size; unset fits the bars.
     commonOptionsBuilder.addTextSizeOptions(builder, { withTitle: false, withValue: true });
+    describeCommonOptions(builder);
 
     // Performance overrides: Show points (Default tier, core parity), and the
     // Advanced-gated Downsampling / Animation. ECharts' big-data levers are auto-tuned above density
