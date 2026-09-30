@@ -5,11 +5,12 @@ import { timeAtPixel } from 'lib/echarts/annotationGestures';
 import { isMultiValueSeriesType } from 'lib/echarts/charts/narrowing';
 import { type ChartContext, type ChartModule } from 'lib/echarts/charts/types';
 import { type EChartsType, init } from 'lib/echarts/echarts';
-import { hasTimeBrush } from 'lib/echarts/options/panelOption';
+import { hasTimeAxis, hasTimeBrush } from 'lib/echarts/options/panelOption';
 import { collectProximitySeries } from 'lib/echarts/tooltip/proximity';
 import React, {
   type MutableRefObject,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -22,6 +23,8 @@ import { AnnotationEditor } from './annotations/AnnotationEditor';
 import { type PlacedAnnotationDraft, useAnnotationGestures } from './hooks/useAnnotationGestures';
 import { useBrushTimeZoom } from './hooks/useBrushTimeZoom';
 import { useTimeAxisPan } from './hooks/useTimeAxisPan';
+import { useDoubleClickZoomOut } from './hooks/useDoubleClickZoomOut';
+import { TimeZoomOutContext } from './TimeZoomOutContext';
 import { useChartOption } from './hooks/useChartOption';
 import { useChartResize } from './hooks/useChartResize';
 import { useRelationsPersistence } from './hooks/useRelationsPersistence';
@@ -202,6 +205,18 @@ export const EChart: React.FC<Props> = ({
     [chartContext.timeRange]
   );
   useTimeAxisPan(timeAxis ? chart : null, axisRange, onChangeTimeRange);
+  // A double click zooms the time range out, as core. The stream family has a time axis but no time brush.
+  const zoomOut = useContext(TimeZoomOutContext);
+  const zoomOutAxis = useMemo(
+    () => !isPreview && hasTimeAxis(chartContext) && !isMultiValueSeriesType(chartContext.seriesType),
+    [chartContext, isPreview]
+  );
+  useDoubleClickZoomOut(
+    zoomOutAxis && zoomOut !== null ? chart : null,
+    axisRange,
+    onChangeTimeRange,
+    zoomOut ?? undefined
+  );
   useRelationsPersistence(isPreview ? null : chart, { chartContext, onFieldConfigChange, onOptionsChange });
 
   return (

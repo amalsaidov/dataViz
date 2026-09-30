@@ -148,5 +148,14 @@ export function hasTimeBrush(
   hasTimeField = framesHaveTimeField(ctx.frames),
   axisType = panelTypeToAxis(ctx, hasTimeField)
 ): boolean {
-  return hasTimeField && axisType === 'time' && !chartModule.disableTimeBrush;
+  return hasTimeAxis(ctx, hasTimeField, axisType) && !chartModule.disableTimeBrush;
+}
+
+/** Whether the chart has a time x axis. A double click on such a chart zooms the time range out. */
+export function hasTimeAxis(
+  ctx: ChartContext,
+  hasTimeField = framesHaveTimeField(ctx.frames),
+  axisType = panelTypeToAxis(ctx, hasTimeField)
+): boolean {
+  return hasTimeField && axisType === 'time';
 }
