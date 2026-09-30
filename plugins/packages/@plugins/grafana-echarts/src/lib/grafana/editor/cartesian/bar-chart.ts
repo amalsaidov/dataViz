@@ -12,6 +12,7 @@ import {
 } from 'editor/cartesian';
 import { resolvePanelStacking } from 'lib/echarts/options/bars';
 import { type PanelOptions } from 'types';
+import { showIfBarOption } from './bar-only';
 
 /** Editor category of the core Bar chart options. */
 const category = [cartesianBarChartCategoryName];
@@ -19,7 +20,7 @@ const category = [cartesianBarChartCategoryName];
 /**
  * Register the core Bar chart panel options: Stacking, Orientation, "Highlight
  * full area on hover" and "Color by field". Core-parity controls, so they show in
- * every editor mode. Core: `public/app/plugins/panel/barchart/module.tsx`.
+ * every editor mode. All but Stacking show only for a bar series (`showIfBarOption`). Core: `public/app/plugins/panel/barchart/module.tsx`.
  * https://grafana.com/developers/plugin-tools/reference/plugin-json
  */
 export function addCartesianBarChartOptions(builder: PanelOptionsEditorBuilder<PanelOptions>) {
@@ -40,6 +41,7 @@ export function addCartesianBarChartOptions(builder: PanelOptionsEditorBuilder<P
       category,
       defaultValue: CARTESIAN_ORIENTATION_DEFAULT,
       settings: { options: orientationOptions },
+      showIf: showIfBarOption,
     })
     .addBooleanSwitch({
       path: fullHighlightPath,
@@ -47,12 +49,14 @@ export function addCartesianBarChartOptions(builder: PanelOptionsEditorBuilder<P
       description: 'On hover, highlight the full area of the category, not only the bar.',
       category,
       defaultValue: false,
-      showIf: (options) => resolvePanelStacking(options) === StackingMode.None,
+      showIf: (options, ...rest) =>
+        resolvePanelStacking(options) === StackingMode.None && showIfBarOption(options, ...rest),
     })
     .addFieldNamePicker({
       path: colorByFieldPath,
       name: 'Color by field',
       description: 'Use the color value for a sibling field to color each bar value.',
       category,
+      showIf: showIfBarOption,
     });
 }

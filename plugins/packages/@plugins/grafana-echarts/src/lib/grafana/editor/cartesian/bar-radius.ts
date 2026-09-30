@@ -1,6 +1,7 @@
 import { type PanelOptionsEditorBuilder } from '@grafana/data';
 import { barRadiusPath, CARTESIAN_BAR_RADIUS_DEFAULT, cartesianBarChartCategoryName } from 'editor/cartesian';
 import { type PanelOptions } from 'types';
+import { showIfBarOption } from './bar-only';
 
 /**
  * Register the Default-tier cartesian "Bar corner radius" input (px; ECharts
@@ -15,5 +16,6 @@ export function addCartesianBarRadiusOptions(builder: PanelOptionsEditorBuilder<
     description: 'Round the corners of bars (px). 0 draws square corners.',
     defaultValue: CARTESIAN_BAR_RADIUS_DEFAULT,
     settings: { min: 0, max: 50, integer: true },
+    showIf: showIfBarOption,
   });
 }

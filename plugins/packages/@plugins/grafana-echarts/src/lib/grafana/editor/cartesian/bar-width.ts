@@ -1,6 +1,7 @@
 import { type PanelOptionsEditorBuilder } from '@grafana/data';
 import { barWidthPath, CARTESIAN_BAR_WIDTH_DEFAULT, cartesianBarChartCategoryName } from 'editor/cartesian';
 import { type PanelOptions } from 'types';
+import { showIfBarOption } from './bar-only';
 
 /**
  * Register the Default-tier cartesian "Bar width" input (percentage of the category
@@ -15,5 +16,6 @@ export function addCartesianBarWidthOptions(builder: PanelOptionsEditorBuilder<P
     description: 'Bar width as a percentage of the category band (bar series). Empty uses auto width.',
     defaultValue: CARTESIAN_BAR_WIDTH_DEFAULT,
     settings: { min: 1, max: 100, integer: true },
+    showIf: showIfBarOption,
   });
 }
