@@ -4,7 +4,7 @@ import { type PanelOptions } from 'types';
 
 /**
  * Register the Default-tier cartesian "Line width" input (px; ECharts
- * `lineStyle.width`). Only affects `line` series; empty uses ECharts' default.
+ * `lineStyle.width`). Only affects `line` series. The default is 1px; empty gives the ECharts 2px stroke.
  * Rendered by `getCartesianLineStyle`.
  */
 export function addCartesianLineWidthOptions(builder: PanelOptionsEditorBuilder<PanelOptions>) {

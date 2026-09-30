@@ -192,11 +192,14 @@ export const CARTESIAN_BAR_RADIUS_DEFAULT = 0;
 
 /**
  * Panel option path for the line width in px (ECharts `lineStyle.width`).
- * Default tier; `line` series. Unset uses ECharts' default. See `getCartesianLineStyle`.
+ * Default tier; `line` series. Default 1px; empty gives the ECharts 2px stroke. See `getCartesianLineStyle`.
  */
 export const lineWidthPath = 'lineWidth';
-/** Default line width: unset (ECharts default, 2px), so no `width` is written. */
-export const CARTESIAN_LINE_WIDTH_DEFAULT: number | undefined = undefined;
+/**
+ * Default line width: 1px, the default of the core time series panel.
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/time-series/#line-width
+ */
+export const CARTESIAN_LINE_WIDTH_DEFAULT: number | undefined = 1;
 
 /**
  * Panel option path for the line fill opacity 0–100 (ECharts `areaStyle.opacity`;

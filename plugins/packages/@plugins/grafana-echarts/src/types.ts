@@ -503,8 +503,8 @@ export interface PanelOptions
   barRadius?: number;
 
   /**
-   * Cartesian line width in px (Advanced; ECharts `lineStyle.width`). Unset uses
-   * ECharts' default stroke; `line` series only. See `getCartesianLineStyle`.
+   * Cartesian line width in px (ECharts `lineStyle.width`). The default is 1px. An
+   * empty value or `0` gives the ECharts 2px stroke; `line` series only. See `getCartesianLineStyle`.
    */
   lineWidth?: number;
 
