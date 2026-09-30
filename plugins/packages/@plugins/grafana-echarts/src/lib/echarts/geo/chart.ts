@@ -4,6 +4,7 @@ import { type ChartContext } from 'lib/echarts/charts/types';
 import { getHeatmapLayers } from 'lib/grafana/geo/heatmap';
 import { getMarkerLegends } from 'lib/grafana/geo/legend';
 import { getMarkerLayers } from 'lib/grafana/geo/markers';
+import { getRouteLayers } from 'lib/grafana/geo/route';
 import { getBasemapStyle } from 'lib/grafana/geo/style';
 import { resolveCoreMapView } from 'lib/grafana/geo/view';
 import { registerBasemap } from './basemap';
@@ -15,6 +16,7 @@ function toMarkersInput(ctx: ChartContext, size: ViewSize): GeoMarkersInput {
   return {
     layers: getMarkerLayers(ctx.frames, ctx.options.layers, ctx.theme, ctx.queryRefIds),
     heatmaps: getHeatmapLayers(ctx.frames, ctx.options.layers, ctx.theme, ctx.queryRefIds),
+    routes: getRouteLayers(ctx.frames, ctx.options.layers, ctx.theme, ctx.queryRefIds),
     view: resolveCoreMapView(ctx.options.view),
     size,
     // Core: on when unset.

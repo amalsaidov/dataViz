@@ -7,7 +7,7 @@ The frame shapes are in [data-plane/geo.md](../../../data-plane/geo.md).
 `provisioning/dashboards/geo/geo-core-parity.json` shows core Geomap and this panel side by side.
 
 The panel reads the core option JSON. The editor has the map view, the map controls, the layer list, and the data,
-location, style and tooltip options of each markers layer, and the options of each heatmap layer. The basemap has no editor yet (#502).
+location, style and tooltip options of each markers layer, and the options of each heatmap and route layer. The basemap has no editor yet (#502).
 
 ## Panel options
 
@@ -43,7 +43,7 @@ location, style and tooltip options of each markers layer, and the options of ea
 | Tooltip data links                      | The pinned tooltip shows the data links of the fields, deduplicated. Core also shows the links on hover.                                                                                                                                                                                                 | Different     |
 | Tooltip of markers at the same position | ECharts shows the top marker only. Core lists each marker in a collapsed row (#512).                                                                                                                                                                                                                     | Different     |
 | More than one markers layer             | Each `markers` layer draws in the list order, and the last layer is on top, as core ([layers.ts](../../lib/grafana/geo/layers.ts)).                                                                                                                                                                      | Supported     |
-| Other layer types                       | The `heatmap` layer is drawn (see below). The other types are not drawn (#334 to #337)                                                                                                                                                                                                                   | Not supported |
+| Other layer types                       | The `heatmap` and `route` layers are drawn (see below). The other types are not drawn (#334, #336, #337)                                                                                                                                                                                                 | Not supported |
 | Filter data by query (`filterData`)     | The layer uses the frames of that query. A query that returns no frame gives no markers. A query that is not in the panel is ignored, as core.                                                                                                                                                           | Supported     |
 
 ## Heatmap layer
@@ -60,6 +60,24 @@ The panel draws an ECharts `heatmap` series on the `geo` coordinate system ([hea
 | Blend of the points             | ECharts adds the alphas of the points on a 2D canvas, then picks the gradient color. OpenLayers does the same in WebGL, so the edges can differ. | Different     |
 | Display tooltip (`tooltip`)     | none: the heatmap does not react to the mouse (#646)                                                                                             | Not supported |
 
+## Route layer
+
+Core: [routeLayer.tsx](https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/layers/data/routeLayer.tsx).
+The panel draws an ECharts `lines` series on the `geo` coordinate system ([route.ts](../../lib/echarts/geo/route.ts)).
+
+| Core option                       | ECharts equivalent                                                                                                                                 | Status        |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| Location                          | The location modes of the markers layer. Only the first frame gives points, as core. A route needs 2 or more points.                               | Supported     |
+| Style: no field and no arrow      | One line with round caps. The width is `size.fixed`, or `lineWidth` when it is 0. The defaults are width 5, dark green and opacity 1, as core.     | Supported     |
+| Style: color field                | Each segment is a linear gradient from the color of its start point to the color of its end point, as the ol-ext `FlowLine`.                       | Supported     |
+| Style: size field                 | Each segment has the width of its start point. `FlowLine` changes the width along the segment (#662).                                              | Different     |
+| Arrow: None, Forward, Reverse     | An ECharts `arrow` symbol at the end (Forward) or at the start (Reverse) of each segment, `1.5 * width` px. The line has flat caps, as `FlowLine`. | Supported     |
+| Arrow color and shape             | The arrow has the segment color. Core gives it the color of the arrow end. The ECharts arrow shape is not the `FlowLine` triangle (#662).          | Different     |
+| Short segments                    | Each segment is drawn. Core joins the segments of 2 px or less at the current zoom (#662).                                                         | Different     |
+| Text label                        | none: the route draws no text (#662)                                                                                                               | Not supported |
+| Crosshair from the dashboard time | none: the panel does not listen to `DataHoverEvent` (#661)                                                                                         | Not supported |
+| Display tooltip (`tooltip`)       | none: the route does not react to the mouse (#662)                                                                                                 | Not supported |
+
 ## Editor
 
 | Core option                               | ECharts equivalent                                                                                                                                                                                                         | Status        |
@@ -67,7 +85,7 @@ The panel draws an ECharts `heatmap` series on the `geo` coordinate system ([hea
 | Map layers: add, delete, rename           | The same. A new layer is a markers layer named `Layer <n>`. A name must be unique and not empty.                                                                                                                           | Supported     |
 | Map layers: order                         | Move up and move down buttons. Core drags the layers. The top row draws on top, as core.                                                                                                                                   | Different     |
 | Map layers: select a layer                | none: each markers layer has its group of options. Core shows the options of the selected layer only.                                                                                                                      | Different     |
-| Layer type                                | A select of Markers and Heatmap. A new type clears the layer config, as core. The other types are #334 to #337.                                                                                                            | Different     |
+| Layer type                                | A select of Markers, Heatmap and Route. A new type clears the layer config, as core. The other types are #334, #336, #337.                                                                                                 | Different     |
 | Layer: Data (`filterData`)                | A select of the refIds of the panel frames                                                                                                                                                                                 | Supported     |
 | Layer: Location mode and fields           | Auto, Coords, Geohash and Lookup, with the field pickers and the gazetteer of core                                                                                                                                         | Supported     |
 | Layer: style, fixed values                | Size, symbol, symbol align, color, fill opacity, rotation, text label and the text options, as core `StyleEditor`. Each option is an item of the group. The symbol is a select of the 7 marker files that the panel draws. | Supported     |
@@ -79,6 +97,7 @@ The panel draws an ECharts `heatmap` series on the `geo` coordinate system ([hea
 | Map view: lat, lon, padding, zoom         | Lat and lon for Coordinates, the padding for Fit to data, then the zoom. Core names the zoom Max Zoom for Fit to data.                                                                                                     | Supported     |
 | Map view: min and max zoom                | Two number inputs. Core has no input for them.                                                                                                                                                                             | Different     |
 | Map view: Use current map settings        | Saves the live center and zoom of the panel as a Coordinates view, as core                                                                                                                                                 | Supported     |
+| Layer: route options                      | The style options without the rotation, and the Arrow radio of None, Forward and Reverse, as core.                                                                                                                         | Supported     |
 | Layer: heatmap options                    | Weight values, Radius and Blur, as core. The weight editor has no min and max for a field, as core `hideRange`.                                                                                                            | Supported     |
 | Basemap layer                             | none (#502)                                                                                                                                                                                                                | Not supported |
 

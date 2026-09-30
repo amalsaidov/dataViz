@@ -75,6 +75,21 @@ describe('geo layer options', () => {
     expect([access.getValue('config.radius'), access.getValue('config.blur')]).toEqual([5, 15]);
   });
 
+  it('gives a route layer the core style with no rotation, the arrow and the core defaults', () => {
+    const { access, paths } = layerItems({ layers: [{ type: 'route', name: 'r' }] }, 0);
+    expect(paths).toEqual([
+      'type',
+      'filterData',
+      'location.mode',
+      ...STYLE_PATHS.filter((p) => p !== 'config.style.rotation'),
+      'config.arrow',
+      ...TOOLTIP,
+    ]);
+    expect(access.getValue('config.arrow')).toBe(0);
+    expect([access.getValue('config.style.opacity'), access.getValue('config.style.lineWidth')]).toEqual([1, 2]);
+    expect(access.getValue('config.style.size')).toEqual({ fixed: 5, min: 2, max: 15 });
+  });
+
   it('clears the config when the layer type changes, as core', () => {
     const layer = markers('a', { config: { style: { size: { fixed: 9 } } }, tooltip: false });
     const { access, onChange } = layerItems({ layers: [layer] }, 0);

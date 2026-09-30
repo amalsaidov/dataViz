@@ -1,6 +1,7 @@
 // The vector basemap of the geo panel: the country shapes of core `public/maps/countries.geojson`, as quantized
 // TopoJSON (see `data/README.md`). Only the geo panel imports this file, from an async chunk. Thus the other panels
 // and the standalone viz bundle do not get the data, the decoder or `GeoComponent`.
+import { LinesChart } from 'echarts/charts';
 import { GeoComponent } from 'echarts/components';
 // `use` is aliased as in `lib/echarts/echarts.ts`, for the react-hooks lint rule.
 import { registerMap, use as registerEChartsModules } from 'echarts/core';
@@ -56,12 +57,13 @@ function decodeBasemap(): object | undefined {
 }
 
 /**
- * Register the `geo` coordinate system and the basemap with ECharts. A second call has no new effect.
+ * Register the `geo` coordinate system, the `lines` series of the route layer and the basemap with ECharts. A second
+ * call has no new effect.
  * https://echarts.apache.org/handbook/en/basics/import (import by parts)
  * https://echarts.apache.org/en/api.html#echarts.registerMap
  */
 export function registerBasemap(): void {
-  registerEChartsModules([GeoComponent]);
+  registerEChartsModules([GeoComponent, LinesChart]);
   const map = decodeBasemap();
   if (map && isFeatureCollection(map)) {
     registerMap(BASEMAP_NAME, map);

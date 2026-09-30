@@ -21,6 +21,7 @@ import {
   type GraphSeriesOption,
   type GridComponentOption,
   type HeatmapSeriesOption,
+  type LinesSeriesOption,
   type LegendComponentOption,
   type ParallelComponentOption,
   type ParallelSeriesOption,
@@ -213,10 +214,10 @@ export type EChartSunburstSeriesOption = ComposeOption<SunburstSeriesOption>;
 // Relations (graph) renders nodes plus links. The `graph` series ships its own
 // `View` coordinate system, so no coordinate component is composed in.
 export type EChartGraphSeriesOption = ComposeOption<GraphSeriesOption>;
-// Geo renders a `scatter` series of markers and a `heatmap` series of each heatmap layer on the basemap `geo`
-// component. Each heatmap has a hidden `visualMap` for its gradient.
+// Geo renders a `scatter` series of markers, a `heatmap` series of each heatmap layer and a `lines` series of each
+// route layer on the basemap `geo` component. Each heatmap has a hidden `visualMap` for its gradient.
 export type EChartGeoOption = ComposeOption<
-  GeoComponentOption | ScatterSeriesOption | HeatmapSeriesOption | VisualMapComponentOption
+  GeoComponentOption | ScatterSeriesOption | HeatmapSeriesOption | LinesSeriesOption | VisualMapComponentOption
 >;
 // Relations (sankey) lays the same node/link model out as weighted flow ribbons.
 export type EChartSankeySeriesOption = ComposeOption<SankeySeriesOption>;

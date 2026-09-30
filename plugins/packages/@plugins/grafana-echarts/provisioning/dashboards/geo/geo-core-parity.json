@@ -3884,6 +3884,159 @@
           "csvContent": "name,lat,lon,value\nBerlin,52.52,13.405,90\nPotsdam,52.39,13.06,40\nHamburg,53.55,9.99,60\nParis,48.8566,2.3522,70\nLyon,45.76,4.84,30\nMadrid,40.4168,-3.7038,50\nBarcelona,41.39,2.17,45\nRome,41.9028,12.4964,30\nMilan,45.46,9.19,55\nWarsaw,52.2297,21.0122,10\nKrakow,50.06,19.94,20\nStockholm,59.3293,18.0686,60\nAthens,37.9838,23.7275,80\nLisbon,38.7223,-9.1393,20\nVienna,48.21,16.37,65\nPrague,50.08,14.44,35"
         }
       ]
+    },
+    {
+      "type": "geomap",
+      "title": "Core Geomap: Route: color and width from a field, forward arrows",
+      "description": "A route layer through 8 cities. The `speed` field gives the color of each point (Green-Yellow-Red) and the width, from 2 to 8 px. Each segment has a forward arrow.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 198
+      },
+      "id": 37,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-GrYlRd"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        },
+        "basemap": {
+          "type": "osm-standard",
+          "name": "Basemap"
+        },
+        "layers": [
+          {
+            "type": "route",
+            "name": "Layer 1",
+            "config": {
+              "style": {
+                "color": {
+                  "field": "speed",
+                  "fixed": "dark-green"
+                },
+                "size": {
+                  "field": "speed",
+                  "fixed": 5,
+                  "min": 2,
+                  "max": 8
+                },
+                "opacity": 1,
+                "lineWidth": 2
+              },
+              "arrow": 1
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,speed\nLisbon,38.7223,-9.1393,10\nMadrid,40.4168,-3.7038,20\nParis,48.8566,2.3522,30\nBerlin,52.52,13.405,40\nWarsaw,52.2297,21.0122,50\nVienna,48.21,16.37,60\nRome,41.9028,12.4964,70\nAthens,37.9838,23.7275,80"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "ECharts Geo: Route: color and width from a field, forward arrows",
+      "description": "A route layer through 8 cities. The `speed` field gives the color of each point (Green-Yellow-Red) and the width, from 2 to 8 px. Each segment has a forward arrow.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 198
+      },
+      "id": 38,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-GrYlRd"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "layers": [
+          {
+            "type": "route",
+            "name": "Layer 1",
+            "config": {
+              "style": {
+                "color": {
+                  "field": "speed",
+                  "fixed": "dark-green"
+                },
+                "size": {
+                  "field": "speed",
+                  "fixed": 5,
+                  "min": 2,
+                  "max": 8
+                },
+                "opacity": 1,
+                "lineWidth": 2
+              },
+              "arrow": 1
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,speed\nLisbon,38.7223,-9.1393,10\nMadrid,40.4168,-3.7038,20\nParis,48.8566,2.3522,30\nBerlin,52.52,13.405,40\nWarsaw,52.2297,21.0122,50\nVienna,48.21,16.37,60\nRome,41.9028,12.4964,70\nAthens,37.9838,23.7275,80"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,

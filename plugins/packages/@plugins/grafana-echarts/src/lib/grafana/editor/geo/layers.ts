@@ -4,12 +4,14 @@ import { DEFAULT_MARKER_STYLE } from 'lib/grafana/geo/dimensions';
 import { COUNTRIES_GAZETTEER_PATH } from 'lib/grafana/geo/gazetteer';
 import { getLayerStyleConfig } from 'lib/grafana/geo/markers';
 import { DEFAULT_HEATMAP_CONFIG } from 'lib/grafana/geo/heatmap';
+import { DEFAULT_ROUTE_CONFIG } from 'lib/grafana/geo/route';
 import {
   getLayerEditorFrames,
   HEATMAP_LAYER_TYPE,
   MARKERS_LAYER_TYPE,
   replaceLayer,
   resolveLayers,
+  ROUTE_LAYER_TYPE,
 } from 'lib/grafana/geo/layers';
 import { type PanelOptions } from 'types';
 import { GeoFrameSelectionEditor } from './GeoFrameSelectionEditor';
@@ -53,10 +55,20 @@ const UNSET_LAYER_VALUES: OptionObject = {
 /** The unset values of a heatmap layer: the core `defaultOptions` of the heatmap layer. */
 const UNSET_HEATMAP_VALUES: OptionObject = { ...UNSET_LAYER_VALUES, config: DEFAULT_HEATMAP_CONFIG };
 
+/** The unset values of a route layer: the core `defaultOptions` of the route layer. */
+const UNSET_ROUTE_VALUES: OptionObject = { ...UNSET_LAYER_VALUES, config: DEFAULT_ROUTE_CONFIG };
+
+/** The unset values of each layer type that is not a markers layer. */
+const UNSET_VALUES_BY_TYPE: Record<string, OptionObject> = {
+  [HEATMAP_LAYER_TYPE]: UNSET_HEATMAP_VALUES,
+  [ROUTE_LAYER_TYPE]: UNSET_ROUTE_VALUES,
+};
+
 /** The layer types that the panel draws, as the core layer type select. */
 const LAYER_TYPES = [
   { value: MARKERS_LAYER_TYPE, label: 'Markers' },
   { value: HEATMAP_LAYER_TYPE, label: 'Heatmap' },
+  { value: ROUTE_LAYER_TYPE, label: 'Route' },
 ];
 
 const SYMBOL_FIXED_PATH = 'config.style.symbol.fixed';
@@ -69,7 +81,7 @@ const SYMBOL_FIXED_PATH = 'config.style.symbol.fixed';
 function layerValues(layers: MapLayerOptions[], index: number) {
   const layer = layers[index];
   const layerObject: OptionObject = { ...layer };
-  const unset = layer.type === HEATMAP_LAYER_TYPE ? UNSET_HEATMAP_VALUES : UNSET_LAYER_VALUES;
+  const unset = UNSET_VALUES_BY_TYPE[layer.type] ?? UNSET_LAYER_VALUES;
   return (parent: NestedValueAccess): NestedValueAccess => ({
     getValue: (path) => {
       const keys = path.split('.');
@@ -129,7 +141,27 @@ function addHeatmapFields(builder: PanelOptionsEditorBuilder<MapLayerOptions>): 
 }
 
 /**
- * The layers editor of core Geomap: the layer list, then the options of each markers and heatmap layer in a group
+ * The options of a route layer, as core `registerOptionsUI` of the route layer: the style with no rotation, and
+ * the arrow. https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/layers/data/routeLayer.tsx
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/geomap/#route-layer-beta
+ */
+function addRouteFields(builder: PanelOptionsEditorBuilder<MapLayerOptions>, layer: MapLayerOptions): void {
+  addStyleFields(builder, getLayerStyleConfig(layer), false);
+  builder.addRadio({
+    path: 'config.arrow',
+    name: 'Arrow',
+    settings: {
+      options: [
+        { label: 'None', value: 0 },
+        { label: 'Forward', value: 1 },
+        { label: 'Reverse', value: -1 },
+      ],
+    },
+  });
+}
+
+/**
+ * The layers editor of core Geomap: the layer list, then the options of each markers, heatmap and route layer in a group
  * of the layer name. Core shows the options of the selected layer only. This panel has no instance state to keep the
  * selection, so it shows each layer.
  * Core: https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/module.tsx
@@ -154,7 +186,7 @@ export function addGeoLayerOptions(
   const layers = resolveLayers(options?.layers);
   layers.forEach((layer, index) => {
     const isMarkers = layer.type === MARKERS_LAYER_TYPE;
-    if (!isMarkers && layer.type !== HEATMAP_LAYER_TYPE) {
+    if (!LAYER_TYPES.some((t) => t.value === layer.type)) {
       return;
     }
     builder.addNestedOptions<MapLayerOptions>({
@@ -184,6 +216,8 @@ export function addGeoLayerOptions(
             description: 'Show map legend',
             defaultValue: true,
           });
+        } else if (layer.type === ROUTE_LAYER_TYPE) {
+          addRouteFields(layerBuilder, layer);
         } else {
           addHeatmapFields(layerBuilder);
         }

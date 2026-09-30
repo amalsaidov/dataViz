@@ -26,7 +26,8 @@ const alignOptions = <T extends string>(values: T[]) =>
   values.map((value) => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) }));
 
 /**
- * The style options of a markers layer (`config.style`), as core `StyleEditor` with `displayRotation`. Core shows
+ * The style options of a markers or route layer (`config.style`), as core `StyleEditor`. The markers layer sets
+ * `displayRotation`, the route layer does not. Core shows
  * them in one editor. Here each option is an item, so the options pane search finds it. The size, color, rotation
  * and text items are dimension editors, with a fixed mode and a field mode.
  * Core: https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/editor/StyleEditor.tsx
@@ -36,7 +37,8 @@ const alignOptions = <T extends string>(values: T[]) =>
  */
 export function addStyleFields(
   builder: PanelOptionsEditorBuilder<MapLayerOptions>,
-  style: MarkerStyleConfig | undefined
+  style: MarkerStyleConfig | undefined,
+  displayRotation = true
 ): void {
   const path = (key: string) => `${STYLE_PATH}.${key}`;
   builder
@@ -72,20 +74,22 @@ export function addStyleFields(
       path: path('opacity'),
       name: 'Fill opacity',
       settings: { min: 0, max: 1, step: 0.1 },
-    })
-    .addCustomEditor<NumberRange, unknown>({
+    });
+  if (displayRotation) {
+    builder.addCustomEditor<NumberRange, unknown>({
       id: path('rotation'),
       path: path('rotation'),
       name: 'Rotation angle',
       editor: GeoScalarDimensionEditor,
       settings: { min: DEFAULT_MARKER_STYLE.rotation.min, max: DEFAULT_MARKER_STYLE.rotation.max },
-    })
-    .addCustomEditor({
-      id: path('text'),
-      path: path('text'),
-      name: 'Text label',
-      editor: GeoTextDimensionEditor,
     });
+  }
+  builder.addCustomEditor({
+    id: path('text'),
+    path: path('text'),
+    name: 'Text label',
+    editor: GeoTextDimensionEditor,
+  });
 
   // Core shows the text options only for a style with a text.
   if (!styleUsesText(style?.text)) {

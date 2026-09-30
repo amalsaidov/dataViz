@@ -1,6 +1,7 @@
 import {
   type GeoComponentOption,
   type HeatmapSeriesOption,
+  type LinesSeriesOption,
   type ScatterSeriesOption,
   type VisualMapComponentOption,
 } from 'echarts';
@@ -9,16 +10,18 @@ import { type LonLat } from 'lib/grafana/geo/gazetteer';
 import { type GeoHeatmap } from 'lib/grafana/geo/heatmap';
 import { type SymbolAlign } from 'lib/grafana/geo/dimensions';
 import { type GeoMarker, type GeoMarkers } from 'lib/grafana/geo/markers';
+import { type GeoRoute } from 'lib/grafana/geo/route';
 import { type BasemapStyle } from 'lib/grafana/geo/style';
 import { type CoreMapView } from 'lib/grafana/geo/view';
 import { BASEMAP_NAME } from './basemap';
 import { buildHeatmapLayer } from './heatmap';
+import { buildRouteSeries } from './route';
 import { WORLD_BOUNDING_COORDS, webMercator } from './projection';
 import { getMarkerSymbol } from './symbols';
 import { geoMarkerTooltip, type GeoTooltipContext } from './tooltip';
 import { toGeoView, toGeoZoom, type ViewSize } from './view';
 
-type EChartGeoSeries = ScatterSeriesOption | HeatmapSeriesOption;
+type EChartGeoSeries = ScatterSeriesOption | HeatmapSeriesOption | LinesSeriesOption;
 
 /** The input of `buildGeoOption`. The colors are CSS colors, from `lib/grafana/geo`. */
 export interface GeoMarkersInput {
@@ -26,6 +29,8 @@ export interface GeoMarkersInput {
   layers: GeoMarkers[];
   /** The points of each heatmap layer. */
   heatmaps: GeoHeatmap[];
+  /** The line of each route layer. */
+  routes: GeoRoute[];
   view: CoreMapView;
   size: ViewSize;
   /** The core `controls.mouseWheelZoom`: the mouse wheel zooms the map. */
@@ -37,17 +42,18 @@ export interface GeoMarkersInput {
 
 /**
  * The `geo` component: the basemap in Web Mercator at the core map view. The basemap areas do not react to the
- * mouse. "Fit to data" fits the markers and the heatmap points. A drag pans the map, as core. The mouse wheel zooms it only with
+ * mouse. "Fit to data" fits the markers, the heatmap points and the route points. A drag pans the map, as core. The mouse wheel zooms it only with
  * `mouseWheelZoom`. The view `minZoom` and `maxZoom` limit the zoom.
  * https://echarts.apache.org/en/option.html#geo
  * https://echarts.apache.org/en/option.html#geo.roam
  * https://echarts.apache.org/en/option.html#geo.scaleLimit
  */
 export function buildGeoComponent(input: GeoMarkersInput): GeoComponentOption {
-  const { layers, heatmaps, view, size, basemapStyle, mouseWheelZoom } = input;
+  const { layers, heatmaps, routes, view, size, basemapStyle, mouseWheelZoom } = input;
   const positions: LonLat[] = [
     ...layers.flatMap((l) => l.markers.map((m) => m.lonLat)),
     ...heatmaps.flatMap((h) => h.points.map((p) => p.lonLat)),
+    ...routes.flatMap((r) => r.points.map((p) => p.lonLat)),
   ];
   return {
     map: BASEMAP_NAME,
@@ -176,8 +182,8 @@ function buildMarkerSeries(layer: GeoMarkers, textZ: number, tooltip: GeoTooltip
 const layerZ = (layerIndex: number) => TEXT_Z + layerIndex * Z_PER_LAYER;
 
 /**
- * The basemap, the markers of each core markers layer and the points of each heatmap layer. A later layer draws
- * over the layers before it.
+ * The basemap, the markers of each core markers layer, the points of each heatmap layer and the line of each route
+ * layer. A later layer draws over the layers before it.
  */
 export function buildGeoOption(input: GeoMarkersInput): EChartGeoOption {
   const series: EChartGeoSeries[] = input.layers.flatMap((layer) =>
@@ -188,6 +194,9 @@ export function buildGeoOption(input: GeoMarkersInput): EChartGeoOption {
     const layer = buildHeatmapLayer(heatmap, series.length, layerZ(heatmap.layerIndex));
     series.push(layer.series);
     visualMap.push(layer.visualMap);
+  }
+  for (const route of input.routes) {
+    series.push(buildRouteSeries(route, layerZ(route.layerIndex)));
   }
   return { geo: buildGeoComponent(input), series, ...(visualMap.length ? { visualMap } : {}) };
 }
