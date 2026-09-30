@@ -115,6 +115,14 @@ byValue + bySeries).
   13.1.0). Tests:
   [canvas baseline](../../../lib/components/annotation-markers.canvas.test.tsx),
   [integration](../../../lib/components/annotation-markers.integration.test.tsx).
+- **Pan** the time range with a drag of the x-axis labels, as core `XAxisInteractionAreaPlugin`
+  (viz contract 26). The x axis moves during the drag. On release, a drag of 5 px or more
+  calls `onChangeTimeRange` with the range moved by the drag. The brush zoom stays in the
+  plot area. Only on a time x-axis: candlestick and boxplot do not pan (#601). Dashboard:
+  [cartesian-pan.json](../../../../provisioning/dashboards/cartesian/cartesian-pan.json)
+  (ECharts and core pair). Tests: [integration](../../../lib/components/time-axis-pan.integration.test.tsx),
+  [core formula](../../../lib/echarts/timePan.test.ts),
+  [standalone](../../../standalone/renderPan.integration.test.tsx).
 - **Add an annotation** from the chart, as core. The pinned tooltip has an "Add annotation"
   button, which adds a point at the cursor time. Ctrl or cmd + click adds a point, and
   ctrl or cmd + drag adds a region. A ctrl or cmd click does not pin the tooltip, and a
