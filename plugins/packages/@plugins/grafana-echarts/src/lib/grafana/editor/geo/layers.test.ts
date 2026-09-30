@@ -54,17 +54,39 @@ const markers = (name: string, extra: Partial<MapLayerOptions> = {}): MapLayerOp
 });
 
 describe('geo layer options', () => {
-  it('adds the layer list, and one group of options for each markers layer', () => {
-    const items = build({ layers: [markers('a'), { type: 'heatmap', name: 'h' }, markers('b')] });
+  it('adds the layer list, and one group of options for each markers and heatmap layer', () => {
+    const items = build({ layers: [markers('a'), { type: 'heatmap', name: 'h' }, { type: 'xyz', name: 'x' }] });
     expect(items[0]).toMatchObject({ id: 'layers', path: 'layers', category: ['Map layers'] });
-    expect(items.filter(isNestedPanelOptions).map((i) => i.category)).toEqual([['Layer: a'], ['Layer: b']]);
+    expect(items.filter(isNestedPanelOptions).map((i) => i.category)).toEqual([['Layer: a'], ['Layer: h']]);
+  });
+
+  it('gives a heatmap layer the core heatmap options and defaults', () => {
+    const { access, paths } = layerItems({ layers: [{ type: 'heatmap', name: 'h' }] }, 0);
+    expect(paths).toEqual([
+      'type',
+      'filterData',
+      'location.mode',
+      'config.weight',
+      'config.radius',
+      'config.blur',
+      ...TOOLTIP,
+    ]);
+    expect(access.getValue('config.weight')).toEqual({ fixed: 1, min: 0, max: 1 });
+    expect([access.getValue('config.radius'), access.getValue('config.blur')]).toEqual([5, 15]);
+  });
+
+  it('clears the config when the layer type changes, as core', () => {
+    const layer = markers('a', { config: { style: { size: { fixed: 9 } } }, tooltip: false });
+    const { access, onChange } = layerItems({ layers: [layer] }, 0);
+    access.onChange('type', 'heatmap');
+    expect(onChange).toHaveBeenCalledWith('layers', [{ ...layer, type: 'heatmap', config: {} }]);
   });
 
   it('gives the default layer options for an unset layers option', () => {
     const { nested, access, paths } = layerItems({}, 0);
     expect(nested.category).toEqual(['Layer: Layer 1']);
     expect(access.getValue('location.mode')).toBe('auto');
-    expect(paths).toEqual(['filterData', 'location.mode', ...STYLE_PATHS, 'config.showLegend', ...TOOLTIP]);
+    expect(paths).toEqual(['type', 'filterData', 'location.mode', ...STYLE_PATHS, 'config.showLegend', ...TOOLTIP]);
   });
 
   it('writes a change of the default layer as the full layer list', () => {
@@ -97,6 +119,7 @@ describe('geo layer options', () => {
     const paths = (location: MapLayerOptions['location']) =>
       layerItems({ layers: [markers('a', { location })] }, 0).paths;
     expect(paths({ mode: FrameGeometrySourceMode.Coords })).toEqual([
+      'type',
       'filterData',
       'location.mode',
       'location.latitude',
@@ -106,6 +129,7 @@ describe('geo layer options', () => {
       ...TOOLTIP,
     ]);
     expect(paths({ mode: FrameGeometrySourceMode.Geohash })).toEqual([
+      'type',
       'filterData',
       'location.mode',
       'location.geohash',
@@ -114,6 +138,7 @@ describe('geo layer options', () => {
       ...TOOLTIP,
     ]);
     expect(paths({ mode: FrameGeometrySourceMode.Lookup })).toEqual([
+      'type',
       'filterData',
       'location.mode',
       'location.lookup',

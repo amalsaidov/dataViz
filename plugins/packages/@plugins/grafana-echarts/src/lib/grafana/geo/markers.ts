@@ -31,6 +31,8 @@ export interface GeoMarkers {
   tooltip: boolean;
   /** The layer name. Core names a layer with no name `Layer 1` (`getNextLayerName`). */
   name: string;
+  /** The index of the layer in the core layer list. A later layer draws on top. */
+  layerIndex: number;
 }
 
 /** The core markers layer config (`MarkersConfig`). */
@@ -43,7 +45,7 @@ export const getLayerStyleConfig = (layer: Partial<MapLayerOptions<MarkersConfig
   layer.config?.style;
 
 /** Change a longitude to the range -180 to 180. Core repeats the world, so a longitude of 400 shows at 40. */
-const wrapLongitude = (lon: number): number =>
+export const wrapLongitude = (lon: number): number =>
   lon >= -180 && lon <= 180 ? lon : ((((lon + 180) % 360) + 360) % 360) - 180;
 
 /**
@@ -56,6 +58,7 @@ const wrapLongitude = (lon: number): number =>
 function getLayerMarkers(
   frames: DataFrame[],
   layer: Partial<MapLayerOptions<MarkersConfig>>,
+  layerIndex: number,
   theme: GrafanaTheme2,
   queryRefIds?: string[]
 ): GeoMarkers {
@@ -65,7 +68,7 @@ function getLayerMarkers(
   const name = layer.name || 'Layer 1';
   const frame = getLayerFrames(frames, layer, queryRefIds)[0];
   if (!frame) {
-    return { markers: [], style, tooltip, name };
+    return { markers: [], style, tooltip, name, layerIndex };
   }
   const { positions = [] } = getFramePositions(frame, getLocationMatchers(layer.location));
   const values = getMarkerValues(frame, styleConfig, theme);
@@ -82,13 +85,13 @@ function getLayerMarkers(
       markers.push(marker);
     }
   });
-  return { markers, style, frame, tooltip, name };
+  return { markers, style, frame, tooltip, name, layerIndex };
 }
 
 /**
  * The markers of each `markers` layer, in the layer order. Core draws the last layer on top.
  * An unset `layers` option gives one layer of the Auto location and the default style (`defaultMarkersConfig`).
- * An empty list, or a list with no `markers` layer, gives no markers. The other layer types are not drawn yet.
+ * An empty list, or a list with no `markers` layer, gives no markers. `heatmap.ts` reads the heatmap layers.
  */
 export function getMarkerLayers(
   frames: DataFrame[],
@@ -96,7 +99,7 @@ export function getMarkerLayers(
   theme: GrafanaTheme2,
   queryRefIds?: string[]
 ): GeoMarkers[] {
-  return resolveLayers(layers)
-    .filter((l) => l.type === MARKERS_LAYER_TYPE)
-    .map((l) => getLayerMarkers(frames, l, theme, queryRefIds));
+  return resolveLayers(layers).flatMap((l, index) =>
+    l.type === MARKERS_LAYER_TYPE ? [getLayerMarkers(frames, l, index, theme, queryRefIds)] : []
+  );
 }

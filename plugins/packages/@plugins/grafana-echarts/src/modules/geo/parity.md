@@ -7,7 +7,7 @@ The frame shapes are in [data-plane/geo.md](../../../data-plane/geo.md).
 `provisioning/dashboards/geo/geo-core-parity.json` shows core Geomap and this panel side by side.
 
 The panel reads the core option JSON. The editor has the map view, the map controls, the layer list, and the data,
-location, style and tooltip options of each markers layer. The basemap has no editor yet (#502).
+location, style and tooltip options of each markers layer, and the options of each heatmap layer. The basemap has no editor yet (#502).
 
 ## Panel options
 
@@ -43,8 +43,22 @@ location, style and tooltip options of each markers layer. The basemap has no ed
 | Tooltip data links                      | The pinned tooltip shows the data links of the fields, deduplicated. Core also shows the links on hover.                                                                                                                                                                                                 | Different     |
 | Tooltip of markers at the same position | ECharts shows the top marker only. Core lists each marker in a collapsed row (#512).                                                                                                                                                                                                                     | Different     |
 | More than one markers layer             | Each `markers` layer draws in the list order, and the last layer is on top, as core ([layers.ts](../../lib/grafana/geo/layers.ts)).                                                                                                                                                                      | Supported     |
-| Other layer types                       | none: a layer that is not `markers` is not drawn (#333 to #337)                                                                                                                                                                                                                                          | Not supported |
+| Other layer types                       | The `heatmap` layer is drawn (see below). The other types are not drawn (#334 to #337)                                                                                                                                                                                                                   | Not supported |
 | Filter data by query (`filterData`)     | The layer uses the frames of that query. A query that returns no frame gives no markers. A query that is not in the panel is ignored, as core.                                                                                                                                                           | Supported     |
+
+## Heatmap layer
+
+Core: [heatMap.tsx](https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/layers/data/heatMap.tsx).
+The panel draws an ECharts `heatmap` series on the `geo` coordinate system ([heatmap.ts](../../lib/echarts/geo/heatmap.ts)).
+
+| Core option                     | ECharts equivalent                                                                                                                               | Status        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| Location                        | The location modes of the markers layer. Only the first frame of the layer gives points, as core.                                                | Supported     |
+| Weight values (`config.weight`) | A fixed weight, or linear from `min` to `max` over the field range, clamped to 0 to 1 as OpenLayers. The default is the fixed weight 1.          | Supported     |
+| Radius, Blur                    | `pointSize` and `blurSize`. Each point covers `(radius + blur) * 2` px, as OpenLayers. The defaults are 5 and 15, as core.                       | Supported     |
+| Gradient                        | The continuous color scheme of the weight field, or of the first number field. Else the core blue to red gradient. A hidden `visualMap` sets it. | Supported     |
+| Blend of the points             | ECharts adds the alphas of the points on a 2D canvas, then picks the gradient color. OpenLayers does the same in WebGL, so the edges can differ. | Different     |
+| Display tooltip (`tooltip`)     | none: the heatmap does not react to the mouse (#646)                                                                                             | Not supported |
 
 ## Editor
 
@@ -53,7 +67,7 @@ location, style and tooltip options of each markers layer. The basemap has no ed
 | Map layers: add, delete, rename           | The same. A new layer is a markers layer named `Layer <n>`. A name must be unique and not empty.                                                                                                                           | Supported     |
 | Map layers: order                         | Move up and move down buttons. Core drags the layers. The top row draws on top, as core.                                                                                                                                   | Different     |
 | Map layers: select a layer                | none: each markers layer has its group of options. Core shows the options of the selected layer only.                                                                                                                      | Different     |
-| Layer type                                | none: an added layer is a markers layer (#333 to #337)                                                                                                                                                                     | Not supported |
+| Layer type                                | A select of Markers and Heatmap. A new type clears the layer config, as core. The other types are #334 to #337.                                                                                                            | Different     |
 | Layer: Data (`filterData`)                | A select of the refIds of the panel frames                                                                                                                                                                                 | Supported     |
 | Layer: Location mode and fields           | Auto, Coords, Geohash and Lookup, with the field pickers and the gazetteer of core                                                                                                                                         | Supported     |
 | Layer: style, fixed values                | Size, symbol, symbol align, color, fill opacity, rotation, text label and the text options, as core `StyleEditor`. Each option is an item of the group. The symbol is a select of the 7 marker files that the panel draws. | Supported     |
@@ -65,6 +79,7 @@ location, style and tooltip options of each markers layer. The basemap has no ed
 | Map view: lat, lon, padding, zoom         | Lat and lon for Coordinates, the padding for Fit to data, then the zoom. Core names the zoom Max Zoom for Fit to data.                                                                                                     | Supported     |
 | Map view: min and max zoom                | Two number inputs. Core has no input for them.                                                                                                                                                                             | Different     |
 | Map view: Use current map settings        | Saves the live center and zoom of the panel as a Coordinates view, as core                                                                                                                                                 | Supported     |
+| Layer: heatmap options                    | Weight values, Radius and Blur, as core. The weight editor has no min and max for a field, as core `hideRange`.                                                                                                            | Supported     |
 | Basemap layer                             | none (#502)                                                                                                                                                                                                                | Not supported |
 
 ## Same behavior as core

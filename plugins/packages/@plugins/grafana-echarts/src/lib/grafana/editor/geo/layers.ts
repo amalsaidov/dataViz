@@ -3,10 +3,18 @@ import { FrameGeometrySourceMode, type MapLayerOptions } from '@grafana/schema';
 import { DEFAULT_MARKER_STYLE } from 'lib/grafana/geo/dimensions';
 import { COUNTRIES_GAZETTEER_PATH } from 'lib/grafana/geo/gazetteer';
 import { getLayerStyleConfig } from 'lib/grafana/geo/markers';
-import { getLayerEditorFrames, MARKERS_LAYER_TYPE, replaceLayer, resolveLayers } from 'lib/grafana/geo/layers';
+import { DEFAULT_HEATMAP_CONFIG } from 'lib/grafana/geo/heatmap';
+import {
+  getLayerEditorFrames,
+  HEATMAP_LAYER_TYPE,
+  MARKERS_LAYER_TYPE,
+  replaceLayer,
+  resolveLayers,
+} from 'lib/grafana/geo/layers';
 import { type PanelOptions } from 'types';
 import { GeoFrameSelectionEditor } from './GeoFrameSelectionEditor';
 import { GeoLayersEditor } from './GeoLayersEditor';
+import { GeoScaleDimensionEditor, type ScaleEditorSettings } from './GeoScaleDimensionEditor';
 import { addLocationFields } from './location';
 import { addStyleFields } from './style';
 
@@ -42,6 +50,15 @@ const UNSET_LAYER_VALUES: OptionObject = {
   config: { style: DEFAULT_MARKER_STYLE, showLegend: true },
 };
 
+/** The unset values of a heatmap layer: the core `defaultOptions` of the heatmap layer. */
+const UNSET_HEATMAP_VALUES: OptionObject = { ...UNSET_LAYER_VALUES, config: DEFAULT_HEATMAP_CONFIG };
+
+/** The layer types that the panel draws, as the core layer type select. */
+const LAYER_TYPES = [
+  { value: MARKERS_LAYER_TYPE, label: 'Markers' },
+  { value: HEATMAP_LAYER_TYPE, label: 'Heatmap' },
+];
+
 const SYMBOL_FIXED_PATH = 'config.style.symbol.fixed';
 
 /**
@@ -52,6 +69,7 @@ const SYMBOL_FIXED_PATH = 'config.style.symbol.fixed';
 function layerValues(layers: MapLayerOptions[], index: number) {
   const layer = layers[index];
   const layerObject: OptionObject = { ...layer };
+  const unset = layer.type === HEATMAP_LAYER_TYPE ? UNSET_HEATMAP_VALUES : UNSET_LAYER_VALUES;
   return (parent: NestedValueAccess): NestedValueAccess => ({
     getValue: (path) => {
       const keys = path.split('.');
@@ -64,10 +82,11 @@ function layerValues(layers: MapLayerOptions[], index: number) {
       ) {
         return value;
       }
-      return getOption(UNSET_LAYER_VALUES, keys);
+      return getOption(unset, keys);
     },
     onChange: (path, value) => {
-      const next = setOption(layerObject, path.split('.'), value);
+      // A new type gets the default config of that type, as core `layerEditor`.
+      const next = setOption(path === 'type' ? { ...layerObject, config: {} } : layerObject, path.split('.'), value);
       if (isMapLayer(next)) {
         parent.onChange('layers', replaceLayer(layers, index, next));
       }
@@ -81,8 +100,37 @@ function layerValues(layers: MapLayerOptions[], index: number) {
 }
 
 /**
- * The layers editor of core Geomap: the layer list, then the options of each markers layer in a group of the
- * layer name. Core shows the options of the selected layer only. This panel has no instance state to keep the
+ * The options of a heatmap layer, as core `registerOptionsUI` of the heatmap layer: the weight, the radius and the
+ * blur. https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/layers/data/heatMap.tsx
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/geomap/#heatmap-layer
+ */
+function addHeatmapFields(builder: PanelOptionsEditorBuilder<MapLayerOptions>): void {
+  builder
+    .addCustomEditor<ScaleEditorSettings, unknown>({
+      id: 'config.weight',
+      path: 'config.weight',
+      name: 'Weight values',
+      description: 'Scale the distribution for each row',
+      editor: GeoScaleDimensionEditor,
+      settings: { min: 0, max: 1, hideRange: true, label: 'Weight' },
+    })
+    .addSliderInput({
+      path: 'config.radius',
+      name: 'Radius',
+      description: 'Configures the size of clusters',
+      settings: { min: 1, max: 50, step: 1 },
+    })
+    .addSliderInput({
+      path: 'config.blur',
+      name: 'Blur',
+      description: 'Configures the amount of blur of clusters',
+      settings: { min: 1, max: 50, step: 1 },
+    });
+}
+
+/**
+ * The layers editor of core Geomap: the layer list, then the options of each markers and heatmap layer in a group
+ * of the layer name. Core shows the options of the selected layer only. This panel has no instance state to keep the
  * selection, so it shows each layer.
  * Core: https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/module.tsx
  * and https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/editor/layerEditor.tsx
@@ -104,7 +152,8 @@ export function addGeoLayerOptions(
 
   const layers = resolveLayers(options?.layers);
   layers.forEach((layer, index) => {
-    if (layer.type !== MARKERS_LAYER_TYPE) {
+    const isMarkers = layer.type === MARKERS_LAYER_TYPE;
+    if (!isMarkers && layer.type !== HEATMAP_LAYER_TYPE) {
       return;
     }
     builder.addNestedOptions<MapLayerOptions>({
@@ -112,6 +161,11 @@ export function addGeoLayerOptions(
       category: [`Layer: ${layer.name}`],
       values: layerValues(layers, index),
       build: (layerBuilder) => {
+        layerBuilder.addSelect({
+          path: 'type',
+          name: 'Layer type',
+          settings: { options: LAYER_TYPES },
+        });
         layerBuilder.addCustomEditor({
           id: 'filterData',
           path: 'filterData',
@@ -120,14 +174,18 @@ export function addGeoLayerOptions(
           editor: GeoFrameSelectionEditor,
         });
         addLocationFields(layerBuilder, layer.location);
-        addStyleFields(layerBuilder, getLayerStyleConfig(layer));
-        // Core adds the legend switch after the style options.
-        layerBuilder.addBooleanSwitch({
-          path: 'config.showLegend',
-          name: 'Show legend',
-          description: 'Show map legend',
-          defaultValue: true,
-        });
+        if (isMarkers) {
+          addStyleFields(layerBuilder, getLayerStyleConfig(layer));
+          // Core adds the legend switch after the style options.
+          layerBuilder.addBooleanSwitch({
+            path: 'config.showLegend',
+            name: 'Show legend',
+            description: 'Show map legend',
+            defaultValue: true,
+          });
+        } else {
+          addHeatmapFields(layerBuilder);
+        }
         // Core adds this switch after the options of each layer type (`layerEditor.tsx`).
         layerBuilder.addBooleanSwitch({
           path: 'tooltip',

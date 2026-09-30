@@ -1,9 +1,10 @@
 import { createDataFrame, createTheme, type DataFrame, dateTime, FieldType } from '@grafana/data';
 import { LegendDisplayMode, SortOrder, TooltipDisplayMode } from '@grafana/schema';
-import { ScatterChart } from 'echarts/charts';
-import { GeoComponent } from 'echarts/components';
-import { type EChartsType, init, registerMap, use as registerEChartsModules } from 'echarts/core';
+import { HeatmapChart, ScatterChart } from 'echarts/charts';
+import { GeoComponent, VisualMapContinuousComponent } from 'echarts/components';
+import { type EChartsType, init, registerMap, setPlatformAPI, use as registerEChartsModules } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
+import { type CanvasRenderingContext2DEvent } from 'jest-canvas-mock';
 import { type ChartContext } from 'lib/echarts/charts/types';
 import { BASEMAP_NAME } from 'lib/echarts/geo/basemap';
 import { type EChartsFrame } from 'lib/grafana/types';
@@ -48,7 +49,8 @@ type MapSource = Parameters<typeof registerMap>[1];
  * test map keeps it small. `basemap.integration.test.ts` tests the real basemap.
  */
 export function registerTestBasemap(): void {
-  registerEChartsModules([CanvasRenderer, GeoComponent, ScatterChart]);
+  // The heatmap layer needs the modules that `lib/echarts/echarts.ts` registers for the panel.
+  registerEChartsModules([CanvasRenderer, GeoComponent, ScatterChart, HeatmapChart, VisualMapContinuousComponent]);
   const square = [
     [0, 0],
     [10, 0],
@@ -87,4 +89,71 @@ export function renderGeo(
       dom.remove();
     },
   };
+}
+
+/**
+ * Keep each canvas that zrender makes after this call. The ECharts heatmap draws its points on such canvases, then
+ * copies the colored canvas to the panel canvas. Call `restore` of the result after the test.
+ * https://echarts.apache.org/en/api.html#echarts.setPlatformAPI
+ */
+export function captureZrenderCanvases(): { canvases: HTMLCanvasElement[]; restore: () => void } {
+  const canvases: HTMLCanvasElement[] = [];
+  // The zrender default in a browser is a new canvas element.
+  const create = () => document.createElement('canvas');
+  setPlatformAPI({
+    createCanvas: () => {
+      const canvas = create();
+      canvases.push(canvas);
+      return canvas;
+    },
+  });
+  return { canvases, restore: () => setPlatformAPI({ createCanvas: create }) };
+}
+
+/** The draw calls of a canvas of jest-canvas-mock. */
+export const readCanvasEvents = (canvas: HTMLCanvasElement): CanvasRenderingContext2DEvent[] =>
+  (canvas.getContext('2d') as unknown as { __getEvents: () => CanvasRenderingContext2DEvent[] }).__getEvents();
+
+/**
+ * The panel draw calls with the heatmap image replaced by its point draws, so that the canvas viewer can paint
+ * them. The viewer does not replay `drawImage`. Each point draw becomes the brush draws at the point offset, with
+ * the alpha of the weight, in white. The blur and the gradient colors are not in the result: jest-canvas-mock does not keep pixels.
+ */
+export function inlineHeatmapDraws(
+  panel: CanvasRenderingContext2DEvent[],
+  heat: CanvasRenderingContext2DEvent[],
+  brush: CanvasRenderingContext2DEvent[]
+): CanvasRenderingContext2DEvent[] {
+  // The brush draws a black circle to the left of its canvas, and its blurred shadow in the center. The viewer does
+  // not replay shadows, so the circle moves to the shadow position, in white on the dark basemap.
+  const offset = Number(brush.find((e) => e.type === 'shadowOffsetX')?.props.value ?? 0);
+  const arc = brush.find((e) => e.type === 'arc');
+  const disc: CanvasRenderingContext2DEvent[] = arc
+    ? [
+        { ...arc, type: 'beginPath', props: {} },
+        // Clockwise: the snapshot rounds the end angle below 2 pi, and an anticlockwise arc then draws nothing.
+        { ...arc, props: { ...arc.props, x: Number(arc.props.x) + offset, anticlockwise: false } },
+      ]
+    : [];
+  const brushDraws: CanvasRenderingContext2DEvent[] = arc
+    ? [
+        { ...arc, type: 'fillStyle', props: { value: '#ffffff' } },
+        ...disc,
+        { ...arc, type: 'fill', props: { path: disc, fillRule: 'nonzero' } },
+      ]
+    : [];
+  const points = heat.flatMap((e): CanvasRenderingContext2DEvent[] => {
+    if (e.type === 'globalAlpha') {
+      return [e];
+    }
+    if (e.type !== 'drawImage') {
+      return [];
+    }
+    const { dx, dy } = e.props as { dx: number; dy: number };
+    const move = { ...e, type: 'setTransform', props: { a: 1, b: 0, c: 0, d: 1, e: dx, f: dy } };
+    return [move, ...brushDraws];
+  });
+  const save = { ...panel[0], type: 'save', props: {} };
+  const restore = { ...panel[0], type: 'restore', props: {} };
+  return panel.flatMap((e) => (e.type === 'drawImage' ? [save, ...points, restore] : [e]));
 }

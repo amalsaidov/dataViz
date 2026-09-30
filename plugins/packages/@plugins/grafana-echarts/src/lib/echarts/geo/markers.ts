@@ -1,20 +1,31 @@
-import { type GeoComponentOption, type ScatterSeriesOption } from 'echarts';
+import {
+  type GeoComponentOption,
+  type HeatmapSeriesOption,
+  type ScatterSeriesOption,
+  type VisualMapComponentOption,
+} from 'echarts';
 import { type EChartGeoOption } from 'lib/echarts/charts/types';
 import { type LonLat } from 'lib/grafana/geo/gazetteer';
+import { type GeoHeatmap } from 'lib/grafana/geo/heatmap';
 import { type SymbolAlign } from 'lib/grafana/geo/dimensions';
 import { type GeoMarker, type GeoMarkers } from 'lib/grafana/geo/markers';
 import { type BasemapStyle } from 'lib/grafana/geo/style';
 import { type CoreMapView } from 'lib/grafana/geo/view';
 import { BASEMAP_NAME } from './basemap';
+import { buildHeatmapLayer } from './heatmap';
 import { WORLD_BOUNDING_COORDS, webMercator } from './projection';
 import { getMarkerSymbol } from './symbols';
 import { geoMarkerTooltip, type GeoTooltipContext } from './tooltip';
 import { toGeoView, toGeoZoom, type ViewSize } from './view';
 
+type EChartGeoSeries = ScatterSeriesOption | HeatmapSeriesOption;
+
 /** The input of `buildGeoOption`. The colors are CSS colors, from `lib/grafana/geo`. */
 export interface GeoMarkersInput {
   /** The markers of each markers layer, in the core layer order. */
   layers: GeoMarkers[];
+  /** The points of each heatmap layer. */
+  heatmaps: GeoHeatmap[];
   view: CoreMapView;
   size: ViewSize;
   /** The core `controls.mouseWheelZoom`: the mouse wheel zooms the map. */
@@ -26,15 +37,18 @@ export interface GeoMarkersInput {
 
 /**
  * The `geo` component: the basemap in Web Mercator at the core map view. The basemap areas do not react to the
- * mouse. "Fit to data" fits the markers. A drag pans the map, as core. The mouse wheel zooms it only with
+ * mouse. "Fit to data" fits the markers and the heatmap points. A drag pans the map, as core. The mouse wheel zooms it only with
  * `mouseWheelZoom`. The view `minZoom` and `maxZoom` limit the zoom.
  * https://echarts.apache.org/en/option.html#geo
  * https://echarts.apache.org/en/option.html#geo.roam
  * https://echarts.apache.org/en/option.html#geo.scaleLimit
  */
 export function buildGeoComponent(input: GeoMarkersInput): GeoComponentOption {
-  const { layers, view, size, basemapStyle, mouseWheelZoom } = input;
-  const positions: LonLat[] = layers.flatMap((l) => l.markers.map((m) => m.lonLat));
+  const { layers, heatmaps, view, size, basemapStyle, mouseWheelZoom } = input;
+  const positions: LonLat[] = [
+    ...layers.flatMap((l) => l.markers.map((m) => m.lonLat)),
+    ...heatmaps.flatMap((h) => h.points.map((p) => p.lonLat)),
+  ];
   return {
     map: BASEMAP_NAME,
     projection: webMercator,
@@ -158,8 +172,22 @@ function buildMarkerSeries(layer: GeoMarkers, textZ: number, tooltip: GeoTooltip
   return series;
 }
 
-/** The basemap and the markers of each core markers layer. A later layer draws over the layers before it. */
+/** The `z` of the lowest series of the layer at `layerIndex` in the core layer list. */
+const layerZ = (layerIndex: number) => TEXT_Z + layerIndex * Z_PER_LAYER;
+
+/**
+ * The basemap, the markers of each core markers layer and the points of each heatmap layer. A later layer draws
+ * over the layers before it.
+ */
 export function buildGeoOption(input: GeoMarkersInput): EChartGeoOption {
-  const series = input.layers.flatMap((layer, i) => buildMarkerSeries(layer, TEXT_Z + i * Z_PER_LAYER, input.tooltip));
-  return { geo: buildGeoComponent(input), series };
+  const series: EChartGeoSeries[] = input.layers.flatMap((layer) =>
+    buildMarkerSeries(layer, layerZ(layer.layerIndex), input.tooltip)
+  );
+  const visualMap: VisualMapComponentOption[] = [];
+  for (const heatmap of input.heatmaps) {
+    const layer = buildHeatmapLayer(heatmap, series.length, layerZ(heatmap.layerIndex));
+    series.push(layer.series);
+    visualMap.push(layer.visualMap);
+  }
+  return { geo: buildGeoComponent(input), series, ...(visualMap.length ? { visualMap } : {}) };
 }

@@ -1,6 +1,7 @@
 // The geo chart parts, in the async `geo-basemap` chunk of the geo panel. `src/modules/geo/module.tsx` loads it.
 import { registerGeoChartParts } from 'lib/echarts/charts/geoParts';
 import { type ChartContext } from 'lib/echarts/charts/types';
+import { getHeatmapLayers } from 'lib/grafana/geo/heatmap';
 import { getMarkerLegends } from 'lib/grafana/geo/legend';
 import { getMarkerLayers } from 'lib/grafana/geo/markers';
 import { getBasemapStyle } from 'lib/grafana/geo/style';
@@ -13,6 +14,7 @@ import { type ViewSize } from './view';
 function toMarkersInput(ctx: ChartContext, size: ViewSize): GeoMarkersInput {
   return {
     layers: getMarkerLayers(ctx.frames, ctx.options.layers, ctx.theme, ctx.queryRefIds),
+    heatmaps: getHeatmapLayers(ctx.frames, ctx.options.layers, ctx.theme, ctx.queryRefIds),
     view: resolveCoreMapView(ctx.options.view),
     size,
     // Core: on when unset.

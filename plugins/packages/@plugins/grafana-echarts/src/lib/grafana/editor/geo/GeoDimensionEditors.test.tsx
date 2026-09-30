@@ -4,9 +4,9 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { GeoColorDimensionEditor } from './GeoColorDimensionEditor';
 import { GeoScalarDimensionEditor } from './GeoScalarDimensionEditor';
-import { GeoScaleDimensionEditor } from './GeoScaleDimensionEditor';
+import { GeoScaleDimensionEditor, type ScaleEditorSettings } from './GeoScaleDimensionEditor';
 import { GeoTextDimensionEditor } from './GeoTextDimensionEditor';
-import { clampFixed, type NumberRange, validateScale } from './numberRange';
+import { clampFixed, validateScale } from './numberRange';
 
 interface ComboProps {
   'aria-label': string;
@@ -39,9 +39,9 @@ const FRAMES: DataFrame[] = [
 ];
 
 function renderEditor<T>(
-  Editor: React.ComponentType<StandardEditorProps<T, NumberRange>>,
+  Editor: React.ComponentType<StandardEditorProps<T, ScaleEditorSettings>>,
   value: NoInfer<T>,
-  settings?: NumberRange
+  settings?: ScaleEditorSettings
 ) {
   const onChange = jest.fn();
   const props = {
@@ -148,6 +148,14 @@ describe('GeoScaleDimensionEditor', () => {
     );
     commit('Size max', '10');
     expect(onChange).toHaveBeenCalledWith({ field: 'value', fixed: 5, min: 10, max: 20 });
+  });
+
+  it('names the heatmap weight, and hides the min and max of a weight field, as core hideRange', () => {
+    const settings = { min: 0, max: 1, label: 'Weight', hideRange: true };
+    renderEditor(GeoScaleDimensionEditor, { field: 'value', fixed: 1, min: 0, max: 1 }, settings);
+    expect(screen.getByLabelText('Weight field')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Weight min')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Weight max')).not.toBeInTheDocument();
   });
 
   it('goes back to the fixed value', () => {
