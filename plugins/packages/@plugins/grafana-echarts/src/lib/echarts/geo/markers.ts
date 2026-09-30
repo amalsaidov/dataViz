@@ -9,7 +9,7 @@ import { BASEMAP_NAME } from './basemap';
 import { WORLD_BOUNDING_COORDS, webMercator } from './projection';
 import { getMarkerSymbol } from './symbols';
 import { geoMarkerTooltip, type GeoTooltipContext } from './tooltip';
-import { toGeoView, type ViewSize } from './view';
+import { toGeoView, toGeoZoom, type ViewSize } from './view';
 
 /** The input of `buildGeoOption`. The colors are CSS colors, from `lib/grafana/geo`. */
 export interface GeoMarkersInput {
@@ -17,17 +17,23 @@ export interface GeoMarkersInput {
   layers: GeoMarkers[];
   view: CoreMapView;
   size: ViewSize;
+  /** The core `controls.mouseWheelZoom`: the mouse wheel zooms the map. */
+  mouseWheelZoom: boolean;
   basemapStyle: BasemapStyle;
   /** The theme, time zone and sink of the marker tooltip. */
   tooltip: GeoTooltipContext;
 }
 
 /**
- * The `geo` component: the basemap in Web Mercator at the core map view. The basemap does not react to the
- * mouse. "Fit to data" fits the markers.
+ * The `geo` component: the basemap in Web Mercator at the core map view. The basemap areas do not react to the
+ * mouse. "Fit to data" fits the markers. A drag pans the map, as core. The mouse wheel zooms it only with
+ * `mouseWheelZoom`. The view `minZoom` and `maxZoom` limit the zoom.
  * https://echarts.apache.org/en/option.html#geo
+ * https://echarts.apache.org/en/option.html#geo.roam
+ * https://echarts.apache.org/en/option.html#geo.scaleLimit
  */
-export function buildGeoComponent({ layers, view, size, basemapStyle }: GeoMarkersInput): GeoComponentOption {
+export function buildGeoComponent(input: GeoMarkersInput): GeoComponentOption {
+  const { layers, view, size, basemapStyle, mouseWheelZoom } = input;
   const positions: LonLat[] = layers.flatMap((l) => l.markers.map((m) => m.lonLat));
   return {
     map: BASEMAP_NAME,
@@ -35,6 +41,8 @@ export function buildGeoComponent({ layers, view, size, basemapStyle }: GeoMarke
     boundingCoords: WORLD_BOUNDING_COORDS,
     ...toGeoView(view, size, positions),
     silent: true,
+    roam: mouseWheelZoom ? true : 'move',
+    scaleLimit: { min: toGeoZoom(view.minZoom, size), max: toGeoZoom(view.maxZoom, size) },
     itemStyle: { areaColor: basemapStyle.area, borderColor: basemapStyle.border, borderWidth: 0.5 },
   };
 }

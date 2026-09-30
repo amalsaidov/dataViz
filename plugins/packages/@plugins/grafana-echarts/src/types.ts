@@ -177,6 +177,9 @@ export interface PanelOptions
   /** The core Geomap map view. Only the geo family reads it. */
   view?: GeomapOptions['view'];
 
+  /** The core Geomap map controls. Only the geo family reads the zoom switches. */
+  controls?: GeomapOptions['controls'];
+
   /** The core Geomap data layers. The geo family reads the location of the first `markers` layer. */
   layers?: GeomapOptions['layers'];
 

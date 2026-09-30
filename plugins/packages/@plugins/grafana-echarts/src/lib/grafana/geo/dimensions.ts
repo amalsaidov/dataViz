@@ -120,7 +120,7 @@ export function getMarkerLayerStyle(
 }
 
 /** Core `findField`: the field of the name or the display name. */
-function findField(frame: DataFrame, name?: string): Field | undefined {
+export function findField(frame: DataFrame, name?: string): Field | undefined {
   return name ? frame.fields.find((f) => f.name === name || getFieldDisplayName(f, frame) === name) : undefined;
 }
 

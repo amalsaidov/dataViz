@@ -56,6 +56,7 @@ import {
   type TooltipValueFormatterResolver,
 } from 'lib/echarts/tooltip/types';
 import { type ChartFamily } from 'lib/echarts/charts/autoSeriesType';
+import { type MarkerLegend } from 'lib/grafana/geo/legend';
 import { type EChartsValueType, type FieldTypedDataFrame } from 'lib/grafana/types';
 import { type PanelOptions } from 'types';
 
@@ -328,7 +329,16 @@ export interface ChartZoomAction {
   /** The registered action type, e.g. `'graphRoam'` / `'sankeyRoam'`. */
   type: string;
   /** Index of the series that owns the view coordinate system. */
-  seriesIndex: number;
+  seriesIndex?: number;
+  /** The scale of one button click. Without it, `ChartZoomControls` uses its own step. */
+  zoomStep?: number;
+  /** Index of the `geo` component that owns the view, for `'geoRoam'`. */
+  geoIndex?: number;
+  /**
+   * The option that restores the start view for a viz area size. Without it, the reset writes
+   * the identity `zoom` and `center` of the first series.
+   */
+  getResetOption?(size: { width: number; height: number }): EChartBuildOption | undefined;
 }
 
 /** A known data problem that prevents a chart module from drawing a chart. */
@@ -383,9 +393,12 @@ export interface ChartModule {
   /**
    * The roam action the panel's zoom buttons should dispatch for this render, or
    * `undefined` to draw no buttons — see {@link ChartZoomAction}. Optional; a family
-   * that omits it gets no zoom controls, which is every family but relations.
+   * that omits it gets no zoom controls, which is every family but relations and geo.
    */
   getZoomAction?(ctx: ChartContext): ChartZoomAction | undefined;
+
+  /** The legends of the map layers, in the lower left corner of the chart. Only geo implements it. */
+  getMarkerLegends?(ctx: ChartContext): MarkerLegend[];
 
   /**
    * The timestamps this render can be stepped through, or `null` to draw no time slider —

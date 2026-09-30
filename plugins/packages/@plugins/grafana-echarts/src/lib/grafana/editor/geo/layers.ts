@@ -33,12 +33,13 @@ function setOption(object: OptionObject, [key, ...rest]: string[], value: unknow
 
 /**
  * The value that core uses for an unset option: the Auto mode, the countries gazetteer (`getGazetteer`), the
- * tooltip switch on, and each value of the default style (`value?.size ?? defaultStyleConfig.size`).
+ * tooltip switch on, the legend on (`defaultOptions` of the markers layer), and each value of the default style
+ * (`value?.size ?? defaultStyleConfig.size`).
  */
 const UNSET_LAYER_VALUES: OptionObject = {
   location: { mode: FrameGeometrySourceMode.Auto, gazetteer: COUNTRIES_GAZETTEER_PATH },
   tooltip: true,
-  config: { style: DEFAULT_MARKER_STYLE },
+  config: { style: DEFAULT_MARKER_STYLE, showLegend: true },
 };
 
 const SYMBOL_FIXED_PATH = 'config.style.symbol.fixed';
@@ -120,6 +121,13 @@ export function addGeoLayerOptions(
         });
         addLocationFields(layerBuilder, layer.location);
         addStyleFields(layerBuilder, getLayerStyleConfig(layer));
+        // Core adds the legend switch after the style options.
+        layerBuilder.addBooleanSwitch({
+          path: 'config.showLegend',
+          name: 'Show legend',
+          description: 'Show map legend',
+          defaultValue: true,
+        });
         // Core adds this switch after the options of each layer type (`layerEditor.tsx`).
         layerBuilder.addBooleanSwitch({
           path: 'tooltip',

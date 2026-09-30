@@ -4,6 +4,7 @@ import React, { useMemo, useRef } from 'react';
 import { ChartNotices } from './ChartNotices';
 import { ChartTimeSlider, TIME_SLIDER_HEIGHT } from './ChartTimeSlider';
 import { ChartZoomControls } from './ChartZoomControls';
+import { GeoMarkersLegend } from './GeoMarkersLegend';
 import { EChart } from './EChart';
 import { useLegend } from './hooks/useLegend';
 import { useLegendHighlight } from './hooks/useLegendHighlight';
@@ -38,6 +39,12 @@ export const ChartContent: React.FC<ChartContentProps> = ({
   // for why zoom is buttons rather than the scroll wheel.
   const zoomAction = useMemo(
     () => (isPreview ? undefined : chartModule.getZoomAction?.(chartContext)),
+    [chartModule, chartContext, isPreview]
+  );
+
+  // The legends of the geo map layers, drawn over the chart. Other families supply none.
+  const markerLegends = useMemo(
+    () => (isPreview ? [] : (chartModule.getMarkerLegends?.(chartContext) ?? [])),
     [chartModule, chartContext, isPreview]
   );
 
@@ -85,6 +92,7 @@ export const ChartContent: React.FC<ChartContentProps> = ({
                 relationsViewRef={relationsViewRef}
               />
               <ChartNotices notices={notices} />
+              <GeoMarkersLegend legends={markerLegends} />
               <ChartZoomControls
                 action={zoomAction}
                 chartRef={chartInstanceRef}

@@ -1,6 +1,7 @@
 import { debug, LOG_LEVELS } from 'development';
 import { type ChartContext, type EChartBuildOption } from 'lib/echarts/charts/types';
 import { type EChartsType } from 'lib/echarts/echarts';
+import { applyGeoView, type GeoViewState, readLiveGeoView } from 'lib/echarts/geo/liveView';
 import { buildPanelChartOption } from 'lib/echarts/options/panelOption';
 import {
   type InteractedRelationsView,
@@ -37,6 +38,11 @@ function getViewVariant(chartContext: ChartContext): ViewVariant | undefined {
     : undefined;
 }
 
+/** The geo view options: a change of them gives the start view again. */
+function getGeoViewKey(chartContext: ChartContext): string | undefined {
+  return chartContext.family === 'geo' ? JSON.stringify(chartContext.options.view ?? null) : undefined;
+}
+
 /** Apply only the transient view to the newly built first series. */
 function applyRelationsView(option: EChartBuildOption, view: RelationsViewState): void {
   const first = Array.isArray(option.series) ? option.series[0] : option.series;
@@ -66,6 +72,10 @@ export function useChartOption(
 ): void {
   const optionsRef = useRef({ isGrafanaLegend, plotWidth, plotHeight, tooltipSink, reportTooltipTrigger });
   const variant = getViewVariant(chartContext);
+  // The geo view after a zoom or a pan of the user, with the view options that it is for. Core Geomap keeps the
+  // OpenLayers view across data updates.
+  const geoViewRef = useRef<{ key: string; view: GeoViewState } | undefined>(undefined);
+  const geoViewKey = getGeoViewKey(chartContext);
   useEffect(() => {
     optionsRef.current = { isGrafanaLegend, plotWidth, plotHeight, tooltipSink, reportTooltipTrigger };
   }, [isGrafanaLegend, plotHeight, plotWidth, reportTooltipTrigger, tooltipSink]);
@@ -92,6 +102,25 @@ export function useChartOption(
       }
     };
   }, [chart, relationsViewRef, variant]);
+
+  useEffect(() => {
+    if (!chart || geoViewKey == null) {
+      return;
+    }
+    // https://echarts.apache.org/en/api.html#events.geoRoam
+    const markInteracted = () => {
+      const view = chart.isDisposed() ? undefined : readLiveGeoView(chart);
+      if (view) {
+        geoViewRef.current = { key: geoViewKey, view };
+      }
+    };
+    chart.on('georoam', markInteracted);
+    return () => {
+      if (!chart.isDisposed()) {
+        chart.off('georoam', markInteracted);
+      }
+    };
+  }, [chart, geoViewKey]);
 
   useEffect(() => {
     if (!chart) {
@@ -124,6 +153,14 @@ export function useChartOption(
     if (retained != null && retained.variant === variant && retained.view != null) {
       applyRelationsView(option, retained.view);
     }
+    // Keep the geo view of the user while the view options are the same. The live view also has a reset and the
+    // view after a resize, which set the start view again.
+    const geoView = geoViewRef.current;
+    if (geoView != null && geoView.key !== geoViewKey) {
+      geoViewRef.current = undefined;
+    } else if (geoView != null) {
+      applyGeoView(option, readLiveGeoView(chart) ?? geoView.view);
+    }
 
     // Tell the tooltip controller the resolved trigger so it hides item tooltips
     // on `mouseout` but keeps axis ("All") tooltips open across the grid.
@@ -145,5 +182,5 @@ export function useChartOption(
     }
     // `tooltipSink`/`reportTooltipTrigger` are stable (see useEChartsTooltip), so
     // this effect still only re-runs on chart, context, size, or legend changes.
-  }, [chart, chartContext, isGrafanaLegend, relationsViewRef, tooltipSink, reportTooltipTrigger, variant]);
+  }, [chart, chartContext, geoViewKey, isGrafanaLegend, relationsViewRef, tooltipSink, reportTooltipTrigger, variant]);
 }

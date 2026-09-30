@@ -64,7 +64,7 @@ describe('geo layer options', () => {
     const { nested, access, paths } = layerItems({}, 0);
     expect(nested.category).toEqual(['Layer: Layer 1']);
     expect(access.getValue('location.mode')).toBe('auto');
-    expect(paths).toEqual(['filterData', 'location.mode', ...STYLE_PATHS, ...TOOLTIP]);
+    expect(paths).toEqual(['filterData', 'location.mode', ...STYLE_PATHS, 'config.showLegend', ...TOOLTIP]);
   });
 
   it('writes a change of the default layer as the full layer list', () => {
@@ -102,6 +102,7 @@ describe('geo layer options', () => {
       'location.latitude',
       'location.longitude',
       ...STYLE_PATHS,
+      'config.showLegend',
       ...TOOLTIP,
     ]);
     expect(paths({ mode: FrameGeometrySourceMode.Geohash })).toEqual([
@@ -109,6 +110,7 @@ describe('geo layer options', () => {
       'location.mode',
       'location.geohash',
       ...STYLE_PATHS,
+      'config.showLegend',
       ...TOOLTIP,
     ]);
     expect(paths({ mode: FrameGeometrySourceMode.Lookup })).toEqual([
@@ -117,8 +119,15 @@ describe('geo layer options', () => {
       'location.lookup',
       'location.gazetteer',
       ...STYLE_PATHS,
+      'config.showLegend',
       ...TOOLTIP,
     ]);
+  });
+
+  it('shows the legend switch on for a layer with no showLegend, as core', () => {
+    const { access } = layerItems({ layers: [markers('a')] }, 0);
+
+    expect(access.getValue('config.showLegend')).toBe(true);
   });
 
   it('shows the Auto mode for a layer with no location, as core', () => {

@@ -1,6 +1,7 @@
 // The geo chart parts, in the async `geo-basemap` chunk of the geo panel. `src/modules/geo/module.tsx` loads it.
 import { registerGeoChartParts } from 'lib/echarts/charts/geoParts';
 import { type ChartContext } from 'lib/echarts/charts/types';
+import { getMarkerLegends } from 'lib/grafana/geo/legend';
 import { getMarkerLayers } from 'lib/grafana/geo/markers';
 import { getBasemapStyle } from 'lib/grafana/geo/style';
 import { resolveCoreMapView } from 'lib/grafana/geo/view';
@@ -14,6 +15,8 @@ function toMarkersInput(ctx: ChartContext, size: ViewSize): GeoMarkersInput {
     layers: getMarkerLayers(ctx.frames, ctx.options.layers, ctx.theme, ctx.queryRefIds),
     view: resolveCoreMapView(ctx.options.view),
     size,
+    // Core: on when unset.
+    mouseWheelZoom: ctx.options.controls?.mouseWheelZoom !== false,
     basemapStyle: getBasemapStyle(ctx.theme),
     tooltip: { theme: ctx.theme, timeZone: ctx.timeZone, tooltipSink: ctx.tooltipSink },
   };
@@ -27,6 +30,7 @@ export function registerGeoChart(): void {
     buildOption: (ctx, { plotWidth, plotHeight }) =>
       plotWidth && plotHeight ? buildGeoOption(toMarkersInput(ctx, { width: plotWidth, height: plotHeight })) : null,
     // After a resize, the view keeps the core zoom: OpenLayers keeps the px per degree, not the world fit.
+    getMarkerLegends: (ctx) => getMarkerLegends(ctx.frames, ctx.options.layers, ctx.theme, ctx.queryRefIds),
     getSettledResizeOption: (ctx, { plotWidth, plotHeight }) => ({
       geo: buildGeoComponent(toMarkersInput(ctx, { width: plotWidth, height: plotHeight })),
     }),

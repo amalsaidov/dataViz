@@ -2,6 +2,7 @@ import { FieldConfigProperty, PanelPlugin } from '@grafana/data';
 import { type EChartsFieldConfig } from 'editor/types';
 import { makeLazyPanel } from 'lib/components/LazyPanel';
 import { STANDARD_FILTERABLE_OPTION } from 'lib/grafana/editor/common/fieldConfig';
+import { addGeoControlsOptions } from 'lib/grafana/editor/geo/controls';
 import { addGeoLayerOptions } from 'lib/grafana/editor/geo/layers';
 import { type PanelOptions } from 'types';
 import { geoSuggestionsSupplier } from './suggestions';
@@ -18,11 +19,14 @@ const loadBasemap = () =>
 
 // Geo family panel: the markers of the core Geomap markers layer on a vector basemap, placed with the location
 // matchers of core Geomap (see `lib/grafana/geo/location.ts`). It reads the core `view` and `layers` options. The
-// editor has the layer list and the location options of each layer; the view and the marker style have no editor yet.
+// editor has the layer list, the location options of each layer and the map controls; the view has no editor yet.
 export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(makeLazyPanel('geo', loadBasemap))
   // The standard Color option of Grafana, as core Geomap: the Thresholds mode is the default. A marker color from a
   // field uses it. https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/geomap/module.tsx
   .useFieldConfig({ standardOptions: { [FieldConfigProperty.Filterable]: STANDARD_FILTERABLE_OPTION } })
-  .setPanelOptions((builder, context) => addGeoLayerOptions(builder, context.options))
+  .setPanelOptions((builder, context) => {
+    addGeoLayerOptions(builder, context.options);
+    addGeoControlsOptions(builder);
+  })
   // Advertise fitness for data with lat/lon, geohash or lookup fields (opts in via `"suggestions": true`).
   .setSuggestionsSupplier(geoSuggestionsSupplier);

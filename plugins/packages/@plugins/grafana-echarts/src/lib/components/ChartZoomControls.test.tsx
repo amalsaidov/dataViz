@@ -110,6 +110,26 @@ describe('ChartZoomControls', () => {
     expect(chart.dispatchAction).not.toHaveBeenCalled();
   });
 
+  // The geo family scales a `geo` component by its own step, and its reset writes the start view of the panel options.
+  it('dispatches the geo index and step, and resets with the option of the family', () => {
+    const resetOption = { geo: { zoom: 4 } };
+    const getResetOption = jest.fn(() => resetOption);
+    const chart = renderControls({ action: { type: 'geoRoam', geoIndex: 0, zoomStep: 2, getResetOption } });
+
+    click('Zoom in');
+    click('Reset zoom');
+
+    expect(chart.dispatchAction).toHaveBeenCalledWith({
+      type: 'geoRoam',
+      geoIndex: 0,
+      zoom: 2,
+      originX: 200,
+      originY: 150,
+    });
+    expect(getResetOption).toHaveBeenCalledWith({ width: 400, height: 300 });
+    expect(chart.setOption).toHaveBeenCalledWith(resetOption);
+  });
+
   // The ref is `null` before mount and after dispose, and a click can land in between —
   // the panel unmounts while the button still has focus, for instance.
   it('does nothing when the chart is gone', () => {

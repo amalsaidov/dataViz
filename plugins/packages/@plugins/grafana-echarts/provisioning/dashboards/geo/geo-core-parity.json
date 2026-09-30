@@ -376,7 +376,7 @@
     {
       "type": "geomap",
       "title": "Core Geomap: Lookup (countries gazetteer), world view",
-      "description": "Seven ISO country codes, placed with the bundled countries gazetteer. The view is (0°, 0°) at zoom 1. Core markers layer with its default style.",
+      "description": "Seven ISO country codes, placed with the bundled countries gazetteer. The view is (0\u00b0, 0\u00b0) at zoom 1. Core markers layer with its default style.",
       "datasource": {
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"
@@ -474,7 +474,7 @@
     {
       "type": "grafana-echartsgeo-panel",
       "title": "ECharts Geo: Lookup (countries gazetteer), world view",
-      "description": "Seven ISO country codes, placed with the bundled countries gazetteer. The view is (0°, 0°) at zoom 1. The same view and layer options as the core panel beside it.",
+      "description": "Seven ISO country codes, placed with the bundled countries gazetteer. The view is (0\u00b0, 0\u00b0) at zoom 1. The same view and layer options as the core panel beside it.",
       "datasource": {
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"
@@ -2328,8 +2328,8 @@
     },
     {
       "type": "geomap",
-      "title": "Core Geomap: Size range, clamped rotation and text from fields",
-      "description": "Triangles from 4 to 20 px by the `value` field, in the color of `value`. The `turn` field turns each triangle, clamped to 360 degrees. The `value` field is the text.",
+      "title": "Core Geomap: Zoom limits 3 to 5, no mouse wheel zoom",
+      "description": "Zoom buttons on, mouse wheel zoom off. The view zoom is 4, min zoom 3 and max zoom 5. One click is one zoom level, so each button stops after one click. A drag pans the map.",
       "datasource": {
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"
@@ -2341,6 +2341,1237 @@
         "y": 121
       },
       "id": 23,
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": [
+            {
+              "title": "Search ${__data.fields.name}",
+              "url": "https://duckduckgo.com/?q=${__data.fields.name}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4,
+          "minZoom": 3,
+          "maxZoom": 5
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": false,
+          "showAttribution": true
+        },
+        "basemap": {
+          "type": "osm-standard",
+          "name": "Basemap"
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Layer 1",
+            "config": {
+              "showLegend": false,
+              "style": {
+                "size": {
+                  "field": "value",
+                  "fixed": 5,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "field": "value",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.6,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "ECharts Geo: Zoom limits 3 to 5, no mouse wheel zoom",
+      "description": "Zoom buttons on, mouse wheel zoom off. The view zoom is 4, min zoom 3 and max zoom 5. One click is one zoom level, so each button stops after one click. A drag pans the map.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 121
+      },
+      "id": 24,
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": [
+            {
+              "title": "Search ${__data.fields.name}",
+              "url": "https://duckduckgo.com/?q=${__data.fields.name}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4,
+          "minZoom": 3,
+          "maxZoom": 5
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Layer 1",
+            "config": {
+              "showLegend": false,
+              "style": {
+                "size": {
+                  "field": "value",
+                  "fixed": 5,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "field": "value",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.6,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map",
+        "tooltip": {
+          "mode": "details"
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": false,
+          "showAttribution": true
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
+        }
+      ]
+    },
+    {
+      "type": "geomap",
+      "title": "Core Geomap: No zoom buttons",
+      "description": "Zoom buttons off, mouse wheel zoom on. The panel shows no zoom buttons. The mouse wheel zooms the map.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 132
+      },
+      "id": 25,
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": [
+            {
+              "title": "Search ${__data.fields.name}",
+              "url": "https://duckduckgo.com/?q=${__data.fields.name}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "controls": {
+          "showZoom": false,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        },
+        "basemap": {
+          "type": "osm-standard",
+          "name": "Basemap"
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Layer 1",
+            "config": {
+              "showLegend": false,
+              "style": {
+                "size": {
+                  "field": "value",
+                  "fixed": 5,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "field": "value",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.6,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "ECharts Geo: No zoom buttons",
+      "description": "Zoom buttons off, mouse wheel zoom on. The panel shows no zoom buttons. The mouse wheel zooms the map.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 132
+      },
+      "id": 26,
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": [
+            {
+              "title": "Search ${__data.fields.name}",
+              "url": "https://duckduckgo.com/?q=${__data.fields.name}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Layer 1",
+            "config": {
+              "showLegend": false,
+              "style": {
+                "size": {
+                  "field": "value",
+                  "fixed": 5,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "field": "value",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.6,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map",
+        "tooltip": {
+          "mode": "details"
+        },
+        "controls": {
+          "showZoom": false,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
+        }
+      ]
+    },
+    {
+      "type": "geomap",
+      "title": "Core Geomap: Legend: fixed color, star",
+      "description": "A fixed color gives a legend with the layer symbol in that color.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 143
+      },
+      "id": 27,
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": [
+            {
+              "title": "Search ${__data.fields.name}",
+              "url": "https://duckduckgo.com/?q=${__data.fields.name}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        },
+        "basemap": {
+          "type": "osm-standard",
+          "name": "Basemap"
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Cities",
+            "config": {
+              "showLegend": true,
+              "style": {
+                "size": {
+                  "fixed": 8
+                },
+                "color": {
+                  "fixed": "purple"
+                },
+                "opacity": 0.6,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/star.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "ECharts Geo: Legend: fixed color, star",
+      "description": "A fixed color gives a legend with the layer symbol in that color.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 143
+      },
+      "id": 28,
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": [
+            {
+              "title": "Search ${__data.fields.name}",
+              "url": "https://duckduckgo.com/?q=${__data.fields.name}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Cities",
+            "config": {
+              "showLegend": true,
+              "style": {
+                "size": {
+                  "fixed": 8
+                },
+                "color": {
+                  "fixed": "purple"
+                },
+                "opacity": 0.6,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/star.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map",
+        "tooltip": {
+          "mode": "details"
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
+        }
+      ]
+    },
+    {
+      "type": "geomap",
+      "title": "Core Geomap: Legend: thresholds of the color field",
+      "description": "The color field uses the thresholds color mode. The legend shows one color for each threshold step.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 154
+      },
+      "id": 29,
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": [
+            {
+              "title": "Search ${__data.fields.name}",
+              "url": "https://duckduckgo.com/?q=${__data.fields.name}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        },
+        "basemap": {
+          "type": "osm-standard",
+          "name": "Basemap"
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Cities",
+            "config": {
+              "showLegend": true,
+              "style": {
+                "size": {
+                  "field": "value",
+                  "fixed": 5,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "field": "value",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.6,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "ECharts Geo: Legend: thresholds of the color field",
+      "description": "The color field uses the thresholds color mode. The legend shows one color for each threshold step.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 154
+      },
+      "id": 30,
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": [
+            {
+              "title": "Search ${__data.fields.name}",
+              "url": "https://duckduckgo.com/?q=${__data.fields.name}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Cities",
+            "config": {
+              "showLegend": true,
+              "style": {
+                "size": {
+                  "field": "value",
+                  "fixed": 5,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "field": "value",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.6,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map",
+        "tooltip": {
+          "mode": "details"
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
+        }
+      ]
+    },
+    {
+      "type": "geomap",
+      "title": "Core Geomap: Legend: continuous color scheme",
+      "description": "The color field uses the Green-Yellow-Red scheme. The legend shows a gradient from the field min to the field max.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 165
+      },
+      "id": 31,
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "links": [
+            {
+              "title": "Search ${__data.fields.name}",
+              "url": "https://duckduckgo.com/?q=${__data.fields.name}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        },
+        "basemap": {
+          "type": "osm-standard",
+          "name": "Basemap"
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Cities",
+            "config": {
+              "showLegend": true,
+              "style": {
+                "size": {
+                  "field": "value",
+                  "fixed": 5,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "field": "value",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.6,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "ECharts Geo: Legend: continuous color scheme",
+      "description": "The color field uses the Green-Yellow-Red scheme. The legend shows a gradient from the field min to the field max.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 165
+      },
+      "id": 32,
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "links": [
+            {
+              "title": "Search ${__data.fields.name}",
+              "url": "https://duckduckgo.com/?q=${__data.fields.name}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Cities",
+            "config": {
+              "showLegend": true,
+              "style": {
+                "size": {
+                  "field": "value",
+                  "fixed": 5,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "field": "value",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.6,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map",
+        "tooltip": {
+          "mode": "details"
+        },
+        "controls": {
+          "showZoom": true,
+          "mouseWheelZoom": true,
+          "showAttribution": true
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
+        }
+      ]
+    },
+    {
+      "type": "geomap",
+      "title": "Core Geomap: Size range, clamped rotation and text from fields",
+      "description": "Triangles from 4 to 20 px by the `value` field, in the color of `value`. The `turn` field turns each triangle, clamped to 360 degrees. The `value` field is the text.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 176
+      },
+      "id": 33,
       "fieldConfig": {
         "defaults": {},
         "overrides": []
@@ -2442,9 +3673,9 @@
         "h": 11,
         "w": 12,
         "x": 12,
-        "y": 121
+        "y": 176
       },
-      "id": 24,
+      "id": 34,
       "fieldConfig": {
         "defaults": {},
         "overrides": []
@@ -2535,7 +3766,7 @@
   },
   "timepicker": {},
   "timezone": "utc",
-  "title": "ECharts Geo — core parity",
+  "title": "ECharts Geo \u2014 core parity",
   "uid": "echarts-geo-core-parity",
   "version": 1,
   "description": "Each row puts core Geomap (markers layer, default style) beside the ECharts Geo panel with the same view and location options. See data-plane/geo.md for the frame shapes."
