@@ -29,6 +29,7 @@ import {
 import { isHistogramPanel } from 'lib/echarts/converters/histogram';
 import { isSpanNullsThreshold } from 'lib/echarts/converters/spanNulls';
 import {
+  getCandlestickDataIssue,
   multiValueCartesianToEChartsOption,
   resolveMultiValueSources,
 } from 'lib/echarts/converters/multiValueCartesian';
@@ -496,7 +497,7 @@ export const cartesianChartModule: ChartModule = {
   singleTooltipOnly: (ctx) => isHistogramPanel(ctx.options),
 
   getDataIssue(ctx) {
-    return isHistogramPanel(ctx.options) ? getHistogramDataIssue(ctx) : undefined;
+    return isHistogramPanel(ctx.options) ? getHistogramDataIssue(ctx) : getCandlestickDataIssue(ctx);
   },
 
   getNotices(ctx: CartesianContext) {

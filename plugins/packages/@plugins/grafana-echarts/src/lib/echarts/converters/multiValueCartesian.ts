@@ -1,8 +1,8 @@
 import { type DataFrame, type Field, type GrafanaTheme2, type TimeRange } from '@grafana/data';
 import { type BoxplotSeriesOption, type CandlestickSeriesOption } from 'echarts';
 import { type EChartsFieldConfig, type MultiValueSeriesType } from 'editor/types';
-import { type ChartContext, type MultiValueCartesianOption } from 'lib/echarts/charts/types';
-import { findCategoricalFrame, resolveCategoriesFromFrame } from 'lib/echarts/converters/frames';
+import { type ChartContext, type ChartDataIssue, type MultiValueCartesianOption } from 'lib/echarts/charts/types';
+import { findCategoricalFrame, framesHaveTimeField, resolveCategoriesFromFrame } from 'lib/echarts/converters/frames';
 import { type CategoryCartesianData } from 'lib/echarts/converters/types';
 import { getSeriesColor } from 'lib/echarts/style';
 import { getSeriesColorOverride } from 'lib/grafana/fields/seriesConfig';
@@ -166,6 +166,27 @@ export function resolveMultiValueSources(ctx: ChartContext<MultiValueSeriesType>
   }
   const fields = resolveMultiValueFields(frame, ctx.seriesType);
   return fields ? { fields, rows: resolveRowIndices(frame, ctx.timeRange) } : null;
+}
+
+/**
+ * The data issue of a candlestick, or `undefined` when the data fits. A candlestick needs a time field (it has no
+ * category axis) and the numeric fields `open`, `high`, `low` and `close`. The series type picker can select
+ * candlestick for any data, so the panel shows this issue in place of the chart.
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/candlestick/
+ */
+export function getCandlestickDataIssue(ctx: ChartContext): ChartDataIssue | undefined {
+  if (ctx.seriesType !== 'candlestick') {
+    return undefined;
+  }
+  const frame = findCategoricalFrame(filterUnsupportedFields(ctx.frames));
+  if (framesHaveTimeField(ctx.frames) && frame && resolveMultiValueFields(frame, 'candlestick')) {
+    return undefined;
+  }
+  return {
+    reason: 'candlestick-fields-missing',
+    message:
+      'A candlestick needs a time field and the number fields open, high, low and close. Select another series type.',
+  };
 }
 
 /** Frame display name for the single multi-value series, or a type fallback. */

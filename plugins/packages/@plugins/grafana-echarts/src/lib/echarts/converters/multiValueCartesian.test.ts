@@ -10,8 +10,10 @@ import {
 import { seriesTypePath } from 'editor/constants';
 import { type MultiValueSeriesType } from 'editor/types';
 import { type ChartContext } from 'lib/echarts/charts/types';
+import { cartesianChartModule } from 'lib/echarts/charts/cartesian';
 import {
   framesLookMultiValue,
+  getCandlestickDataIssue,
   multiValueCartesianToEChartsOption,
   resolveMultiValueSeriesType,
 } from 'lib/echarts/converters/multiValueCartesian';
@@ -286,5 +288,34 @@ describe('resolveMultiValueSeriesType', () => {
     const frame = toDataFrame({ fields: [{ name: 'category', type: FieldType.string, values: ['a'] }] });
 
     expect(resolveMultiValueSeriesType([frame])).toBeUndefined();
+  });
+});
+
+// The Grafana panel and the standalone renderer both show this issue through `PanelContent` (#779).
+describe('getCandlestickDataIssue', () => {
+  const withoutTime = toDataFrame({
+    fields: [
+      { name: 'open', type: FieldType.number, values: [1] },
+      { name: 'high', type: FieldType.number, values: [2] },
+      { name: 'low', type: FieldType.number, values: [0] },
+      { name: 'close', type: FieldType.number, values: [1] },
+    ],
+  });
+
+  it('gives no issue for OHLC fields with a time field', () => {
+    expect(getCandlestickDataIssue(makeContext([ohlcFrame()], 'candlestick'))).toBeUndefined();
+  });
+
+  it.each([
+    { name: 'no time field', frame: withoutTime },
+    { name: 'no open, high, low and close fields', frame: ohlcFrame(['a', 'b', 'c', 'd']) },
+  ])('gives an issue for $name, also from the cartesian module', ({ frame }) => {
+    const ctx = makeContext([frame], 'candlestick');
+    expect(getCandlestickDataIssue(ctx)?.reason).toBe('candlestick-fields-missing');
+    expect(cartesianChartModule.getDataIssue?.(ctx)?.reason).toBe('candlestick-fields-missing');
+  });
+
+  it('gives no issue for other series types', () => {
+    expect(getCandlestickDataIssue(makeContext([withoutTime], 'boxplot'))).toBeUndefined();
   });
 });
