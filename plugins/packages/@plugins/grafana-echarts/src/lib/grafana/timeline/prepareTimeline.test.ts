@@ -13,7 +13,7 @@ import {
 } from '@grafana/data';
 import { MappingType } from '@grafana/schema';
 import { fmtDuration } from './duration';
-import { prepareTimeline, type PrepareTimelineOptions } from './prepareTimeline';
+import { prepareTimeline, type PrepareTimelineOptions, TIMELINE_ISSUE_MESSAGES } from './prepareTimeline';
 
 // Cases ported from core's `TimelineChart/utils.test.ts`, stated on the drawn segments
 // rather than on the joined frame.
@@ -58,7 +58,7 @@ describe('prepareTimeline issues', () => {
         ],
       }),
     ];
-    expect(prepareTimeline(frames, opts(timeRange)).issue?.message).toBe('Data does not have a time field');
+    expect(prepareTimeline(frames, opts(timeRange)).issue?.reason).toBe('no-time-field');
   });
 
   it('requires a number, string, or boolean value', () => {
@@ -70,7 +70,22 @@ describe('prepareTimeline issues', () => {
         ],
       }),
     ];
-    expect(prepareTimeline(frames, opts(timeRange)).issue?.message).toBe('No graphable fields');
+    expect(prepareTimeline(frames, opts(timeRange)).issue?.reason).toBe('no-graphable-fields');
+  });
+
+  it('gives the fix step when all state values are null', () => {
+    const frames = [
+      toDataFrame({
+        fields: [
+          { name: 'a', type: FieldType.time, values: [1, 2] },
+          { name: 'b', type: FieldType.string, values: [null, null] },
+        ],
+      }),
+    ];
+    expect(prepareTimeline(frames, opts(timeRange)).issue).toEqual({
+      reason: 'empty-state-fields',
+      message: TIMELINE_ISSUE_MESSAGES['empty-state-fields'],
+    });
   });
 
   it('draws nothing and reports nothing for no frames', () => {

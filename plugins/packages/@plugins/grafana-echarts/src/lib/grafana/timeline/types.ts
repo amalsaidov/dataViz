@@ -58,7 +58,7 @@ export interface TimelineSegment {
 
 /** A known data problem. The messages are core's own. */
 export interface TimelineIssue {
-  reason: 'no-time-field' | 'no-graphable-fields' | 'null-time-value';
+  reason: 'no-time-field' | 'no-graphable-fields' | 'empty-state-fields' | 'null-time-value';
   message: string;
 }
 

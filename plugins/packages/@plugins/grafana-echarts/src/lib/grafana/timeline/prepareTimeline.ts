@@ -235,6 +235,16 @@ function graphableFields(frame: DataFrame, mergeValues: boolean, theme: GrafanaT
   return fields;
 }
 
+/**
+ * The fix steps for each timeline data issue (#930). Each message starts with the core text, so the panel reads
+ * like the core state timeline. Data plane: https://grafana.com/developers/dataplane/timeseries
+ */
+export const TIMELINE_ISSUE_MESSAGES = {
+  'no-time-field': 'Data does not have a time field. Add a time field.',
+  'no-graphable-fields': 'No graphable fields. Add a string, boolean or number field for the states.',
+  'empty-state-fields': 'The state fields have no values.',
+};
+
 const issue = (reason: TimelineIssue['reason'], message: string): TimelinePrepareResult => ({
   issue: { reason, message },
 });
@@ -274,12 +284,18 @@ function prepareFrames(
     }
   }
 
-  // Core's messages, so the panel reads like the core state timeline.
   if (!hasTimeField) {
-    return issue('no-time-field', 'Data does not have a time field');
+    return issue('no-time-field', TIMELINE_ISSUE_MESSAGES['no-time-field']);
   }
   if (!frames.length) {
-    return issue('no-graphable-fields', 'No graphable fields');
+    return issue('no-graphable-fields', TIMELINE_ISSUE_MESSAGES['no-graphable-fields']);
+  }
+  // A null state draws no bar unless a value mapping maps null, so all null states draw an empty chart.
+  const states = frames.flatMap((frame) => frame.fields.filter((field) => field.type !== FieldType.time));
+  const mapsNull = (field: Field) =>
+    hasSpecialMappedValue(field, SpecialValueMatch.Null) || hasSpecialMappedValue(field, SpecialValueMatch.NullAndNaN);
+  if (states.every((field) => !mapsNull(field) && field.values.every((value) => value == null))) {
+    return issue('empty-state-fields', TIMELINE_ISSUE_MESSAGES['empty-state-fields']);
   }
   const invalid = frames.find((frame) =>
     frame.fields.find((field) => field.type === FieldType.time)?.values.some((value) => value == null)
