@@ -129,3 +129,23 @@ describe('cartesian bars: time axis', () => {
     expect(getTimeBandCount([[5]], 100)).toBe(0);
   });
 });
+
+describe('cartesian bars: value axis range (#999)', () => {
+  const timeFrame = () =>
+    toDataFrame({
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1000, 2000, 3000] },
+        { name: 'A', type: FieldType.number, values: [5, 7, 9] },
+      ],
+    });
+
+  it('includes zero on a bar axis by default, as core Bar chart', () => {
+    const option = build(context([timeFrame()]));
+    expect(option.yAxis).toEqual([expect.objectContaining({ scale: false })]);
+  });
+
+  it('fits a bar axis to the data with barsIncludeZero false, as core Time series', () => {
+    const option = build(context([timeFrame()], { barsIncludeZero: false }));
+    expect(option.yAxis).toEqual([expect.objectContaining({ scale: true })]);
+  });
+});

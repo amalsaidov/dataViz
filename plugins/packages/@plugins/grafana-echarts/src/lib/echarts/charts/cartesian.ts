@@ -277,7 +277,7 @@ function getBarLabelSpace(
 }
 
 /**
- * Bar fields for the value axes: every bar field (its axis includes zero) and,
+ * Bar fields for the value axes: every bar field (its axis includes zero, unless `barsIncludeZero` is `false`) and,
  * in percent stacking, the stacked ones (they share a 0% to 100% axis). On a
  * time axis (`stackLines`), stacked line fields share the percent axis too.
  */
@@ -291,7 +291,8 @@ function getBarFieldSets(
   const stacks = (field: Field, i: number) =>
     (types[i] === 'bar' || (stackLines && types[i] === 'line')) && resolveFieldStack(field, true);
   return {
-    barFields: new Set(fields.filter((_, i) => types[i] === 'bar')),
+    // Core Bar chart includes zero. Core Time series fits the data (`uPlot.rangeNum`), so its import sets `false`.
+    barFields: new Set(ctx.options.barsIncludeZero === false ? [] : fields.filter((_, i) => types[i] === 'bar')),
     percentFields: new Set(percent ? fields.filter(stacks) : []),
   };
 }

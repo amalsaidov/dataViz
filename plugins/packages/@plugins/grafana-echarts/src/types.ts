@@ -499,6 +499,12 @@ export interface PanelOptions
   barWidth?: number;
 
   /**
+   * Cartesian bar value axes include zero (default `true`, as core Bar chart). `false` fits the axis to the
+   * data, as core Time series (`uPlot.rangeNum`). The Time series import sets `false`. See `getBarFieldSets`.
+   */
+  barsIncludeZero?: boolean;
+
+  /**
    * Cartesian bar corner radius in px (Advanced; ECharts `itemStyle.borderRadius`).
    * `0` (default) draws square corners and omits the key; `bar` series only. See
    * `getCartesianItemStyle`.

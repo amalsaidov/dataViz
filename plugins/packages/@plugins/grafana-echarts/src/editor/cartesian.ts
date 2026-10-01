@@ -178,6 +178,11 @@ export const barWidthPath = 'barWidth';
 /** Default bar width: unset (ECharts auto), so no `barWidth` is written. */
 export const CARTESIAN_BAR_WIDTH_DEFAULT: number | undefined = undefined;
 
+/** Panel option path for "Bars include zero" on the value axis. Default tier; `bar` series. */
+export const barsIncludeZeroPath = 'barsIncludeZero';
+/** Default: the bar value axes include zero, as core Bar chart. */
+export const CARTESIAN_BARS_INCLUDE_ZERO_DEFAULT = true;
+
 /**
  * Panel option path for the bar corner radius in px (ECharts
  * `itemStyle.borderRadius`). Default tier; `bar` series. `0` (square) omits the

@@ -21,6 +21,7 @@ import { addCartesianBarChartOptions } from 'lib/grafana/editor/cartesian/bar-ch
 import { addCartesianBarFillOpacityOptions } from 'lib/grafana/editor/cartesian/bar-fill-opacity';
 import { addCartesianBarRadiusOptions } from 'lib/grafana/editor/cartesian/bar-radius';
 import { addCartesianBarWidthOptions } from 'lib/grafana/editor/cartesian/bar-width';
+import { addCartesianBarsIncludeZeroOptions } from 'lib/grafana/editor/cartesian/bars-include-zero';
 import { addCartesianFillOpacityOptions } from 'lib/grafana/editor/cartesian/fill-opacity';
 import { addCartesianHistogramFieldConfig, addCartesianHistogramOptions } from 'lib/grafana/editor/cartesian/histogram';
 import { addCartesianSeriesStyleFieldConfig } from 'lib/grafana/editor/cartesian/series-style';
@@ -217,6 +218,7 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
     // ECharts key at the default so untouched panels render identically.
     addCartesianBarWidthOptions(builder); // series.barWidth (bar)
     addCartesianBarRadiusOptions(builder); // itemStyle.borderRadius (bar)
+    addCartesianBarsIncludeZeroOptions(builder); // yAxis.scale (bar)
     addCartesianBarFillOpacityOptions(builder); // itemStyle color alpha (bar)
     addCartesianLineWidthOptions(builder); // lineStyle.width (line)
     addCartesianFillOpacityOptions(builder); // areaStyle.opacity (line → area)
