@@ -69,6 +69,7 @@ import {
 } from 'lib/grafana/fields/thresholds';
 import { isNumberField } from 'lib/grafana/narrowing';
 import { getXTickSpacing } from 'lib/echarts/axes/xTickSpacing';
+import { getSeriesExtents } from 'lib/echarts/axes/yTicks';
 import { getTimeXTicks } from 'lib/echarts/axes/timeXTicks';
 import { getTimeAxisLabelFormatter, isUtcTimeZone } from 'lib/grafana/timeAxisFormat';
 import { countAnnotationLanes, readAnnotationDisplay, readAnnotations } from 'lib/grafana/annotations';
@@ -90,10 +91,13 @@ import { buildHistogramChartOption, buildHistogramLegendItems, getHistogramDataI
 // time field render on a `category` axis built from the shared categorical
 // model. See the plan's "axis type should follow data" note.
 
+/** The height in pixels of the time axis labels and the grid padding, below and above the value axes. */
+const TIME_X_AXIS_SPACE = 30;
+
 /** Time-axis cartesian: `[time, value]` series on a time grid. */
 function buildTimeOption(
   ctx: ChartContext<CartesianSingleValueSeriesType, EChartsGraphFieldConfig>,
-  { isGrafanaLegend, plotWidth }: BaseOptionParts
+  { isGrafanaLegend, plotWidth, plotHeight }: BaseOptionParts
 ): EChartCartesianSeriesOption | null {
   const { theme, options, formatValue, timeZone } = ctx;
   const timeCtx = { ...ctx, frames: cartesianTimeFrames(ctx) };
@@ -115,6 +119,10 @@ function buildTimeOption(
     zlevel: options.zLevel?.axis,
     ...getBarFieldSets(fields, ctx, true),
     colorOf: (field) => getCartesianSeriesColor(field, timeCtx.frames, theme),
+    // The value axes are the plot height less the grid padding and the time axis labels.
+    ...(plotHeight != null && plotHeight > TIME_X_AXIS_SPACE
+      ? { coreTicks: { axisLength: plotHeight - TIME_X_AXIS_SPACE, fieldExtents: getSeriesExtents(cartSeries) } }
+      : {}),
   });
   const indexedSeries = cartSeries.map((cartesian, i) => ({ ...cartesian, yAxisIndex: axes.seriesYAxisIndex[i] ?? 0 }));
   const thresholdSeries = attachThresholdMarks(indexedSeries, cartesianThresholdMarks(ctx, false));

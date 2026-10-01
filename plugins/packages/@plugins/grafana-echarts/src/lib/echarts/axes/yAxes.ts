@@ -7,6 +7,7 @@ import { type AxisRange, type CartesianYAxes } from 'lib/echarts/axes/types';
 import { mergeAxisStyle } from 'lib/echarts/options/cartesian';
 import { getValueFormatter } from 'lib/echarts/style';
 import { getFieldConfigFromField, getFieldMinMax } from 'lib/grafana/fields/fieldConfig';
+import { getCoreYAxisTicks } from 'lib/echarts/axes/yTicks';
 
 /** Horizontal gap (px) between stacked axes sharing a side. */
 export const AXIS_OFFSET_STEP = 50;
@@ -141,6 +142,11 @@ export function buildCartesianYAxes(params: {
   horizontal?: boolean;
   /** Series color of each field, for "Axis > Color: Series". */
   colorOf?: (field: Field) => string | undefined;
+  /**
+   * The length in pixels of the value axes and the drawn extent of each field. With both, a linear axis gets
+   * the range and the ticks of core (see `getCoreYAxisTicks`).
+   */
+  coreTicks?: { axisLength: number; fieldExtents: Array<[number, number] | undefined> };
 }): CartesianYAxes {
   const {
     fields,
@@ -157,6 +163,7 @@ export function buildCartesianYAxes(params: {
     percentFields,
     horizontal = false,
     colorOf,
+    coreTicks,
   } = params;
 
   if (fields.length === 0) {
@@ -225,6 +232,7 @@ export function buildCartesianYAxes(params: {
       includeZero: groupFields.some((field) => barFields?.has(field)),
       percent: percent ? (groupFields.every((field) => percentFields?.has(field)) ? 'fixed' : 'soft') : false,
     });
+    const ticks = percent ? undefined : getGroupCoreTicks(groupFields, fields, range, custom, coreTicks);
     const color = custom.axisColorMode === AxisColorMode.Series ? colorOf?.(representative) : undefined;
     const name = !hidden && custom.axisLabel ? custom.axisLabel : undefined;
     if (name) {
@@ -235,14 +243,18 @@ export function buildCartesianYAxes(params: {
       offset,
       zlevel,
       ...range,
+      ...(ticks ? { min: ticks.min, max: ticks.max } : {}),
       splitLine: { show: custom.axisGridShow ?? showSplitLine },
       // "Show border" draws the axis line, and its ticks, in the axis color (core `UPlotAxisBuilder`).
+      // The grid lines follow the custom `axisTick` values of the core ticks.
       ...(custom.axisBorderShow
-        ? {
-            axisLine: { show: true, lineStyle: { color: color ?? theme.colors.text.primary } },
-            axisTick: { show: true, lineStyle: { color: color ?? theme.colors.text.primary } },
-          }
+        ? { axisLine: { show: true, lineStyle: { color: color ?? theme.colors.text.primary } } }
         : {}),
+      axisTick: {
+        ...(custom.axisBorderShow ? { show: true, lineStyle: { color: color ?? theme.colors.text.primary } } : {}),
+        ...(ticks?.ticks ? { customValues: ticks.ticks } : {}),
+        ...(hidden ? { show: false } : {}),
+      },
       ...(name
         ? {
             name,
@@ -259,22 +271,60 @@ export function buildCartesianYAxes(params: {
       ...(hidden
         ? {
             axisLabel: { show: false },
-            axisTick: { show: false },
           }
         : {
             axisLabel: {
               ...(color ? { color } : {}),
+              ...(ticks?.ticks ? { customValues: ticks.ticks } : {}),
               ...(custom.axisWidth ? { width: custom.axisWidth, overflow: 'truncate' } : {}),
             },
           }),
     };
 
-    return mergeAxisStyle<YAXisOption>(baseYAxis, axisStyle, extras, formatter);
+    const decimals = ticks?.decimals;
+    const tickFormatter: ValueFormatter = decimals != null ? (value) => formatter(value, decimals) : formatter;
+    return mergeAxisStyle<YAXisOption>(baseYAxis, axisStyle, extras, tickFormatter);
   });
 
   const seriesYAxisIndex = fields.map((field) => unitAxisIndex.get(unitGroupOf(field, percentFields)) ?? 0);
 
   return { yAxis, seriesYAxisIndex, leftAxisCount, rightAxisCount, leftNameCount, rightNameCount };
+}
+
+/**
+ * The core range and ticks of a linear axis that fits the data: not a log, centered zero or bar axis
+ * (`range` has no `scale` or `type`). Undefined without a layout or with no drawn value.
+ */
+function getGroupCoreTicks(
+  groupFields: Field[],
+  fields: Field[],
+  range: AxisRange,
+  custom: GraphFieldConfig,
+  coreTicks: { axisLength: number; fieldExtents: Array<[number, number] | undefined> } | undefined
+) {
+  if (!coreTicks || coreTicks.axisLength <= 0 || range.type || range.scale != null || custom.axisCenteredZero) {
+    return undefined;
+  }
+  const extents = groupFields.flatMap((field) => {
+    const extent = coreTicks.fieldExtents[fields.indexOf(field)];
+    return extent ? [extent] : [];
+  });
+  if (extents.length === 0) {
+    return undefined;
+  }
+  const { min, max, decimals } = getFieldConfigFromField(groupFields[0]);
+  return getCoreYAxisTicks(
+    {
+      dataMin: Math.min(...extents.map(([low]) => low)),
+      dataMax: Math.max(...extents.map(([, high]) => high)),
+      softMin: custom.axisSoftMin ?? undefined,
+      softMax: custom.axisSoftMax ?? undefined,
+      hardMin: min ?? undefined,
+      hardMax: max ?? undefined,
+      decimals: decimals ?? undefined,
+    },
+    coreTicks.axisLength
+  );
 }
 
 /**

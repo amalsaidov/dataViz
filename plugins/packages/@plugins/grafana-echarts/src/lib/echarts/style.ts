@@ -88,8 +88,9 @@ export function getValueFormatter(field: Field, theme: GrafanaTheme2, timeZone?:
   // Empty (null/undefined/NaN) values render the field's "No value" text rather
   // than the display processor's empty string, honoring the standard option in
   // tooltips. Axis label usage is unaffected (labels are always numeric).
-  return (value) =>
-    value == null || (typeof value === 'number' && Number.isNaN(value)) ? { text: noValue } : display(value);
+  // `decimals` is the tick decimals of a value axis, as core `UPlotAxisBuilder`.
+  return (value, decimals) =>
+    value == null || (typeof value === 'number' && Number.isNaN(value)) ? { text: noValue } : display(value, decimals);
 }
 
 /**
