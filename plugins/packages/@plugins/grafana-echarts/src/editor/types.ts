@@ -308,4 +308,8 @@ export interface EChartsTimelineFieldConfig extends EChartsFieldConfig {
   lineWidth?: number;
   /** Bar fill opacity, 0 to 100. */
   fillOpacity?: number;
+  /** "Connect null values": `true`, or the longest gap in milliseconds that a state spans. */
+  spanNulls?: boolean | number;
+  /** "Disconnect values": a gap is inserted where the time between rows is more than this, in milliseconds. */
+  insertNulls?: boolean | number;
 }

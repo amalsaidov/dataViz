@@ -81,6 +81,34 @@ describe('state timeline dense lanes', () => {
   });
 });
 
+describe('state timeline null values', () => {
+  const gaps = (rects: Awaited<ReturnType<typeof bars>>) => {
+    const sorted = [...rects].sort((a, b) => a.y - b.y || a.x - b.x);
+    return sorted.slice(1).filter((rect, i) => rect.y === sorted[i].y && rect.x > sorted[i].x + sorted[i].width);
+  };
+
+  it('closes the gap of a null with Connect null values', async () => {
+    const off = await bars([stringsFrame()], { mergeValues: false });
+    const on = await bars([stringsFrame({ spanNulls: true })], { mergeValues: false });
+    expect(gaps(off)).toHaveLength(1);
+    expect(gaps(on)).toHaveLength(0);
+  });
+
+  it('keeps the gap when the null is longer than the Connect null values threshold', async () => {
+    // The null row is 40 minutes from the value before to the value after it.
+    const short = await bars([stringsFrame({ spanNulls: 30 * 60 * 1000 })], { mergeValues: false });
+    const long = await bars([stringsFrame({ spanNulls: 50 * 60 * 1000 })], { mergeValues: false });
+    expect(gaps(short)).toHaveLength(1);
+    expect(gaps(long)).toHaveLength(0);
+  });
+
+  it('adds gaps with Disconnect values under the row interval', async () => {
+    const off = await bars([stringsFrame()]);
+    const on = await bars([stringsFrame({ insertNulls: 15 * 60 * 1000 })]);
+    expect(gaps(on).length).toBeGreaterThan(gaps(off).length);
+  });
+});
+
 describe('state timeline value text', () => {
   it('draws no text with showValue never', async () => {
     const { seriesEvents } = await renderTimeline([stringsFrame()], { showValue: VisibilityMode.Never });

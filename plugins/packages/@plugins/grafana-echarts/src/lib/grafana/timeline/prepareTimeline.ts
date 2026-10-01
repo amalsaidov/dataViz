@@ -116,12 +116,48 @@ function mergeThresholdValues(field: Field, theme: GrafanaTheme2): Field | undef
   };
 }
 
-/** A number from `field.config.custom`, which `@grafana/data` types as `any`. */
-function customNumber(field: Field, key: 'fillOpacity' | 'lineWidth'): number | undefined {
+/** A value from `field.config.custom`, which `@grafana/data` types as `any`. */
+function customValue(field: Field, key: string): unknown {
   const custom: unknown = field.config.custom;
-  const value: unknown =
-    typeof custom === 'object' && custom !== null && key in custom ? Reflect.get(custom, key) : undefined;
+  return typeof custom === 'object' && custom !== null && key in custom ? Reflect.get(custom, key) : undefined;
+}
+
+/** A number from `field.config.custom`. */
+function customNumber(field: Field, key: 'fillOpacity' | 'lineWidth'): number | undefined {
+  const value = customValue(field, key);
   return typeof value === 'number' ? value : undefined;
+}
+
+/**
+ * "Connect null values" (`custom.spanNulls`): a run of `null`s becomes `undefined`, which
+ * continues the state before it. With a number, only a run whose next value comes less than
+ * that many milliseconds after the value before the run. Core's `nullToUndefThreshold`.
+ * https://github.com/grafana/grafana/blob/main/packages/grafana-data/src/transformations/transformers/nulls/nullToUndefThreshold.ts
+ */
+export function spanNullValues(values: unknown[], times: number[], spanNulls: unknown): unknown[] {
+  if (spanNulls === true) {
+    return values.map((value) => (value === null ? undefined : value));
+  }
+  if (typeof spanNulls !== 'number' || spanNulls <= 0) {
+    return values;
+  }
+  const out = [...values];
+  let prevTime: number | undefined;
+  let nullIdx: number | undefined;
+  for (let i = 0; i < out.length; i++) {
+    if (out[i] === null) {
+      nullIdx ??= i;
+      continue;
+    }
+    if (nullIdx != null && prevTime != null && times[i] - prevTime < spanNulls) {
+      for (let j = nullIdx; j < i; j++) {
+        out[j] = undefined;
+      }
+    }
+    nullIdx = undefined;
+    prevTime = times[i];
+  }
+  return out;
 }
 
 const isNumericTimeField = (field: Field) => field.type === FieldType.time && typeof field.values[0] === 'number';
@@ -223,7 +259,7 @@ function prepareFrames(
     if (timeIdx.length > 1) {
       frame = joinEndTimes(frame, timeIdx[1]);
     }
-    // No-op until `insertNulls` is registered; kept so the field config works as in core.
+    // Reads `custom.insertNulls` ("Disconnect values") of each field.
     frame = nullToValue(
       applyNullInsertThreshold({
         frame,
@@ -288,7 +324,9 @@ function buildSegments(
     discrete &&
     (hasSpecialMappedValue(field, SpecialValueMatch.NaN) || hasSpecialMappedValue(field, SpecialValueMatch.NullAndNaN));
   const rangeEnd = timeRange.to.valueOf();
-  const values: unknown[] = field.values;
+  // A mapped null draws a bar, so it is not connected. Samples mode has no states to connect.
+  const raw: unknown[] = field.values;
+  const values = mode === 'samples' || mappedNull ? raw : spanNullValues(raw, times, customValue(field, 'spanNulls'));
   const segments: TimelineSegment[] = [];
 
   for (let ix = 0; ix < values.length; ix++) {

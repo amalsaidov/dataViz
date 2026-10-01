@@ -8,6 +8,7 @@ import {
   addFillOpacityFieldOption,
   addLineWidthFieldOption,
   addMergeValuesOption,
+  addNullsFieldOptions,
   addRowHeightOption,
   addShowValueOption,
 } from 'lib/grafana/editor/timeline/core-options';
@@ -33,6 +34,7 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsTimelineFieldConfig>(
     useCustomConfig: (builder) => {
       addLineWidthFieldOption(builder, category);
       addFillOpacityFieldOption(builder, category);
+      addNullsFieldOptions(builder, category);
     },
   })
   .setPanelOptions((builder) => {

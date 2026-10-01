@@ -1,4 +1,9 @@
-import { type FieldConfigEditorBuilder, type PanelOptionsEditorBuilder } from '@grafana/data';
+import {
+  type FieldConfigEditorBuilder,
+  FieldType,
+  identityOverrideProcessor,
+  type PanelOptionsEditorBuilder,
+} from '@grafana/data';
 import {
   STATUS_HISTORY_COL_WIDTH_DEFAULT,
   TIMELINE_ALIGN_VALUE_DEFAULT,
@@ -11,6 +16,8 @@ import {
   timelineShowValueOptions,
 } from 'editor/timeline';
 import { type EChartsTimelineFieldConfig } from 'editor/types';
+import { SpanNullsEditor } from 'lib/grafana/editor/cartesian/SpanNullsEditor';
+import { InsertNullsEditor } from 'lib/grafana/editor/timeline/InsertNullsEditor';
 import { type PanelOptions } from 'types';
 
 /**
@@ -107,4 +114,37 @@ export function addFillOpacityFieldOption(
     defaultValue,
     settings: { min: 0, max: 100, step: 1 },
   });
+}
+
+/**
+ * `custom.spanNulls` ("Connect null values") and `custom.insertNulls` ("Disconnect values"), as
+ * core's state timeline registers them. `prepareTimeline` reads both.
+ * https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/state-timeline/module.tsx
+ */
+export function addNullsFieldOptions(builder: FieldBuilder, category: string[]) {
+  builder
+    .addCustomEditor<{}, boolean | number>({
+      id: 'spanNulls',
+      path: 'spanNulls',
+      name: 'Connect null values',
+      description: 'Run the state before a null value over the null values.',
+      category,
+      defaultValue: false,
+      editor: SpanNullsEditor,
+      override: SpanNullsEditor,
+      shouldApply: (field) => field.type !== FieldType.time,
+      process: identityOverrideProcessor,
+    })
+    .addCustomEditor<{}, boolean | number>({
+      id: 'insertNulls',
+      path: 'insertNulls',
+      name: 'Disconnect values',
+      description: 'Show a gap where the time between values is more than the threshold.',
+      category,
+      defaultValue: false,
+      editor: InsertNullsEditor,
+      override: InsertNullsEditor,
+      shouldApply: (field) => field.type !== FieldType.time,
+      process: identityOverrideProcessor,
+    });
 }

@@ -33,17 +33,17 @@ so a panel switched from core keeps its settings.
 
 ## Field options
 
-| Core Grafana option   | ECharts equivalent                                      | Status        | Regression test                                                                                         | Demo panel                                     |
-| --------------------- | ------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| Line width            | `custom.lineWidth`, default 0. Border inside the bar    | Supported     | [canvas: line width 1][canvas]                                                                          | [parity dashboard][db-parity] · [#3][live-3]   |
-| Fill opacity          | `custom.fillOpacity`, default 70                        | Supported     | [unit: names lanes by display name and applies fillOpacity to the value colour][prepare]                | [parity dashboard][db-parity] · [#3][live-3]   |
-| Color scheme          | Grafana `field.display`, default `continuous-GrYlRd`    | Supported     | [canvas: string states with value mappings][canvas], [canvas: numbers merged by threshold step][canvas] | [parity dashboard][db-parity] · [#9][live-9]   |
-| Value mappings        | Grafana `field.display`; mapped `null`/`NaN` draw a bar | Supported     | [canvas: boolean states][canvas], [unit: draws a mapped null as a bar][prepare]                         | [parity dashboard][db-parity] · [#15][live-15] |
-| Thresholds            | Grafana `field.display`; merged by step                 | Supported     | [unit: merges numbers in threshold colour mode by threshold step][prepare]                              | [parity dashboard][db-parity] · [#11][live-11] |
-| Connect null values   | —                                                       | Not supported | —                                                                                                       | —                                              |
-| Disconnect values     | —                                                       | Not supported | —                                                                                                       | —                                              |
-| Axis placement, width | —                                                       | Not supported | —                                                                                                       | —                                              |
-| Hide in area          | —                                                       | Not supported | —                                                                                                       | —                                              |
+| Core Grafana option   | ECharts equivalent                                                                 | Status        | Regression test                                                                                                                          | Demo panel                                     |
+| --------------------- | ---------------------------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Line width            | `custom.lineWidth`, default 0. Border inside the bar                               | Supported     | [canvas: line width 1][canvas]                                                                                                           | [parity dashboard][db-parity] · [#3][live-3]   |
+| Fill opacity          | `custom.fillOpacity`, default 70                                                   | Supported     | [unit: names lanes by display name and applies fillOpacity to the value colour][prepare]                                                 | [parity dashboard][db-parity] · [#3][live-3]   |
+| Color scheme          | Grafana `field.display`, default `continuous-GrYlRd`                               | Supported     | [canvas: string states with value mappings][canvas], [canvas: numbers merged by threshold step][canvas]                                  | [parity dashboard][db-parity] · [#9][live-9]   |
+| Value mappings        | Grafana `field.display`; mapped `null`/`NaN` draw a bar                            | Supported     | [canvas: boolean states][canvas], [unit: draws a mapped null as a bar][prepare]                                                          | [parity dashboard][db-parity] · [#15][live-15] |
+| Thresholds            | Grafana `field.display`; merged by step                                            | Supported     | [unit: merges numbers in threshold colour mode by threshold step][prepare]                                                               | [parity dashboard][db-parity] · [#11][live-11] |
+| Connect null values   | `custom.spanNulls`: Never, Always or a threshold, as core's `nullToUndefThreshold` | Supported     | [canvas: connect null values always][canvas], [integration: closes the gap of a null with Connect null values][integration]              | [parity dashboard][db-parity] · [#25][live-25] |
+| Disconnect values     | `custom.insertNulls`: Grafana `applyNullInsertThreshold`                           | Supported     | [canvas: disconnect values over 15 minutes][canvas], [integration: adds gaps with Disconnect values under the row interval][integration] | [parity dashboard][db-parity] · [#27][live-27] |
+| Axis placement, width | —                                                                                  | Not supported | —                                                                                                                                        | —                                              |
+| Hide in area          | —                                                                                  | Not supported | —                                                                                                                                        | —                                              |
 
 ## Data shapes
 
@@ -86,5 +86,7 @@ The open items are in [#211](https://github.com/grafana-experimental/grafana-bey
 [live-11]: http://localhost:3001/d/echarts-state-timeline-parity?viewPanel=11
 [live-13]: http://localhost:3001/d/echarts-state-timeline-parity?viewPanel=13
 [live-15]: http://localhost:3001/d/echarts-state-timeline-parity?viewPanel=15
+[live-25]: http://localhost:3001/d/echarts-state-timeline-parity?viewPanel=25
+[live-27]: http://localhost:3001/d/echarts-state-timeline-parity?viewPanel=27
 [live-17]: http://localhost:3001/d/echarts-state-timeline-parity?viewPanel=17
 [live-19]: http://localhost:3001/d/echarts-state-timeline-parity?viewPanel=19

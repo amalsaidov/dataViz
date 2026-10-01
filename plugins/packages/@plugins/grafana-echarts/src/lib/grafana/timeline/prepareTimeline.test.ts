@@ -497,3 +497,57 @@ describe('fmtDuration', () => {
     expect(fmtDuration(ms)).toBe(text);
   });
 });
+
+describe('Connect null values and Disconnect values', () => {
+  const lane = (custom: Record<string, unknown>, times = [0, 10, 20, 30], values: unknown[] = ['a', null, 'b', 'b']) =>
+    prepareTimeline(
+      withDisplay([
+        toDataFrame({
+          fields: [
+            { name: 'time', type: FieldType.time, values: times },
+            { name: 'state', type: FieldType.string, values, config: { custom } },
+          ],
+        }),
+      ]),
+      opts(range(0, 40))
+    ).model!.lanes[0].segments.map(({ start, end, text }) => [start, end, text]);
+
+  it('draws a gap for a null by default', () => {
+    expect(lane({})).toEqual([
+      [0, 10, 'a'],
+      [20, 40, 'b'],
+    ]);
+  });
+
+  it('runs the state over a null with spanNulls always', () => {
+    expect(lane({ spanNulls: true })).toEqual([
+      [0, 20, 'a'],
+      [20, 40, 'b'],
+    ]);
+  });
+
+  it('runs the state over a null only when the gap is under the spanNulls threshold', () => {
+    expect(lane({ spanNulls: 21 })).toEqual([
+      [0, 20, 'a'],
+      [20, 40, 'b'],
+    ]);
+    expect(lane({ spanNulls: 20 })).toEqual([
+      [0, 10, 'a'],
+      [20, 40, 'b'],
+    ]);
+  });
+
+  // `applyNullInsertThreshold` puts the null at the row before the interval plus the threshold.
+  it('inserts a gap after a long interval with insertNulls', () => {
+    const times = [0, 10, 30];
+    const values = ['a', 'a', 'b'];
+    expect(lane({}, times, values)).toEqual([
+      [0, 30, 'a'],
+      [30, 40, 'b'],
+    ]);
+    expect(lane({ insertNulls: 15 }, times, values)).toEqual([
+      [0, 25, 'a'],
+      [30, 40, 'b'],
+    ]);
+  });
+});

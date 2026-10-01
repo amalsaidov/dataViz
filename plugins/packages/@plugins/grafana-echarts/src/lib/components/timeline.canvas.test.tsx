@@ -69,4 +69,16 @@ describe('state timeline core parity canvas', () => {
     const { bars, context } = await renderBars([stringsFrame({ lineWidth: 1 })]);
     expect(bars).toMatchCanvasSnapshot(context, { width, height });
   });
+
+  describe('null values', () => {
+    it('connect null values always', async () => {
+      const { bars, context } = await renderBars([stringsFrame({ spanNulls: true })], { mergeValues: false });
+      expect(bars).toMatchCanvasSnapshot(context, { width, height });
+    });
+
+    it('disconnect values over 15 minutes', async () => {
+      const { bars, context } = await renderBars([stringsFrame({ insertNulls: 15 * 60 * 1000 })]);
+      expect(bars).toMatchCanvasSnapshot(context, { width, height });
+    });
+  });
 });
