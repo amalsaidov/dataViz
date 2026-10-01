@@ -19,6 +19,8 @@
 import 'lib/publicPath';
 import { type PanelProps } from '@grafana/data';
 import { LoadingPlaceholder } from '@grafana/ui';
+import { ChartErrorBoundary } from 'lib/components/ChartErrorBoundary';
+import { PanelRenderErrorView } from 'lib/components/PanelRenderErrorView';
 import { AnnotationTagsContext } from 'lib/components/annotations/annotationTagsContext';
 import { type ChartFamily } from 'lib/echarts/charts/autoSeriesType';
 import { searchAnnotationTags } from 'lib/grafana/annotationTags';
@@ -29,19 +31,29 @@ import { type PanelOptions } from 'types';
 const loadPanel = () => import('lib/components/Panel').then((m) => ({ default: m.Panel }));
 const Panel = lazy(loadPanel);
 
+// The browser console gets each render error, with its stack.
+const logRenderError = (error: Error) => console.error('ECharts panel render error', error);
+
 /**
  * Build the lazy panel entry for a nested plugin, binding its chart `family`.
  * `preload` runs in parallel with the chunk load and delays the first render
  * until it settles. It must not reject.
  * Only this Grafana entry gives the annotation editor the tag search of the Grafana API. The standalone
- * renderer renders `Panel` with no tag search.
+ * renderer renders `Panel` with no tag search. Only this entry has the Grafana error view for a render error.
  */
 export const makeLazyPanel = (family: ChartFamily, preload?: () => Promise<void>) => {
   const Loaded = preload ? lazy(() => Promise.all([loadPanel(), preload()]).then(([m]) => m)) : Panel;
   const LazyPanel = (props: PanelProps<PanelOptions>) => (
     <AnnotationTagsContext.Provider value={searchAnnotationTags}>
       <Suspense fallback={<LoadingPlaceholder text="" />}>
-        <Loaded {...props} family={family} />
+        {/* New data or options clear the error, so a fixed query renders again. */}
+        <ChartErrorBoundary
+          resetKeys={[props.data, props.options, props.fieldConfig]}
+          onError={logRenderError}
+          fallback={(error) => <PanelRenderErrorView error={error} panel={props} />}
+        >
+          <Loaded {...props} family={family} />
+        </ChartErrorBoundary>
       </Suspense>
     </AnnotationTagsContext.Provider>
   );
