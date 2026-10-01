@@ -41,6 +41,7 @@ import { addCommonLegendAndTooltip } from 'lib/grafana/editor/common/legend-and-
 import { addPerformanceOptions } from 'lib/grafana/editor/common/performance-options';
 import { type PanelOptions } from 'types';
 import { cartesianSuggestionsSupplier } from './suggestions';
+import { cartesianPanelChangeHandler } from './panelChange';
 
 // Initialize i18n before the option builders below call `t()`. Every module is
 // its own webpack entry (see getEntries in .config/bundler/utils.ts), so
@@ -264,4 +265,6 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
   // Receive the dashboard annotations in `data.annotations`. Without this, a Scenes dashboard
   // removes them before the panel renders (`VizPanel` reads `plugin.dataSupport`).
   // https://github.com/grafana/grafana/blob/main/packages/grafana-data/src/panel/PanelPlugin.ts
-  .setDataSupport({ annotations: true });
+  .setDataSupport({ annotations: true })
+  // A switch from core Time series keeps its options and field overrides (`panelChange.ts`).
+  .setPanelChangeHandler(cartesianPanelChangeHandler);
