@@ -24,6 +24,13 @@ initPluginTranslations(__PLUGIN_ID__);
 export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(makeLazyPanel('hierarchy'))
   .useFieldConfig({
     standardOptions: STANDARD_FIELD_OPTIONS,
+    // Register `custom.hideFrom` so Grafana keeps the legend visibility override
+    // (it skips unregistered override properties). The chart reads the hidden
+    // top-level nodes by name (see `lib/grafana/fields/seriesConfig.ts`).
+    // https://grafana.com/docs/grafana/latest/panels-visualizations/configure-legend/
+    useCustomConfig: (builder) => {
+      commonOptionsBuilder.addHideFrom(builder);
+    },
   })
   .setPanelOptions((builder) => {
     // Panel-level render variant: treemap vs sunburst.

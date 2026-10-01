@@ -31,6 +31,8 @@ export interface HierarchySeriesContext extends HierarchyChartContext {
   // scheme drives node colors for by-value modes; `undefined` falls back to the
   // classic palette.
   valueField?: Field;
+  // Top-level node names that the legend visibility toggle hides.
+  hiddenRoots?: Set<string>;
 }
 
 /** Resolves the color for a single node; `undefined` leaves it to ECharts. */
@@ -83,15 +85,17 @@ export function makeHierarchyColorResolver(
 /**
  * Map the chart-agnostic tree to ECharts tree data, coloring nodes via
  * `resolveColor` (see `makeHierarchyColorResolver`). A node with no resolved
- * color is left for ECharts to shade.
+ * color is left for ECharts to shade. A root in `hiddenRoots` is dropped after
+ * its color is resolved, so the other roots keep their palette colors.
  */
 function toTreeData(
   nodes: HierarchyNode[],
   resolveColor: HierarchyColorResolver,
   depth = 0,
-  parentPath: string[] = []
+  parentPath: string[] = [],
+  hiddenRoots?: Set<string>
 ): HierarchyTreeItem[] {
-  return nodes.map((node, index) => {
+  const items = nodes.map((node, index) => {
     const path = [...parentPath, node.name];
     const item: HierarchyTreeItem = {
       // The path is unique where names repeat at different levels.
@@ -115,6 +119,7 @@ function toTreeData(
     }
     return item;
   });
+  return hiddenRoots ? items.filter((item) => !hiddenRoots.has(item.name)) : items;
 }
 
 /**
@@ -151,7 +156,13 @@ export function getTreemapSeries(data: HierarchyData, ctx: HierarchySeriesContex
       },
     },
     zlevel: ctx.options.zLevel?.series,
-    data: toTreeData(data.roots, makeHierarchyColorResolver(ctx.theme, ctx.fieldConfig, ctx.valueField)),
+    data: toTreeData(
+      data.roots,
+      makeHierarchyColorResolver(ctx.theme, ctx.fieldConfig, ctx.valueField),
+      0,
+      [],
+      ctx.hiddenRoots
+    ),
     tooltip: seriesTooltip(buildHierarchyTooltipModel(ctx), ctx.tooltipSink),
   };
 }
@@ -168,7 +179,13 @@ export function getSunburstSeries(data: HierarchyData, ctx: HierarchySeriesConte
     radius: [0, '95%'],
     nodeClick: false,
     zlevel: ctx.options.zLevel?.series,
-    data: toTreeData(data.roots, makeHierarchyColorResolver(ctx.theme, ctx.fieldConfig, ctx.valueField)),
+    data: toTreeData(
+      data.roots,
+      makeHierarchyColorResolver(ctx.theme, ctx.fieldConfig, ctx.valueField),
+      0,
+      [],
+      ctx.hiddenRoots
+    ),
     tooltip: seriesTooltip(buildHierarchyTooltipModel(ctx), ctx.tooltipSink),
   };
 }

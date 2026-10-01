@@ -3,7 +3,7 @@ import { debug, LOG_LEVELS } from 'development';
 import { type ECBasicOption } from 'echarts/types/dist/shared';
 import { partToWholeSeriesTypes } from 'editor/pie';
 import { panelTypeToAxis } from 'lib/echarts/axes/converters';
-import { isRelationsSeriesType } from 'lib/echarts/charts/narrowing';
+import { isHierarchySeriesType, isRelationsSeriesType } from 'lib/echarts/charts/narrowing';
 import { resolveChartModule } from 'lib/echarts/charts/registry';
 import { type BaseOptionParts, type ChartContext, type ChartModule } from 'lib/echarts/charts/types';
 import { framesHaveTimeField } from 'lib/echarts/converters/frames';
@@ -57,7 +57,7 @@ export function buildPanelChartOption(
 
   // Drop value fields hidden via the legend visibility toggle before building.
   //
-  // Two families opt out and hide their own marks instead, for different reasons:
+  // These families opt out and hide their own marks instead, for different reasons:
   //
   // - **part-to-whole** (pie/funnel slices — see `resolvePieSlices`) because its
   //   legend rows are frame *rows*, so the override names categories and never
@@ -65,6 +65,8 @@ export function buildPanelChartOption(
   //   `byNames` matcher is in *exclude* mode, so a list of category names marks
   //   every real numeric field hidden and the stat column that sizes and colours
   //   the chart would be deleted.
+  // - **hierarchy** (treemap/sunburst) for the same reason: its legend rows are
+  //   top-level node names. It drops hidden roots in `toTreeData`.
   // - **relations** (graph/sankey/chord) because deleting a mark's column destroys
   //   the information its reader needs. A node's field carries the fact that it was
   //   hidden; remove the field and `frameToGraphWide` simply *re-derives* the node
@@ -80,6 +82,7 @@ export function buildPanelChartOption(
   const hidesItsOwnMarks =
     partToWholeSeriesTypes.includes(rawCtx.seriesType) ||
     isRelationsSeriesType(rawCtx.seriesType) ||
+    isHierarchySeriesType(rawCtx.seriesType) ||
     isHistogramPanel(rawCtx.options);
   const ctx: ChartContext = hidesItsOwnMarks
     ? { ...rawCtx, tooltipSink: sink, options }
