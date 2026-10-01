@@ -1,10 +1,10 @@
 import { StackingMode } from '@grafana/schema';
 import { debug, LOG_LEVELS } from 'development';
-import { STACK_GROUP_ID } from 'editor/cartesian';
 import { type CartesianSingleValueSeriesType } from 'editor/types';
 import { type CartesianOption, type ChartContext } from 'lib/echarts/charts/types';
 import { fallbackCategories, framesToCategoryCartesian } from 'lib/echarts/converters/categoryCartesianModel';
 import {
+  getFieldStackId,
   resolveFieldSeriesType,
   resolveFieldSpanNulls,
   resolveFieldStack,
@@ -25,7 +25,7 @@ import { getValueFormatter } from 'lib/echarts/style';
  * every frame in the response, joined by category label; see
  * `framesToCategoryCartesian` for that contract.
  *
- * Per-field `custom.seriesType` and `custom.stackSeries` overrides are honored
+ * Per-field `custom.seriesType`, `custom.stackSeries` and `custom.stackGroup` overrides are honored
  * here exactly as they are on the time axis (both read the shared resolvers in
  * `converters/fieldOverrides.ts`), so a panel can mix render types — e.g. a
  * scatter overlay on a categorical bar chart. An unset field inherits the
@@ -62,6 +62,7 @@ export function categoryCartesianToEChartsOption(
   const sources = model.series.map(({ field, values, rows, frame, color }) => {
     const resolvedType = resolveFieldSeriesType<CartesianSingleValueSeriesType>(field, seriesType);
     const isBar = resolvedType === 'bar';
+    const stacked = isBar && resolveFieldStack(field, stackAll);
     return {
       field,
       values,
@@ -69,7 +70,8 @@ export function categoryCartesianToEChartsOption(
       color,
       resolvedType,
       isBar,
-      stacked: isBar && resolveFieldStack(field, stackAll),
+      stacked,
+      ...(stacked ? { stackId: getFieldStackId(field, true) } : {}),
       formatValue: getValueFormatter(field, theme, timeZone),
       colorField: findColorByField(frame, frames, options),
     };
@@ -96,7 +98,8 @@ export function categoryCartesianToEChartsOption(
         // (LTTB sampling vs `large`), so passing the panel type would put an
         // overridden field on the wrong fast path.
         perf: getSeriesPerfOptions({ type: resolvedType, density, options: seriesOptions, values }),
-        ...(stacked ? { stack: STACK_GROUP_ID } : {}),
+        // Only bars stack here, so each stack id has the bar base and the field's stack group.
+        ...(stacked ? { stack: sources[i].stackId } : {}),
         // A category axis has no x distance, so only `true` connects. The chart module reports a
         // numeric threshold here as not supported (see `getSpanNullsNotices`).
         ...(resolvedType === 'line' && resolveFieldSpanNulls(sources[i].field) === true ? { connectNulls: true } : {}),

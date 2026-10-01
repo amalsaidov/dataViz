@@ -1,3 +1,4 @@
+import { StackingMode } from '@grafana/schema';
 import {
   createTheme,
   type DataFrame,
@@ -219,6 +220,38 @@ describe('categoryCartesianToEChartsOption', () => {
       expect(series[0]).toHaveProperty('stack', 'total');
       expect(series[1]).toMatchObject({ type: 'line' });
       expect(series[1]).not.toHaveProperty('stack');
+    });
+
+    // A field in another stack group gets its own stack id, as on the time axis.
+    it('stacks a field of another stack group apart', () => {
+      const { series } = run([stackFrame({ stackGroup: 'B' })], 'bar', true);
+
+      expect(series[0]).toHaveProperty('stack', 'total');
+      expect(series[1]).toHaveProperty('stack', 'total:B');
+    });
+
+    // Each stack group has its own percent total.
+    it('gives each stack group its own percent total', () => {
+      const frame = toDataFrame({
+        fields: [
+          { name: 'category', type: FieldType.string, values: ['a', 'b'] },
+          { name: 'a1', type: FieldType.number, values: [1, 1], config: { displayName: 'a1' } },
+          { name: 'a2', type: FieldType.number, values: [3, 3], config: { displayName: 'a2' } },
+          {
+            name: 'b1',
+            type: FieldType.number,
+            values: [2, 2],
+            config: { displayName: 'b1', custom: { stackGroup: 'B' } },
+          },
+        ],
+      });
+      const { series } = run([frame], 'bar', true, { stacking: StackingMode.Percent });
+
+      // Each point is [category, share of the stack total, raw value].
+      expect(series[2].data).toEqual([
+        [0, 1, 2],
+        [1, 1, 2],
+      ]);
     });
   });
 
