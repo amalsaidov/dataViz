@@ -1,3 +1,4 @@
+import { getFieldShapeIssue } from './dataShape';
 import { type Field } from '@grafana/data';
 import { PARALLEL_LINE_OPACITY_DEFAULT, PARALLEL_SMOOTH_DEFAULT } from 'editor/parallel';
 import { findCategoricalFrame, mapNumericFields } from 'lib/echarts/converters/frames';
@@ -144,6 +145,10 @@ function buildParallelOption(ctx: ChartContext, isGrafanaLegend: boolean): EChar
 
 export const multivariateChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
+
+  getDataIssue(ctx) {
+    return getFieldShapeIssue(ctx.frames, { number: true });
+  },
 
   // @todo restore "All" once a hover expands into one row per indicator/axis.
   // ECharts hands the formatter a single param whose `value` is the whole

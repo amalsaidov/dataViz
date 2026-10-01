@@ -13,5 +13,7 @@ export const DataIssueView = (props: PanelDataErrorViewProps & { message: string
   // A new message gives only the new message. A new signal or the unmount gives `null` first.
   useEffect(() => () => signal(null), [signal]);
   useEffect(() => signal(message), [signal, message]);
-  return <PanelDataErrorView {...props} />;
+  // With a `needs*` flag, Grafana gives its own text for the missing field type.
+  const needsField = props.needsTimeField === true || props.needsNumberField === true;
+  return <PanelDataErrorView {...props} message={needsField ? undefined : message} />;
 };

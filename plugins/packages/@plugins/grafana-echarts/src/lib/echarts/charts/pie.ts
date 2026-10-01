@@ -1,3 +1,4 @@
+import { getFieldShapeIssue } from './dataShape';
 import { type ReduceDataOptions } from '@grafana/data';
 import { type SortOrder, TooltipDisplayMode } from '@grafana/schema';
 import { PIE_LEGEND_VALUES_DEFAULT, PIE_SORT_DEFAULT } from 'editor/pie';
@@ -94,6 +95,10 @@ function buildFunnelChartOption(
 
 export const pieChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
+
+  getDataIssue(ctx) {
+    return getFieldShapeIssue(ctx.frames, { number: true });
+  },
 
   getTooltipValueFormatter(ctx) {
     // Per-slice formatter (by dataIndex) so each slice honors its own field's

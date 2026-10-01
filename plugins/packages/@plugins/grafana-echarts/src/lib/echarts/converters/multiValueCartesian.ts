@@ -189,6 +189,21 @@ export function getCandlestickDataIssue(ctx: ChartContext): ChartDataIssue | und
   };
 }
 
+/** The data issue of a boxplot without the number fields min, q1, median, q3 and max. */
+export function getBoxplotDataIssue(ctx: ChartContext): ChartDataIssue | undefined {
+  if (ctx.seriesType !== 'boxplot') {
+    return undefined;
+  }
+  const frame = findCategoricalFrame(filterUnsupportedFields(ctx.frames));
+  if (frame && resolveMultiValueFields(frame, 'boxplot')) {
+    return undefined;
+  }
+  return {
+    reason: 'boxplot-fields-missing',
+    message: 'A boxplot needs the number fields min, q1, median, q3 and max. Select another series type.',
+  };
+}
+
 /** Frame display name for the single multi-value series, or a type fallback. */
 function seriesName(frame: DataFrame, fallback: string): string {
   return frame.name?.trim() ? frame.name : fallback;

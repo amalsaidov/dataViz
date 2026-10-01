@@ -358,6 +358,10 @@ export interface ChartDataIssue {
   reason: string;
   /** Message that tells the user how to fix the problem in the panel no-data view. */
   message: string;
+  /** Show the "needs a time field" view of Grafana (`PanelDataErrorView` prop `needsTimeField`). */
+  needsTimeField?: boolean;
+  /** Show the "needs a number field" view of Grafana (`PanelDataErrorView` prop `needsNumberField`). */
+  needsNumberField?: boolean;
 }
 
 /** How the panel coordinates ECharts resize and option rebuild work. */

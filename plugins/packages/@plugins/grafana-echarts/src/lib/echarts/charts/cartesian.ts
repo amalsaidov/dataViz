@@ -1,3 +1,4 @@
+import { getFieldShapeIssue } from './dataShape';
 import { type Field } from '@grafana/data';
 import { StackingMode } from '@grafana/schema';
 import {
@@ -29,6 +30,7 @@ import {
 import { isHistogramPanel } from 'lib/echarts/converters/histogram';
 import { isSpanNullsThreshold } from 'lib/echarts/converters/spanNulls';
 import {
+  getBoxplotDataIssue,
   getCandlestickDataIssue,
   multiValueCartesianToEChartsOption,
   resolveMultiValueSources,
@@ -514,7 +516,10 @@ export const cartesianChartModule: ChartModule = {
   singleTooltipOnly: (ctx) => isHistogramPanel(ctx.options),
 
   getDataIssue(ctx) {
-    return isHistogramPanel(ctx.options) ? getHistogramDataIssue(ctx) : getCandlestickDataIssue(ctx);
+    if (isHistogramPanel(ctx.options)) {
+      return getHistogramDataIssue(ctx);
+    }
+    return getCandlestickDataIssue(ctx) ?? getBoxplotDataIssue(ctx) ?? getFieldShapeIssue(ctx.frames, { number: true });
   },
 
   getNotices(ctx: CartesianContext) {

@@ -1,3 +1,4 @@
+import { getFieldShapeIssue } from './dataShape';
 import { type VizLegendItem } from '@grafana/ui';
 import { resolveStreamChartType, STREAM_LAYER_SOURCE_DEFAULT, streamLayerSourcePath } from 'editor/stream';
 import { frameToStream, type StreamData, visibleStreamLayers } from 'lib/echarts/converters/stream';
@@ -39,6 +40,10 @@ function buildStreamData(ctx: ChartContext): StreamData | null {
 
 export const streamChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
+
+  getDataIssue(ctx) {
+    return getFieldShapeIssue(ctx.frames, { time: true, number: true });
+  },
 
   /**
    * @todo restore "All" once the axis-mode row model exists. ECharts builds an

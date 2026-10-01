@@ -121,7 +121,16 @@ export const PanelContent: React.FC<Props> = ({
   }, [chartModule, chartContext, data.state, hasQueryError]);
 
   if (dataIssue != null) {
-    return <DataIssueView data={data} panelId={id} fieldConfig={fieldConfig} message={dataIssue.message} />;
+    return (
+      <DataIssueView
+        data={data}
+        panelId={id}
+        fieldConfig={fieldConfig}
+        message={dataIssue.message}
+        needsTimeField={dataIssue.needsTimeField}
+        needsNumberField={dataIssue.needsNumberField}
+      />
+    );
   }
 
   return (
