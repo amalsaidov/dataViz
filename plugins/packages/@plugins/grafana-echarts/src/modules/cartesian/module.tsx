@@ -28,6 +28,7 @@ import { addCartesianSeriesStyleFieldConfig } from 'lib/grafana/editor/cartesian
 import { addCartesianLineWidthOptions } from 'lib/grafana/editor/cartesian/line-width';
 import { addCartesianPointSizeOptions } from 'lib/grafana/editor/cartesian/point-size';
 import { showIfBarOption, showIfLineOption } from 'lib/grafana/editor/cartesian/series-types';
+import { addCartesianLineStyleFieldConfig } from 'lib/grafana/editor/cartesian/line-style';
 import { addCartesianSpanNullsFieldConfig } from 'lib/grafana/editor/cartesian/span-nulls';
 import { addCartesianValueLabelOptions } from 'lib/grafana/editor/cartesian/value-labels';
 import { addCartesianXTickLabelOptions } from 'lib/grafana/editor/cartesian/x-tick-labels';
@@ -132,6 +133,9 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
         },
         hideFromDefaults: true,
       });
+
+      // Core "Line style" of line series: Solid, Dash or Dots.
+      addCartesianLineStyleFieldConfig(builder);
 
       // Core "Connect null values" of line series: Never, Always or a gap threshold.
       addCartesianSpanNullsFieldConfig(builder);

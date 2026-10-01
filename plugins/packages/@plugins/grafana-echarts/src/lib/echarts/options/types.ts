@@ -75,4 +75,8 @@ export interface CartesianSeriesInput {
   hover?: boolean;
   /** Line series: connect the line over null values (ECharts `connectNulls`). See `spanNulls.ts`. */
   connectNulls?: boolean;
+  /** Line series: the dash segment lengths in px (ECharts `lineStyle.type`). See `resolveFieldLineDash`. */
+  lineDash?: number[];
+  /** Line series: draw round segment ends, so a zero-length segment is a dot (ECharts `lineStyle.cap`). */
+  lineRoundCap?: boolean;
 }

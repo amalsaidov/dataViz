@@ -5,6 +5,7 @@ import { type CartesianContextWithOverlay, type EChartSingleValueCartesianSeries
 import {
   getFieldStackId,
   resolveFieldSeriesType,
+  resolveFieldLineDash,
   resolveFieldSpanNulls,
   resolveFieldStack,
   resolveFieldStyleOptions,
@@ -132,6 +133,7 @@ export function timeSeriesToEChartsOption(
         hover: true,
         ...(sources[i].stackId ? { stack: sources[i].stackId } : {}),
         ...(connectNulls ? { connectNulls } : {}),
+        ...(type === 'line' ? resolveFieldLineDash(field) : undefined),
       },
       type,
       seriesOptions,

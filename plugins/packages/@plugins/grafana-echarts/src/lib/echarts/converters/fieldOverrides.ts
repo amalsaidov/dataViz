@@ -67,6 +67,25 @@ export function resolveFieldSpanNulls(field: Field): SpanNulls {
 }
 
 /**
+ * The ECharts dash of a field (core `custom.lineStyle`): `undefined` for a solid line. A dash or a dot
+ * without segments uses `[10, 10]`, and a dot has round ends, as core `UPlotSeriesBuilder`:
+ * https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/uPlot/config/UPlotSeriesBuilder.ts
+ */
+export function resolveFieldLineDash(field: Field): { lineDash: number[]; lineRoundCap?: boolean } | undefined {
+  const custom: Record<string, unknown> = { ...getFieldConfigFromField(field).custom };
+  const lineStyle: Record<string, unknown> =
+    typeof custom.lineStyle === 'object' && custom.lineStyle !== null ? { ...custom.lineStyle } : {};
+  const { fill, dash } = lineStyle;
+  if (fill !== 'dash' && fill !== 'dot') {
+    return undefined;
+  }
+  const segments: unknown[] = Array.isArray(dash) ? dash : [];
+  const numbers = segments.filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
+  const lineDash = numbers.length > 0 && numbers.length === segments.length ? numbers : [10, 10];
+  return { lineDash, ...(fill === 'dot' ? { lineRoundCap: true } : {}) };
+}
+
+/**
  * The panel options of one series, with the series style of its field: `custom.lineWidth`,
  * `custom.fillOpacity`, `custom.pointSize` and `custom.showPoints`. A field value wins over the panel
  * option, as in core Time series. A field with no value keeps the panel option.

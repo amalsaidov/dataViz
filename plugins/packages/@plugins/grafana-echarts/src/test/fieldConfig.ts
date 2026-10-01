@@ -93,6 +93,8 @@ export const testFieldConfigRegistry = new FieldConfigOptionsRegistry(() => [
   item('filterable', 'Filterable'),
   customItem('sourceFilterLabel', 'Source filter label'),
   customItem('targetFilterLabel', 'Target filter label'),
+  // The cartesian "Line style" (`addCartesianLineStyleFieldConfig`). No other fixture sets it, so no other render moves.
+  customItem('lineStyle', 'Line style'),
 ]);
 
 const emptyFieldConfig: FieldConfigSource = { defaults: {}, overrides: [] };

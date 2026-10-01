@@ -6,6 +6,7 @@ import { fallbackCategories, framesToCategoryCartesian } from 'lib/echarts/conve
 import {
   getFieldStackId,
   resolveFieldSeriesType,
+  resolveFieldLineDash,
   resolveFieldSpanNulls,
   resolveFieldStack,
   resolveFieldStyleOptions,
@@ -103,6 +104,7 @@ export function categoryCartesianToEChartsOption(
         // A category axis has no x distance, so only `true` connects. The chart module reports a
         // numeric threshold here as not supported (see `getSpanNullsNotices`).
         ...(resolvedType === 'line' && resolveFieldSpanNulls(sources[i].field) === true ? { connectNulls: true } : {}),
+        ...(resolvedType === 'line' ? resolveFieldLineDash(sources[i].field) : undefined),
       },
       resolvedType,
       seriesOptions,

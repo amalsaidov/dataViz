@@ -189,15 +189,25 @@ export function getBarRadius(barRadius: number | undefined): number | undefined 
 }
 
 /**
- * Per-series `lineStyle` composing the series color with the "Line width". The
+ * Per-series `lineStyle` composing the series color with the "Line width" and the "Line style". The
  * `width` is omitted at unset/≤0 so ECharts' default stroke stands. Line series.
+ * A dash array is in px and does not scale with the width, as the uPlot `dash` of core.
  * https://echarts.apache.org/en/option.html#series-line.lineStyle.width
+ * https://echarts.apache.org/en/option.html#series-line.lineStyle.type
+ * https://echarts.apache.org/en/option.html#series-line.lineStyle.cap
  */
 export function getCartesianLineStyle(
   color: string | undefined,
-  lineWidth: number | undefined
+  lineWidth: number | undefined,
+  lineDash?: number[],
+  lineRoundCap?: boolean
 ): LineSeriesOption['lineStyle'] {
-  return { color, ...(lineWidth != null && lineWidth > 0 ? { width: lineWidth } : {}) };
+  return {
+    color,
+    ...(lineWidth != null && lineWidth > 0 ? { width: lineWidth } : {}),
+    ...(lineDash ? { type: lineDash } : {}),
+    ...(lineRoundCap ? { cap: 'round' as const } : {}),
+  };
 }
 
 /**
@@ -316,6 +326,8 @@ export function buildCartesianSeries(
     perf,
     hover,
     connectNulls,
+    lineDash,
+    lineRoundCap,
   } = input;
   const label = getCartesianValueLabel(
     {
@@ -367,7 +379,7 @@ export function buildCartesianSeries(
         ...common,
         type: 'line',
         itemStyle: { color },
-        lineStyle: getCartesianLineStyle(color, options.lineWidth),
+        lineStyle: getCartesianLineStyle(color, options.lineWidth, lineDash, lineRoundCap),
         ...(areaStyle ? { areaStyle } : {}),
         // https://echarts.apache.org/en/option.html#series-line.connectNulls
         ...(connectNulls ? { connectNulls } : {}),
