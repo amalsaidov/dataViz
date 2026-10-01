@@ -1,4 +1,4 @@
-import { getFieldShapeIssue } from './dataShape';
+import { getPartToWholeIssue } from './partToWholeIssue';
 import { type ReduceDataOptions } from '@grafana/data';
 import { type SortOrder, TooltipDisplayMode } from '@grafana/schema';
 import { PIE_LEGEND_VALUES_DEFAULT, PIE_SORT_DEFAULT } from 'editor/pie';
@@ -97,7 +97,18 @@ export const pieChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
 
   getDataIssue(ctx) {
-    return getFieldShapeIssue(ctx.frames, { number: true });
+    const slices = () =>
+      resolvePieSlices(
+        ctx.frames,
+        ctx.theme,
+        ctx.fieldConfig,
+        resolveReduceOptions(ctx),
+        ctx.replaceVariables,
+        ctx.timeZone,
+        resolveSort(ctx)
+      );
+    const variant = ctx.seriesType === 'funnel' ? 'funnel' : 'pie';
+    return getPartToWholeIssue(ctx.frames, slices, variant, resolveReduceOptions(ctx)?.values === true);
   },
 
   getTooltipValueFormatter(ctx) {

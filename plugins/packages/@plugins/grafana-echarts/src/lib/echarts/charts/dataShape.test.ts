@@ -1,5 +1,5 @@
 import { FieldType, toDataFrame } from '@grafana/data';
-import { getFieldShapeIssue } from './dataShape';
+import { findNumericTextField, getFieldShapeIssue } from './dataShape';
 
 const frame = toDataFrame({
   fields: [
@@ -26,5 +26,17 @@ describe('getFieldShapeIssue', () => {
   it('counts a field with no values as missing', () => {
     const empty = toDataFrame({ fields: [{ name: 'v', type: FieldType.number, values: [] }] });
     expect(getFieldShapeIssue([empty], { number: true })).toMatchObject({ needsNumberField: true });
+  });
+});
+
+describe('findNumericTextField', () => {
+  it('finds a string field with only numbers as text', () => {
+    const text = toDataFrame({ fields: [{ name: 'n', type: FieldType.string, values: ['1', ' 2.5 '] }] });
+    expect(findNumericTextField([frame, text])?.name).toBe('n');
+  });
+
+  it('skips a string field with one value that is not a number', () => {
+    const mixed = toDataFrame({ fields: [{ name: 'n', type: FieldType.string, values: ['1', 'a'] }] });
+    expect(findNumericTextField([mixed])).toBeUndefined();
   });
 });

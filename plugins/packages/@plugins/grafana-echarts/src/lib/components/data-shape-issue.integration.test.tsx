@@ -27,13 +27,16 @@ const numberOnly = toDataFrame({
   ],
 });
 
-const cases: Array<[ChartFamily, SeriesType, typeof stringOnly, Record<string, boolean>]> = [
+// Part-to-whole starts with the core pie chart text and adds the fix steps (#924).
+const pieMessage = { message: expect.stringContaining('Cannot visualize data.') };
+
+const cases: Array<[ChartFamily, SeriesType, typeof stringOnly, Record<string, unknown>]> = [
   ['cartesian', 'line', stringOnly, { needsNumberField: true }],
   ['cartesian', 'bar', stringOnly, { needsNumberField: true }],
   ['cartesian', 'scatter', stringOnly, { needsNumberField: true }],
   ['heatmap', 'heatmap', stringOnly, { needsNumberField: true }],
-  ['part-to-whole', 'pie', stringOnly, { needsNumberField: true }],
-  ['part-to-whole', 'funnel', stringOnly, { needsNumberField: true }],
+  ['part-to-whole', 'pie', stringOnly, pieMessage],
+  ['part-to-whole', 'funnel', stringOnly, pieMessage],
   ['multivariate', 'radar', stringOnly, { needsNumberField: true }],
   ['multivariate', 'parallel', stringOnly, { needsNumberField: true }],
   ['hierarchy', 'treemap', stringOnly, { needsNumberField: true }],
