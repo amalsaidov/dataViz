@@ -83,8 +83,8 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(
         options: heatmapColorSchemeOptions,
       },
       category: [seriesCategoryName],
-      // Opacity mode colors cells from a single fill instead.
-      showIf: (options) => options.color?.mode !== 'opacity',
+      // Binned opacity mode colors cells from a single fill instead. Matrix never reads color.mode.
+      showIf: (options) => options.heatmapLayout === 'matrix' || options.color?.mode !== 'opacity',
     });
 
     addCoreHeatmapOptions(builder);
