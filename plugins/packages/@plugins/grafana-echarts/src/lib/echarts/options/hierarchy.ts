@@ -46,11 +46,12 @@ export type HierarchyColorResolver = (
 /**
  * Build a node color resolver honoring the value field's Color scheme:
  * - a fixed-color override (legend color picker) always wins, matched by node name;
- * - a by-value scheme (continuous / thresholds / fixed) colors *every* node from
- *   its value via the field's display processor, so the scheme is visible on the
- *   whole tree;
- * - the classic/by-series palette colors each top-level node by position, leaving
- *   deeper nodes to inherit ECharts' derived shades (the categorical default).
+ * - a by-value scheme (continuous / thresholds) colors *every* node from its value
+ *   via the field's display processor, so the scheme is visible on the whole tree;
+ * - any other scheme (single color, shades, gradient, palettes) colors each
+ *   top-level node with the Grafana color mode calculator. The node is the series:
+ *   its position is the series index and its name the series name. Deeper nodes
+ *   inherit ECharts' derived shades.
  *
  * See https://grafana.com/docs/grafana/latest/panels-visualizations/configure-standard-options/#color-scheme
  */
@@ -59,26 +60,36 @@ export function makeHierarchyColorResolver(
   fieldConfig: FieldConfigSource,
   valueField?: Field
 ): HierarchyColorResolver {
-  // Only an explicitly-configured by-value scheme colors by value. With no color
-  // config set, Grafana's default mode is by-value (thresholds), but the panel's
-  // registered default is the classic palette — so treat "unset" as classic to
-  // keep the distinct-per-node categorical default.
-  const byValue =
-    valueField != null &&
-    valueField.config.color?.mode != null &&
-    getFieldColorModeForField(valueField).isByValue === true;
+  // With no color config set, Grafana's default mode is by-value (thresholds), but
+  // the panel's registered default is the classic palette. So "unset" is classic.
+  const mode = valueField?.config.color?.mode != null ? getFieldColorModeForField(valueField) : undefined;
   const display =
-    byValue && valueField ? (valueField.display ?? getDisplayProcessor({ field: valueField, theme })) : undefined;
+    mode?.isByValue && valueField
+      ? (valueField.display ?? getDisplayProcessor({ field: valueField, theme }))
+      : undefined;
+
+  // Color of a top-level node from the field's color mode calculator.
+  const bySeries = (name: string, value: number | null, index: number): string => {
+    if (!mode || !valueField) {
+      return getPaletteColorByIndex(index, theme);
+    }
+    const nodeField: Field = {
+      ...valueField,
+      name,
+      state: { ...valueField.state, seriesIndex: index, displayName: name },
+    };
+    return mode.getCalculator(nodeField, theme)(value ?? 0, 0);
+  };
 
   return (name, value, index, depth) => {
-    const override = getSeriesColorOverride(fieldConfig, name);
+    const override = getSeriesColorOverride(fieldConfig, name, theme);
     if (override) {
       return override;
     }
     if (display) {
       return (value != null ? display(value).color : undefined) ?? getPaletteColorByIndex(index, theme);
     }
-    return depth === 0 ? getPaletteColorByIndex(index, theme) : undefined;
+    return depth === 0 ? bySeries(name, value, index) : undefined;
   };
 }
 

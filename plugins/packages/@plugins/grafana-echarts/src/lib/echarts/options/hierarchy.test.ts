@@ -5,6 +5,7 @@ import {
   type FieldConfigSource,
   FieldType,
   getDisplayProcessor,
+  getFieldColorMode,
   toDataFrame,
 } from '@grafana/data';
 import { LegendDisplayMode, TooltipDisplayMode, type VizLegendOptions, type VizTooltipOptions } from '@grafana/schema';
@@ -176,6 +177,63 @@ describe('getTreemapSeries by-value color scheme', () => {
     );
 
     expect(nodes.find((node) => node.name === 'total')?.itemStyle?.color).toBe('#123456');
+  });
+});
+
+// A value field with the given color mode and fixed color.
+const modeField = (mode: FieldColorModeId, fixedColor?: string): Field =>
+  toDataFrame({
+    fields: [{ name: 'value', type: FieldType.number, values: [100, 30], config: { color: { mode, fixedColor } } }],
+  }).fields[0];
+
+const topColors = (field: Field, fieldConfig = noOverrides) => {
+  const nodes = nodesOf(getTreemapSeries(data, ctx(fieldConfig, TooltipDisplayMode.Single, field)));
+  return nodes.map((node) => node.itemStyle?.color);
+};
+
+describe('getTreemapSeries by-series color schemes', () => {
+  it('Single color: colors each top-level node with the fixed color', () => {
+    const red = theme.visualization.getColorByName('dark-red');
+    expect(topColors(modeField(FieldColorModeId.Fixed, 'dark-red'))).toEqual([red, red]);
+  });
+
+  it('Gradient: colors each top-level node with the fixed color, as the core calculator does', () => {
+    const blue = theme.visualization.getColorByName('blue');
+    expect(topColors(modeField(FieldColorModeId.Gradient, 'blue'))).toEqual([blue, blue]);
+  });
+
+  it('Shades: gives each top-level node a different shade of the fixed color', () => {
+    const [total, io] = topColors(modeField(FieldColorModeId.Shades, 'green'));
+    expect(total).toBe(theme.visualization.getColorByName('green'));
+    expect(io).toBeDefined();
+    expect(io).not.toBe(total);
+  });
+
+  it('Color blind safe: colors top-level nodes from the color blind palette by position', () => {
+    const colors = getFieldColorMode(FieldColorModeId.PaletteColorblind).getColors!(theme);
+    expect(topColors(modeField(FieldColorModeId.PaletteColorblind))).toEqual([colors[0], colors[1]]);
+  });
+
+  it('Classic palette (by name): colors a node from its name, not its position', () => {
+    const field = modeField(FieldColorModeId.PaletteClassicByName);
+    const [total] = topColors(field);
+    // Swap the roots: the name keeps its color.
+    const swapped = nodesOf(
+      getTreemapSeries({ roots: [...data.roots].reverse() }, ctx(noOverrides, TooltipDisplayMode.Single, field))
+    );
+    expect(swapped.find((node) => node.name === 'total')?.itemStyle?.color).toBe(total);
+  });
+
+  it('leaves deeper nodes uncolored so they inherit the root color', () => {
+    const nodes = nodesOf(
+      getTreemapSeries(data, ctx(noOverrides, TooltipDisplayMode.Single, modeField(FieldColorModeId.Fixed, 'red')))
+    );
+    expect(nodes[0].children?.[0].itemStyle).toBeUndefined();
+  });
+
+  it('resolves a named override color to CSS', () => {
+    const [total] = topColors(modeField(FieldColorModeId.PaletteClassic), fixedColorOverride('total', 'dark-red'));
+    expect(total).toBe(theme.visualization.getColorByName('dark-red'));
   });
 });
 

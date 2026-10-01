@@ -1,4 +1,4 @@
-import { FieldColorModeId, type FieldConfigSource, FieldMatcherID } from '@grafana/data';
+import { createTheme, FieldColorModeId, type FieldConfigSource, FieldMatcherID } from '@grafana/data';
 import { SeriesVisibilityChangeMode } from '@grafana/ui';
 import {
   changeSeriesColorConfig,
@@ -8,6 +8,8 @@ import {
   setMarkPositionsConfig,
   toggleSeriesVisibilityConfig,
 } from 'lib/grafana/fields/seriesConfig';
+
+const theme = createTheme();
 
 const emptyConfig = (): FieldConfigSource => ({ defaults: {}, overrides: [] });
 
@@ -155,8 +157,15 @@ describe('getSeriesColorOverride', () => {
   it('returns the fixed color for a name, or undefined', () => {
     const config = changeSeriesColorConfig(emptyConfig(), 'cpu', '#abcdef');
 
-    expect(getSeriesColorOverride(config, 'cpu')).toBe('#abcdef');
-    expect(getSeriesColorOverride(config, 'mem')).toBeUndefined();
+    expect(getSeriesColorOverride(config, 'cpu', theme)).toBe('#abcdef');
+    expect(getSeriesColorOverride(config, 'mem', theme)).toBeUndefined();
+  });
+
+  it('resolves a named Grafana color to a CSS color', () => {
+    const config = changeSeriesColorConfig(emptyConfig(), 'cpu', 'dark-red');
+
+    expect(getSeriesColorOverride(config, 'cpu', theme)).toBe(theme.visualization.getColorByName('dark-red'));
+    expect(getSeriesColorOverride(config, 'cpu', theme)).not.toBe('dark-red');
   });
 });
 
@@ -243,7 +252,7 @@ describe('toggleSeriesVisibilityConfig', () => {
 
     const result = toggleSeriesVisibilityConfig(withColor, 'mem', SeriesVisibilityChangeMode.AppendToSelection, names);
 
-    expect(getSeriesColorOverride(result, 'cpu')).toBe('#ff0000');
+    expect(getSeriesColorOverride(result, 'cpu', theme)).toBe('#ff0000');
     expect(getHiddenSeriesNames(result, names)).toEqual(new Set(['mem']));
   });
 });

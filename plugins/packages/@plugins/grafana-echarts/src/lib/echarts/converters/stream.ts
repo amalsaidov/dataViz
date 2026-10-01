@@ -210,7 +210,7 @@ export function frameToStream(
       // A legend color-picker override wins over both color sources above; it is
       // stored as a `byName` override, which Grafana can only apply to a field —
       // so a long-path layer has to read it here (as hierarchy nodes do).
-      color: getSeriesColorOverride(fieldConfig, layer.name) ?? layer.color,
+      color: getSeriesColorOverride(fieldConfig, layer.name, theme) ?? layer.color,
     })),
   };
 }

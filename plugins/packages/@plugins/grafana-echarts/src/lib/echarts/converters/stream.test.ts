@@ -255,7 +255,7 @@ describe('frameToStream', () => {
       // Label-path layers are not fields, so Grafana's override engine cannot
       // color them — the converter reads the override by layer name instead.
       const data = frameToStream([longFrame()], theme, fieldConfig);
-      expect(data?.layers[1].color).toBe('purple');
+      expect(data?.layers[1].color).toBe(theme.visualization.getColorByName('purple'));
     });
   });
 });

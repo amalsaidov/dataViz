@@ -8,6 +8,7 @@ import {
   FieldMatcherID,
   isSystemOverrideWithRef,
   type SystemConfigOverrideRule,
+  type GrafanaTheme2,
 } from '@grafana/data';
 import { type HideSeriesConfig } from '@grafana/schema';
 import { SeriesVisibilityChangeMode } from '@grafana/ui';
@@ -187,15 +188,23 @@ export function changeSeriesColorConfig(
   };
 }
 
-/** Fixed color overridden for a series by name, or `undefined` when unset. */
-export function getSeriesColorOverride(fieldConfig: FieldConfigSource, name: string): string | undefined {
+/**
+ * Fixed color overridden for a series by name, as a CSS color, or `undefined` when unset.
+ * A picker can store a Grafana color name (e.g. `dark-red`), so the theme resolves it.
+ * See https://grafana.com/docs/grafana/latest/panels-visualizations/configure-standard-options/#color-scheme
+ */
+export function getSeriesColorOverride(
+  fieldConfig: FieldConfigSource,
+  name: string,
+  theme: GrafanaTheme2
+): string | undefined {
   for (const rule of fieldConfig.overrides) {
     if (matcherName(rule) !== name) {
       continue;
     }
     const color: unknown = rule.properties.find((p) => p.id === COLOR_PROP_ID)?.value;
     if (isFieldColor(color) && color.fixedColor) {
-      return color.fixedColor;
+      return theme.visualization.getColorByName(color.fixedColor);
     }
   }
   return undefined;

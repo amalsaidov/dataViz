@@ -309,7 +309,7 @@ export function multiValueCartesianToEChartsOption(
   // so honor a fixed-color override read by name here. This colors both the
   // chart and the legend (which reads `itemStyle.color`). Visibility is applied
   // in `buildMultiValueOption` so the legend keeps the item to toggle it back.
-  const colorOverride = getSeriesColorOverride(ctx.fieldConfig, String(built.name ?? ''));
+  const colorOverride = getSeriesColorOverride(ctx.fieldConfig, String(built.name ?? ''), theme);
   if (colorOverride) {
     built.itemStyle = { ...built.itemStyle, color: colorOverride };
   }
