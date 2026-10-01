@@ -77,7 +77,8 @@ export function getStreamBubbleAxes(
   layers: StreamLayer[],
   timeRange: TimeRange,
   timeZone: string,
-  theme: GrafanaTheme2
+  theme: GrafanaTheme2,
+  plotWidth?: number
 ): SingleAxisOption[] {
   const slot = layers.length > 0 ? (100 - TOP_PERCENT - BOTTOM_PERCENT) / layers.length : 0;
   const nameTextStyle = { ...getThemeTextStyle(theme), fontSize: AXIS_FONT_SIZE };
@@ -85,7 +86,7 @@ export function getStreamBubbleAxes(
   return layers.map((layer, index) => ({
     // Ticks only on the last row: N identical sets of times would be noise, and the
     // rows are aligned so one set reads for all of them.
-    ...getStreamTimeAxisBase(timeRange, timeZone, theme, index === layers.length - 1),
+    ...getStreamTimeAxisBase(timeRange, timeZone, theme, index === layers.length - 1, plotWidth),
     name: layer.name,
     // At the axis' start (its left end), in the reserved name column.
     nameLocation: 'start',

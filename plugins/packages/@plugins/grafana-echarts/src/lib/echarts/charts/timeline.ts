@@ -18,7 +18,7 @@ import {
 } from 'lib/echarts/options/timeline';
 import { prepareTimeline } from 'lib/grafana/timeline/prepareTimeline';
 import { type TimelineMode, type TimelineModel, type TimelinePrepareResult } from 'lib/grafana/timeline/types';
-import { getTimeAxisLabelFormatter } from 'lib/grafana/timeAxisFormat';
+import { getTimeXTicks } from 'lib/echarts/axes/timeXTicks';
 import { NOOP_TOOLTIP_SINK } from 'lib/echarts/tooltip/model';
 import { getSilentTooltipOption } from 'lib/echarts/tooltip/option';
 import { buildTimelineMultiTooltipModel } from 'lib/echarts/tooltip/timeline';
@@ -133,7 +133,7 @@ export const timelineChartModule: ChartModule = {
     return prepare(ctx).issue;
   },
 
-  buildOption(ctx, { isGrafanaLegend }): EChartTimelineOption | null {
+  buildOption(ctx, { isGrafanaLegend, plotWidth }): EChartTimelineOption | null {
     const { model } = prepare(ctx);
     if (!model || model.lanes.length === 0) {
       return null;
@@ -147,7 +147,7 @@ export const timelineChartModule: ChartModule = {
 
     const xAxis = mergeAxisStyle<XAXisOption>(cartesianTimeDefaultOptions.xAxis, axisStyle, {
       ...(mode === 'samples' ? getSampleAxisBounds(model, timeRange) : getTimeAxisBounds(timeRange)),
-      axisLabel: { formatter: getTimeAxisLabelFormatter(timeRange, timeZone) },
+      ...getTimeXTicks(timeRange, timeZone, plotWidth),
       zlevel: options.zLevel?.axis,
     });
     const yAxis = getTimelineYAxis(model, bands, axisStyle.axisLabel, options.zLevel?.axis);

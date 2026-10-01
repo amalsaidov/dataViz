@@ -68,6 +68,7 @@ import {
   thresholdDisplayForMode,
 } from 'lib/grafana/fields/thresholds';
 import { isNumberField } from 'lib/grafana/narrowing';
+import { getTimeXTicks } from 'lib/echarts/axes/timeXTicks';
 import { getTimeAxisLabelFormatter, isUtcTimeZone } from 'lib/grafana/timeAxisFormat';
 import { countAnnotationLanes, readAnnotationDisplay, readAnnotations } from 'lib/grafana/annotations';
 import { type FieldTypedDataFrame } from 'lib/grafana/types';
@@ -136,10 +137,12 @@ function buildTimeOption(
   // align with sibling panels sharing the same range. Labels are formatted via
   // Grafana's timezone-aware formatter (ECharts' built-in date labels would
   // render in browser-local time, ignoring the dashboard timezone).
+  const xTicks = getTimeXTicks(ctx.timeRange, ctx.timeZone, plotWidth);
   const xAxis = mergeAxisStyle<XAXisOption>(cartesianTimeDefaultOptions.xAxis, axisStyle, {
     ...getTimeAxisBounds(ctx.timeRange),
+    ...xTicks,
     axisLabel: {
-      formatter: getTimeAxisLabelFormatter(ctx.timeRange, ctx.timeZone),
+      ...xTicks.axisLabel,
       ...getXTickRotate(options.xTickRotate),
       ...getAnnotationLaneMargin(annotationDisplay.multiLane, countAnnotationLanes(ctx.annotations)),
     },

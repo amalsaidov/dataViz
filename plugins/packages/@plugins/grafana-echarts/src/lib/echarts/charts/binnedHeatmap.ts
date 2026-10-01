@@ -33,7 +33,7 @@ import {
 import { buildTimeSeriesLegendItems } from 'lib/echarts/options/legendItems';
 import { getDefaultShortValueFieldConfig } from 'lib/grafana/fields/fieldConfig';
 import { calculateHeatmapFrames } from 'lib/grafana/heatmap/calculate';
-import { getTimeAxisLabelFormatter } from 'lib/grafana/timeAxisFormat';
+import { getTimeXTicks } from 'lib/echarts/axes/timeXTicks';
 import { type EChartsFrame } from 'lib/grafana/types';
 import { type HeatmapColorScalePlacement, type HeatmapYBucketScale, type PanelOptions } from 'types';
 import {
@@ -68,7 +68,7 @@ export function buildBinnedHeatmapLegendItems(ctx: ChartContext, calcs: string[]
  */
 export function buildBinnedHeatmapOption(
   ctx: ChartContext<HeatmapSeriesType>,
-  { isGrafanaLegend }: BaseOptionParts
+  { isGrafanaLegend, plotWidth }: BaseOptionParts
 ): EChartBinnedHeatmapOption | null {
   const { theme, options, seriesType, formatValue, timeZone } = ctx;
   const placement = options.heatmapColorScale?.placement ?? 'right';
@@ -86,7 +86,7 @@ export function buildBinnedHeatmapOption(
     // Source frames present but no cells means every series was hidden via the
     // legend (its numeric fields are stripped). Keep the axes and render an empty
     // plot (matches core Grafana), mirroring the cartesian family.
-    return buildEmptyBinnedHeatmapOption(ctx, axisStyle, isGrafanaLegend, placement);
+    return buildEmptyBinnedHeatmapOption(ctx, axisStyle, isGrafanaLegend, placement, plotWidth);
   }
 
   // Overlay value axes: one per distinct unit, honoring per-field Left/Right/Hidden
@@ -113,7 +113,7 @@ export function buildBinnedHeatmapOption(
   const series = buildSeries(heatmap, theme, ctx, formatValue, options, cartSeries, overlayAxes);
   const yAxis = buildYAxisOption(heatmap, axisStyle, options, overlayAxes);
   const grid = buildGridOption(isGrafanaLegend, options, overlayAxes, placement);
-  const xAxis = buildXAxisOption(heatmap, ctx, axisStyle);
+  const xAxis = buildXAxisOption(heatmap, ctx, axisStyle, plotWidth);
 
   const formatDisplayValue = getDisplayProcessor({
     theme,
@@ -149,13 +149,14 @@ function buildEmptyBinnedHeatmapOption(
   ctx: ChartContext<HeatmapSeriesType>,
   axisStyle: CartesianAxisOption | TimeAxisBaseOption,
   isGrafanaLegend: boolean,
-  placement: HeatmapColorScalePlacement
+  placement: HeatmapColorScalePlacement,
+  plotWidth: number | undefined
 ): EChartBinnedHeatmapOption {
   const { options, timeRange, timeZone } = ctx;
 
   const xAxis = mergeAxisStyle<XAXisOption>(cartesianTimeDefaultOptions.xAxis, axisStyle, {
     ...getTimeAxisBounds(timeRange),
-    axisLabel: { formatter: getTimeAxisLabelFormatter(timeRange, timeZone) },
+    ...getTimeXTicks(timeRange, timeZone, plotWidth),
   });
   const yAxis = mergeAxisStyle<YAXisOption>(cartesianTimeDefaultOptions.yAxis, axisStyle, {
     zlevel: options.zLevel?.axis,
@@ -192,13 +193,14 @@ const buildYAxisOption = (
 const buildXAxisOption = (
   heatmap: BinnedHeatmapData,
   ctx: ChartContext<HeatmapSeriesType>,
-  axisStyle: CartesianAxisOption | TimeAxisBaseOption
+  axisStyle: CartesianAxisOption | TimeAxisBaseOption,
+  plotWidth: number | undefined
 ) => {
   const xAxisIsTime = heatmap?.xIsTime ?? true;
 
   const getTimeAxisOptions: () => TimeAxisBaseOption = () => ({
     ...getTimeAxisBounds(ctx.timeRange),
-    axisLabel: { formatter: getTimeAxisLabelFormatter(ctx.timeRange, ctx.timeZone) },
+    ...getTimeXTicks(ctx.timeRange, ctx.timeZone, plotWidth),
   });
   const getCategoricalAxisOption: () => CartesianAxisOption = () => ({ type: 'value' });
 

@@ -63,7 +63,7 @@ export const streamChartModule: ChartModule = {
    */
   disableTimeBrush: true,
 
-  buildOption(ctx: ChartContext, { isGrafanaLegend }: BaseOptionParts): EChartStreamSeriesOption | null {
+  buildOption(ctx: ChartContext, { isGrafanaLegend, plotWidth }: BaseOptionParts): EChartStreamSeriesOption | null {
     const data = buildStreamData(ctx);
     if (!data) {
       return null;
@@ -79,7 +79,7 @@ export const streamChartModule: ChartModule = {
       const layers = visibleStreamLayers(data);
       return {
         ...streamDefaultOptions,
-        singleAxis: getStreamBubbleAxes(layers, ctx.timeRange, ctx.timeZone, ctx.theme),
+        singleAxis: getStreamBubbleAxes(layers, ctx.timeRange, ctx.timeZone, ctx.theme, plotWidth),
         series: getStreamBubbleSeries(layers, streamCtx),
       };
     }
@@ -94,7 +94,8 @@ export const streamChartModule: ChartModule = {
         ctx.timeRange,
         ctx.timeZone,
         ctx.theme,
-        isGrafanaLegend ? undefined : ctx.options.legend
+        isGrafanaLegend ? undefined : ctx.options.legend,
+        plotWidth
       ),
       series: [getThemeRiverSeries(data, streamCtx)],
     };
