@@ -1,4 +1,4 @@
-import { getFieldShapeIssue } from './dataShape';
+import { getHierarchyIssue } from './hierarchyIssue';
 import { type VizLegendItem } from '@grafana/ui';
 import { type FieldConfigSource } from '@grafana/data';
 import { frameToHierarchy, getHierarchyValueField, type HierarchyData } from 'lib/echarts/converters/hierarchy';
@@ -41,7 +41,7 @@ export const hierarchyChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
 
   getDataIssue(ctx) {
-    return getFieldShapeIssue(ctx.frames, { number: true });
+    return getHierarchyIssue(ctx.frames);
   },
 
   buildOption(ctx: HierarchyChartContext, _base): EChartTreemapSeriesOption | EChartSunburstSeriesOption | null {
