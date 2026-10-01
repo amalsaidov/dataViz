@@ -8,6 +8,7 @@ import {
   readLiveRelationsView,
   type RelationsViewState,
 } from 'lib/echarts/relations/options/view';
+import { restoreTreemapRoot } from 'lib/echarts/treemapDrillDown';
 import { ENABLE_TIME_BRUSH_ACTION } from 'lib/echarts/timeBrush';
 import { getTooltipTrigger } from 'lib/echarts/tooltip/option';
 import { type TooltipSink } from 'lib/echarts/tooltip/types';
@@ -27,6 +28,8 @@ interface Options {
   reportTooltipTrigger: EChartsTooltipController['reportTrigger'];
   /** Keeps an interacted Relations view while empty states replace the chart. */
   relationsViewRef: MutableRefObject<InteractedRelationsView | undefined>;
+  /** The node id of the treemap view root after a drill down (`useTreemapDrillDown`). */
+  treemapRootRef?: MutableRefObject<string | undefined>;
 }
 
 type ViewVariant = InteractedRelationsView['variant'];
@@ -68,7 +71,15 @@ function applyRelationsView(option: EChartBuildOption, view: RelationsViewState)
 export function useChartOption(
   chart: EChartsType | null,
   chartContext: ChartContext,
-  { isGrafanaLegend, plotWidth, plotHeight, tooltipSink, reportTooltipTrigger, relationsViewRef }: Options
+  {
+    isGrafanaLegend,
+    plotWidth,
+    plotHeight,
+    tooltipSink,
+    reportTooltipTrigger,
+    relationsViewRef,
+    treemapRootRef,
+  }: Options
 ): void {
   const optionsRef = useRef({ isGrafanaLegend, plotWidth, plotHeight, tooltipSink, reportTooltipTrigger });
   const variant = getViewVariant(chartContext);
@@ -180,7 +191,22 @@ export function useChartOption(
     if ('brush' in option) {
       chart.dispatchAction(ENABLE_TIME_BRUSH_ACTION);
     }
+    // `notMerge` also resets the treemap view root, so set the drilled-down root again.
+    const treemapRoot = treemapRootRef?.current;
+    if (treemapRoot != null) {
+      restoreTreemapRoot(chart, option, treemapRoot);
+    }
     // `tooltipSink`/`reportTooltipTrigger` are stable (see useEChartsTooltip), so
     // this effect still only re-runs on chart, context, size, or legend changes.
-  }, [chart, chartContext, geoViewKey, isGrafanaLegend, relationsViewRef, tooltipSink, reportTooltipTrigger, variant]);
+  }, [
+    chart,
+    chartContext,
+    geoViewKey,
+    isGrafanaLegend,
+    relationsViewRef,
+    tooltipSink,
+    reportTooltipTrigger,
+    treemapRootRef,
+    variant,
+  ]);
 }

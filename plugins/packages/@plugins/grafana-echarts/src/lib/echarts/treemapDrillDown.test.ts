@@ -1,5 +1,5 @@
 import { type ECElementEvent } from 'echarts/core';
-import { treemapDrillDownNodeId } from './treemapDrillDown';
+import { treemapDrillDownNodeId, treemapRootNodeId } from './treemapDrillDown';
 
 const event = (seriesType: string, data: unknown) => ({ seriesType, data }) as unknown as ECElementEvent;
 
@@ -13,5 +13,14 @@ describe('treemapDrillDownNodeId', () => {
     expect(treemapDrillDownNodeId(event('treemap', { id: '["a"]', children: [] }))).toBeUndefined();
     expect(treemapDrillDownNodeId(event('sunburst', { id: '["a"]', children: [{ name: 'b' }] }))).toBeUndefined();
     expect(treemapDrillDownNodeId(undefined)).toBeUndefined();
+  });
+});
+
+describe('treemapRootNodeId', () => {
+  it('reads a header click, a breadcrumb click, and nothing else', () => {
+    expect(treemapRootNodeId({ targetNodeId: 'a' })).toBe('a');
+    expect(treemapRootNodeId({ targetNode: { getId: () => 'b' } })).toBe('b');
+    expect(treemapRootNodeId({})).toBeUndefined();
+    expect(treemapRootNodeId(null)).toBeUndefined();
   });
 });

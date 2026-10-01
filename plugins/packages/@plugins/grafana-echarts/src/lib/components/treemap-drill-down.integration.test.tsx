@@ -1,7 +1,8 @@
 import { FieldType, toDataFrame } from '@grafana/data';
-import { screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { type EChartsType } from 'echarts';
-import { waitForFinished } from 'test/panel';
+import { getChart } from 'test/canvas';
+import { getComponent, waitForFinished } from 'test/panel';
 import { tileBox } from 'test/treemap';
 import { clickAt, dispatch, renderTooltipPanel } from 'test/tooltipPointer';
 
@@ -59,5 +60,28 @@ describe('treemap drill down', () => {
 
     expect(tileBox(chart, 'io')).toEqual(before);
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+  });
+
+  // #843: the panel sets each option with `notMerge`, which resets the view root. The drilled-down root stays.
+  it('keeps the drilled-down root when the data refreshes', async () => {
+    const element = (frame: typeof nestedSetFrame) =>
+      getComponent([frame], 'treemap', { animation: { enabled: false } }, {}, {}, 'hierarchy');
+    const { container, rerender } = render(element(nestedSetFrame));
+    const chart = getChart(container).chart!;
+    await waitForFinished(chart);
+    const header = tileBox(chart, 'render')!;
+    await hoverAndClick(chart, header.x + header.width / 2, header.y + 5);
+    const drilled = tileBox(chart, 'draw')!;
+    expect(tileBox(chart, 'io')).toBeUndefined();
+
+    // New data with the same node ids: a refresh.
+    const refreshed = toDataFrame({
+      fields: nestedSetFrame.fields.map((f) => (f.name === 'value' ? { ...f, values: [110, 60, 40, 40] } : { ...f })),
+    });
+    await act(async () => rerender(element(refreshed)));
+    await waitForFinished(chart);
+
+    expect(tileBox(chart, 'io')).toBeUndefined();
+    expect(tileBox(chart, 'draw')).toEqual(drilled);
   });
 });

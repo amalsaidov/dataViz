@@ -143,6 +143,7 @@ export const EChart: React.FC<Props> = ({
     };
   }, [instanceRef]);
 
+  const treemapRootRef = useTreemapDrillDown(isPreview ? null : chart);
   useChartOption(chart, chartContext, {
     isGrafanaLegend,
     plotWidth: width,
@@ -150,6 +151,7 @@ export const EChart: React.FC<Props> = ({
     tooltipSink,
     reportTooltipTrigger,
     relationsViewRef,
+    treemapRootRef,
   });
 
   useChartResize(chart, width, height, {
@@ -176,7 +178,6 @@ export const EChart: React.FC<Props> = ({
     [dismissTooltip]
   );
   const closeAnnotationEditor = useCallback(() => setAnnotationDraft(null), []);
-  useTreemapDrillDown(isPreview ? null : chart);
   const annotationGestureRef = useAnnotationGestures(
     isPreview ? null : chart,
     panelDOMRef,
