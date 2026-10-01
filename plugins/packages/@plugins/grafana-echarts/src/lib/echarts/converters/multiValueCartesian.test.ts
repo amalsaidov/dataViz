@@ -319,3 +319,20 @@ describe('getCandlestickDataIssue', () => {
     expect(getCandlestickDataIssue(makeContext([withoutTime], 'boxplot'))).toBeUndefined();
   });
 });
+
+describe('unnamed fields', () => {
+  // A malformed frame: its fields have no `name` (#867).
+  const unnamedFrame = (): DataFrame =>
+    ({
+      length: 2,
+      fields: [
+        { type: FieldType.string, values: ['a', 'b'], config: {} },
+        { type: FieldType.number, values: [1, 2], config: {} },
+      ],
+    }) as unknown as DataFrame;
+
+  it('does not throw for boxplot', () => {
+    expect(() => run([unnamedFrame()], 'boxplot')).not.toThrow();
+    expect(() => framesLookMultiValue([unnamedFrame()])).not.toThrow();
+  });
+});

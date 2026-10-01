@@ -22,11 +22,9 @@ export const CANDLESTICK_FIELDS = ['open', 'high', 'low', 'close'];
 /** ECharts boxplot data order (also the plugin's positional convention). */
 export const BOXPLOT_FIELDS = ['min', 'q1', 'median', 'q3', 'max'];
 
-/** First numeric field whose name matches `name` (case-insensitive).
- * @todo is this safe?
- */
+/** First numeric field whose name matches `name` (case-insensitive). A field without a name does not match. */
 function findNumericFieldByName(frame: DataFrame, name: string): Field<number> | undefined {
-  return frame.fields.find((field) => isNumberField(field) && field.name.toLowerCase() === name);
+  return frame.fields.find((field) => isNumberField(field) && field.name?.toLowerCase() === name);
 }
 
 /** Whether `frame` has a numeric field for every `name` (case-insensitive). */
