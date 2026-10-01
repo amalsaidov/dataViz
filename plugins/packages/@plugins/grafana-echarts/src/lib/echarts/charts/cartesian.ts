@@ -1,4 +1,4 @@
-import { getFieldShapeIssue } from './dataShape';
+import { getDuplicateFieldIssue, getFieldShapeIssue, getTextNumberIssue } from './dataShape';
 import { type Field } from '@grafana/data';
 import { StackingMode } from '@grafana/schema';
 import {
@@ -519,7 +519,13 @@ export const cartesianChartModule: ChartModule = {
     if (isHistogramPanel(ctx.options)) {
       return getHistogramDataIssue(ctx);
     }
-    return getCandlestickDataIssue(ctx) ?? getBoxplotDataIssue(ctx) ?? getFieldShapeIssue(ctx.frames, { number: true });
+    return (
+      getCandlestickDataIssue(ctx) ??
+      getBoxplotDataIssue(ctx) ??
+      getDuplicateFieldIssue(ctx.frames) ??
+      getTextNumberIssue(ctx.frames) ??
+      getFieldShapeIssue(ctx.frames, { number: true })
+    );
   },
 
   getNotices(ctx: CartesianContext) {
