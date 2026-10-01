@@ -21,6 +21,7 @@ import {
   type HistogramFieldStyle,
   type HistogramStackingGroup,
 } from 'lib/grafana/fields/histogramStyle';
+import { getXTickSpacing } from 'lib/echarts/axes/xTickSpacing';
 import { cartesianCategoryDefaultOptions, getCartesianAxisStyle, mergeAxisStyle } from 'lib/echarts/options/cartesian';
 import { resolveEChartsLegend } from 'lib/echarts/options/legend';
 import { isRect } from 'lib/echarts/options/narrowing';
@@ -114,7 +115,15 @@ export function buildHistogramOption(input: HistogramOptionInput): EChartCartesi
     xAxis: mergeAxisStyle<XAXisOption>(
       { type: 'value', ...range, ...getXTickInterval(model, bounds, input.plotWidth) },
       axisStyle,
-      { zlevel: options.zLevel?.axis, axisLabel: { formatter: getXLabelFormatter(model, bounds, theme) } }
+      {
+        zlevel: options.zLevel?.axis,
+        // Hide a label that overlaps another, as core drops labels by their measured width (`values`).
+        // https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
+        axisLabel: {
+          ...getXTickSpacing({ plotWidth: undefined, labelWidth: undefined }).axisLabel,
+          formatter: getXLabelFormatter(model, bounds, theme),
+        },
+      }
     ),
     yAxis: mergeAxisStyle<YAXisOption>(
       // A count is a whole number, so the count axis has no ticks between two whole numbers.

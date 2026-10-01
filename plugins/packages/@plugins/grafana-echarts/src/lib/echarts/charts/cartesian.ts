@@ -68,6 +68,7 @@ import {
   thresholdDisplayForMode,
 } from 'lib/grafana/fields/thresholds';
 import { isNumberField } from 'lib/grafana/narrowing';
+import { getXTickSpacing } from 'lib/echarts/axes/xTickSpacing';
 import { getTimeXTicks } from 'lib/echarts/axes/timeXTicks';
 import { getTimeAxisLabelFormatter, isUtcTimeZone } from 'lib/grafana/timeAxisFormat';
 import { countAnnotationLanes, readAnnotationDisplay, readAnnotations } from 'lib/grafana/annotations';
@@ -254,6 +255,9 @@ function getCategoryTickLabel(options: PanelOptions, categoryCount: number, plot
   const spacing = options.xTickLabelSpacing ?? 0;
   const bandPx = plotLength != null && categoryCount > 0 ? plotLength / categoryCount : undefined;
   return {
+    // Hide a label that overlaps another. ECharts' 'auto' interval measures the labels.
+    // "X tick rotation" and "X-axis labels minimum spacing" stay as set.
+    ...getXTickSpacing({ plotWidth: undefined, labelWidth: undefined }).axisLabel,
     ...getXTickRotate(options.xTickRotate),
     ...(truncate
       ? { formatter: (label: string) => (label.length > maxLength ? `${label.substring(0, maxLength)}...` : label) }
