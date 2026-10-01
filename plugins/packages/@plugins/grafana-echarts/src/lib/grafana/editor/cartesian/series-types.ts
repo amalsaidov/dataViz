@@ -59,5 +59,21 @@ export const showIfSeriesTypes =
 /** The `showIf` of a bar option that histogram mode ignores. */
 export const showIfBarOption = showIfSeriesTypes(['bar']);
 
+/** The `showIf` of a value label option. Candlestick, boxplot and histogram mode draw no value labels. */
+export const showIfValueLabelOption = showIfSeriesTypes(['line', 'bar', 'scatter', 'effectScatter']);
+
+/** The `showIf` of an x tick option. Histogram mode does not read the x tick options. */
+export const showIfXTickOption = showIfSeriesTypes([
+  'line',
+  'bar',
+  'scatter',
+  'effectScatter',
+  'candlestick',
+  'boxplot',
+]);
+
+/** The `showIf` of an annotation option. Boxplot and histogram mode have no time axis, so they draw no annotations. */
+export const showIfAnnotationOption = showIfSeriesTypes(['line', 'bar', 'scatter', 'effectScatter', 'candlestick']);
+
 /** The `showIf` of an option that only line series read. */
 export const showIfLineOption = showIfSeriesTypes(['line']);

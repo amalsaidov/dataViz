@@ -50,4 +50,25 @@ describe('addCartesianAnnotationOptions', () => {
     expect(shown('annotations', [toDataFrame({ fields: [] })])).toBe(false);
     expect(shown('annotations', [annotationFrame(0)])).toBe(true);
   });
+
+  it('hides both options for boxplot and in histogram mode', () => {
+    const frames = [annotationFrame(1), annotationFrame(2)];
+    const showIf = (path: string, options: object) =>
+      // Grafana 13.3 adds the context argument (grafana/grafana#132398). The 13.2 types do not have it.
+      (items().find((entry) => entry.path === path)!.showIf as (...args: unknown[]) => boolean)(
+        options as PanelOptions,
+        [],
+        frames,
+        {
+          fieldConfig: { defaults: {}, overrides: [] },
+        }
+      );
+    for (const path of ['annotations.multiLane', 'annotations']) {
+      for (const seriesType of ['Auto', 'line', 'bar', 'scatter', 'effectScatter', 'candlestick']) {
+        expect(showIf(path, { seriesType })).toBe(true);
+      }
+      expect(showIf(path, { seriesType: 'boxplot' })).toBe(false);
+      expect(showIf(path, { seriesType: 'line', histogram: true })).toBe(false);
+    }
+  });
 });

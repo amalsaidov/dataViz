@@ -11,12 +11,13 @@ import {
 } from 'editor/cartesian';
 import { addAdvancedSelect } from 'lib/grafana/editor/common/advanced-options';
 import { type PanelOptions } from 'types';
+import { showIfValueLabelOption } from './series-types';
 
 /**
  * Register the cartesian value-label options: the Default-tier "Show values"
- * radio (Auto / Always / Never, core Bar chart parity, always visible) plus the
+ * radio (Auto / Always / Never, core Bar chart parity) plus the
  * Advanced-gated "Value label position" select (shown only once labels are drawn).
- * Rendered by `getCartesianValueLabel`.
+ * Both hide for the series types that draw no value labels. Rendered by `getCartesianValueLabel`.
  */
 export function addCartesianValueLabelOptions(builder: PanelOptionsEditorBuilder<PanelOptions>) {
   builder.addRadio({
@@ -27,6 +28,7 @@ export function addCartesianValueLabelOptions(builder: PanelOptionsEditorBuilder
       'Show value labels. Auto labels the bars and hides the labels that overlap; Always labels every point.',
     defaultValue: CARTESIAN_SHOW_VALUES_DEFAULT,
     settings: { options: showValuesOptions },
+    showIf: showIfValueLabelOption,
   });
 
   addAdvancedSelect(builder, {
@@ -36,6 +38,6 @@ export function addCartesianValueLabelOptions(builder: PanelOptionsEditorBuilder
     defaultValue: CARTESIAN_VALUE_LABEL_POSITION_DEFAULT,
     settings: { options: valueLabelPositionOptions },
     // Only meaningful once labels are shown.
-    showIf: (options) => options.showValues !== 'never',
+    showIf: (options, ...rest) => options.showValues !== 'never' && showIfValueLabelOption(options, ...rest),
   });
 }

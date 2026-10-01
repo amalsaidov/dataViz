@@ -1,6 +1,7 @@
 import { type PanelOptionsEditorBuilder } from '@grafana/data';
 import { CARTESIAN_X_TICK_ROTATE_DEFAULT, cartesianAxisCategoryName, xTickRotatePath } from 'editor/cartesian';
 import { type PanelOptions } from 'types';
+import { showIfXTickOption } from './series-types';
 
 /**
  * Register the Default-tier cartesian "X tick rotation" input (degrees; ECharts
@@ -15,5 +16,6 @@ export function addCartesianXTickRotateOptions(builder: PanelOptionsEditorBuilde
     description: 'Rotate x-axis tick labels (degrees) so long labels fit. 0 keeps them horizontal.',
     defaultValue: CARTESIAN_X_TICK_ROTATE_DEFAULT,
     settings: { min: -90, max: 90, integer: true },
+    showIf: showIfXTickOption,
   });
 }

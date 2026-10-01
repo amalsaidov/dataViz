@@ -25,7 +25,7 @@ import { addCartesianFillOpacityOptions } from 'lib/grafana/editor/cartesian/fil
 import { addCartesianHistogramFieldConfig, addCartesianHistogramOptions } from 'lib/grafana/editor/cartesian/histogram';
 import { addCartesianLineWidthOptions } from 'lib/grafana/editor/cartesian/line-width';
 import { addCartesianPointSizeOptions } from 'lib/grafana/editor/cartesian/point-size';
-import { showIfLineOption } from 'lib/grafana/editor/cartesian/series-types';
+import { showIfBarOption, showIfLineOption } from 'lib/grafana/editor/cartesian/series-types';
 import { addCartesianSpanNullsFieldConfig } from 'lib/grafana/editor/cartesian/span-nulls';
 import { addCartesianValueLabelOptions } from 'lib/grafana/editor/cartesian/value-labels';
 import { addCartesianXTickLabelOptions } from 'lib/grafana/editor/cartesian/x-tick-labels';
@@ -215,6 +215,11 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
     addCommonLegendAndTooltip(builder);
     // "Text size > Value" sets the bar value label size; unset fits the bars.
     commonOptionsBuilder.addTextSizeOptions(builder, { withTitle: false, withValue: true });
+    // Only bar labels read the value size (`converters/cartesianValues.ts`). `addTextSizeOptions` takes no `showIf`.
+    const valueSize = builder.getItems().find((item) => item.path === 'text.valueSize');
+    if (valueSize) {
+      valueSize.showIf = showIfBarOption;
+    }
     describeCommonOptions(builder);
 
     // Performance overrides: Show points (Default tier, core parity), and the
