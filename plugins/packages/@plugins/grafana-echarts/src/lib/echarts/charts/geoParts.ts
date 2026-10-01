@@ -4,7 +4,10 @@ import { type ChartModule } from './types';
 // module to that chunk, not the chart modules of the shared Panel chunk.
 
 /** The parts of the geo chart module that the geo panel registers from its async chunk. */
-export type GeoChartParts = Pick<ChartModule, 'buildOption' | 'getSettledResizeOption' | 'getMarkerLegends'>;
+export type GeoChartParts = Pick<
+  ChartModule,
+  'buildOption' | 'getSettledResizeOption' | 'getMarkerLegends' | 'getDataIssue'
+>;
 
 let geoParts: GeoChartParts | undefined;
 

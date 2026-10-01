@@ -25,6 +25,12 @@ describe('GeoLayersEditor', () => {
     expect(names()).toEqual(['Layer 1']);
   });
 
+  // The option defaults of the layer editors can write a layer with no name (#864).
+  it('shows a layer with no name and no type as the default layer', () => {
+    const { names } = renderEditor([{ config: { showLegend: true } } as unknown as MapLayerOptions]);
+    expect(names()).toEqual(['Layer 1']);
+  });
+
   it('shows the top layer first, as core', () => {
     const { names } = renderEditor([markers('a'), markers('b')]);
     expect(names()).toEqual(['b', 'a']);

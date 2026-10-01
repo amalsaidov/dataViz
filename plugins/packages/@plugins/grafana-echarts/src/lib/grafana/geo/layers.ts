@@ -26,9 +26,22 @@ export const newMarkersLayer = (name: string): MapLayerOptions => ({
   tooltip: true,
 });
 
-/** The layers that core draws. An unset option gives one markers layer: core sets `[defaultMarkersConfig]`. */
+/**
+ * The layers that core draws. An unset option gives one markers layer: core sets `[defaultMarkersConfig]`.
+ * The option defaults of the layer editors can write a layer with no `type` and no `name`, for example
+ * `[{ config: { showLegend: true } }]` for an unset option. Such a layer gets the values of the default markers layer.
+ */
 export const resolveLayers = (layers: MapLayerOptions[] | undefined): MapLayerOptions[] =>
-  layers ?? [newMarkersLayer('Layer 1')];
+  layers?.map((layer, index) =>
+    typeof layer.type === 'string' && typeof layer.name === 'string'
+      ? layer
+      : {
+          ...newMarkersLayer(`Layer ${index + 1}`),
+          ...layer,
+          type: layer.type ?? MARKERS_LAYER_TYPE,
+          name: layer.name ?? `Layer ${index + 1}`,
+        }
+  ) ?? [newMarkersLayer('Layer 1')];
 
 /** The next free name `Layer <n>`. Core starts `n` at the count of layers plus the basemap. */
 export function getNextLayerName(layers: MapLayerOptions[]): string {

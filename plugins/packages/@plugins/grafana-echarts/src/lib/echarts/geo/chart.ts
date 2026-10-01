@@ -1,6 +1,7 @@
 // The geo chart parts, in the async `geo-basemap` chunk of the geo panel. `src/modules/geo/module.tsx` loads it.
 import { registerGeoChartParts } from 'lib/echarts/charts/geoParts';
 import { type ChartContext } from 'lib/echarts/charts/types';
+import { getGeoDataIssue } from 'lib/grafana/geo/dataIssue';
 import { getGeoJsonLayers } from 'lib/grafana/geo/geojson';
 import { getHeatmapLayers } from 'lib/grafana/geo/heatmap';
 import { getMarkerLegends } from 'lib/grafana/geo/legend';
@@ -36,6 +37,7 @@ export function registerGeoChart(): void {
     buildOption: (ctx, { plotWidth, plotHeight }) =>
       plotWidth && plotHeight ? buildGeoOption(toMarkersInput(ctx, { width: plotWidth, height: plotHeight })) : null,
     // After a resize, the view keeps the core zoom: OpenLayers keeps the px per degree, not the world fit.
+    getDataIssue: (ctx) => getGeoDataIssue(ctx.frames, ctx.options.layers, ctx.queryRefIds),
     getMarkerLegends: (ctx) => getMarkerLegends(ctx.frames, ctx.options.layers, ctx.theme, ctx.queryRefIds),
     getSettledResizeOption: (ctx, { plotWidth, plotHeight }) => ({
       geo: buildGeoComponent(toMarkersInput(ctx, { width: plotWidth, height: plotHeight })),

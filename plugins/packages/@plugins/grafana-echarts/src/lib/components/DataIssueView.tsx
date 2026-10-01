@@ -15,5 +15,10 @@ export const DataIssueView = (props: PanelDataErrorViewProps & { message: string
   useEffect(() => signal(message), [signal, message]);
   // With a `needs*` flag, Grafana gives its own text for the missing field type.
   const needsField = props.needsTimeField === true || props.needsNumberField === true;
-  return <PanelDataErrorView {...props} message={needsField ? undefined : message} />;
+  // Each error view sets `data-viz-state` to `error` (AGENTS.md).
+  return (
+    <div data-viz-state="error" style={{ width: '100%', height: '100%' }}>
+      <PanelDataErrorView {...props} message={needsField ? undefined : message} />
+    </div>
+  );
 };

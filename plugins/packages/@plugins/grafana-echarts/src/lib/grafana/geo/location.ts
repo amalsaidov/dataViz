@@ -31,10 +31,14 @@ function getFieldFinder(matcher: FieldMatcher): FieldFinder {
   return (frame) => frame.fields.find((field) => matcher(field, frame, []));
 }
 
-/** Match a field by its lower-case name, or by its display name. */
+/** Match a field by its lower-case name, or by its display name. A frame from a data source can have a field with no name. */
 function matchLowerNames(names: Set<string>): FieldFinder {
   return (frame) =>
-    frame.fields.find((field) => names.has(field.name.toLowerCase()) || names.has(getFieldDisplayName(field, frame)));
+    frame.fields.find(
+      (field) =>
+        (typeof field.name === 'string' && names.has(field.name.toLowerCase())) ||
+        names.has(getFieldDisplayName(field, frame))
+    );
 }
 
 /** Field finders for one location mode. */

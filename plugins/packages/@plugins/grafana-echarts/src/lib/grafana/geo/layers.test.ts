@@ -23,6 +23,15 @@ describe('geo layers', () => {
     expect(resolveLayers([])).toEqual([]);
   });
 
+  // The option defaults of the layer editors can write a layer with no name and no type (#864).
+  it('gives the default markers values to a layer with no name and no type', () => {
+    const partial = [layer('a'), { config: { showLegend: true } }] as unknown as MapLayerOptions[];
+    expect(resolveLayers(partial)).toEqual([
+      layer('a'),
+      { type: 'markers', name: 'Layer 2', config: { showLegend: true }, location: { mode: 'auto' }, tooltip: true },
+    ]);
+  });
+
   it('names a new layer with the next free number, as core getNextLayerName', () => {
     expect(getNextLayerName([])).toBe('Layer 1');
     expect(getNextLayerName([layer('Layer 1')])).toBe('Layer 2');

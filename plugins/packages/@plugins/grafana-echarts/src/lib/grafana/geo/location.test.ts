@@ -7,6 +7,12 @@ const numbers = (name: string, values: Array<number | null>) => ({ name, type: F
 const strings = (name: string, values: string[]) => ({ name, type: FieldType.string, values });
 
 describe('getLocationFields (Auto)', () => {
+  // A data source can give a field with no name (#864).
+  it('finds no field and does not throw for a field with no name', () => {
+    const noName = { name: undefined as unknown as string, type: FieldType.number, values: [1] };
+    expect(getLocationFields(frame([noName]), getLocationMatchers()).mode).toBe(FrameGeometrySourceMode.Auto);
+  });
+
   it.each([
     ['lat', 'lon'],
     ['Latitude', 'Longitude'],

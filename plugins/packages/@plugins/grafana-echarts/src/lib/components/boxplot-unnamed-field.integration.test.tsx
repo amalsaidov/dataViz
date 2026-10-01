@@ -30,8 +30,8 @@ describe('Boxplot: frame with unnamed fields', () => {
     expect(screen.getByTestId('panel-data-error-view')).toHaveTextContent(
       'A boxplot needs the number fields min, q1, median, q3 and max.'
     );
-    // The render error view (PanelRenderErrorView) sets data-viz-state="error"; a throw would show it.
-    expect(container.querySelector('[data-viz-state="error"]')).toBeNull();
+    // The data error view sets data-viz-state="error" (#864). A throw would show the render error view in its place.
+    expect(container.querySelectorAll('[data-viz-state="error"]')).toHaveLength(1);
     expect(container.querySelector('canvas')).toBeNull();
   });
 });

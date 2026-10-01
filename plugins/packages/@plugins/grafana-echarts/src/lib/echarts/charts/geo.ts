@@ -12,6 +12,8 @@ export const geoChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
   buildOption: (ctx, base) => getGeoChartParts()?.buildOption(ctx, base) ?? null,
   buildLegendItems: () => [],
+  // A frame with no location field shows the Grafana error view (#864).
+  getDataIssue: (ctx) => getGeoChartParts()?.getDataIssue?.(ctx),
   // The core Geomap `tooltip.mode`: `details` (the default) or `none`.
   getTooltipOption: (ctx) => buildGeoTooltipOption(ctx.options.tooltip?.mode),
   getSettledResizeOption: (ctx, dimensions) => getGeoChartParts()?.getSettledResizeOption?.(ctx, dimensions),
