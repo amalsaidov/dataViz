@@ -1,4 +1,4 @@
-import { getFieldShapeIssue } from './dataShape';
+import { getMultivariateIssue } from './multivariateIssue';
 import { type Field } from '@grafana/data';
 import { PARALLEL_LINE_OPACITY_DEFAULT, PARALLEL_SMOOTH_DEFAULT } from 'editor/parallel';
 import { findCategoricalFrame, mapNumericFields } from 'lib/echarts/converters/frames';
@@ -147,7 +147,7 @@ export const multivariateChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
 
   getDataIssue(ctx) {
-    return getFieldShapeIssue(ctx.frames, { number: true });
+    return getMultivariateIssue(ctx.frames, ctx.theme, ctx.seriesType === 'parallel' ? 'parallel' : 'radar');
   },
 
   // @todo restore "All" once a hover expands into one row per indicator/axis.
