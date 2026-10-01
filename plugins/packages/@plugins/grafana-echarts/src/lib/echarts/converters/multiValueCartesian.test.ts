@@ -13,6 +13,7 @@ import { type ChartContext } from 'lib/echarts/charts/types';
 import { cartesianChartModule } from 'lib/echarts/charts/cartesian';
 import {
   framesLookMultiValue,
+  CANDLESTICK_ISSUE_MESSAGES,
   getCandlestickDataIssue,
   multiValueCartesianToEChartsOption,
   resolveMultiValueSeriesType,
@@ -307,12 +308,37 @@ describe('getCandlestickDataIssue', () => {
   });
 
   it.each([
-    { name: 'no time field', frame: withoutTime },
-    { name: 'no open, high, low and close fields', frame: ohlcFrame(['a', 'b', 'c', 'd']) },
-  ])('gives an issue for $name, also from the cartesian module', ({ frame }) => {
+    { name: 'no time field', frame: withoutTime, reason: 'candlestick-time-missing' },
+    {
+      name: 'no open, high, low and close fields',
+      frame: ohlcFrame(['a', 'b', 'c', 'd']),
+      reason: 'candlestick-fields-missing',
+    },
+  ])('gives an issue for $name, also from the cartesian module', ({ frame, reason }) => {
     const ctx = makeContext([frame], 'candlestick');
-    expect(getCandlestickDataIssue(ctx)?.reason).toBe('candlestick-fields-missing');
-    expect(cartesianChartModule.getDataIssue?.(ctx)?.reason).toBe('candlestick-fields-missing');
+    expect(getCandlestickDataIssue(ctx)?.reason).toBe(reason);
+    expect(cartesianChartModule.getDataIssue?.(ctx)?.reason).toBe(reason);
+  });
+
+  it('names the first missing field', () => {
+    const issue = getCandlestickDataIssue(makeContext([ohlcFrame(['open', 'high', 'x', 'close'])], 'candlestick'));
+    expect(issue?.message).toBe(CANDLESTICK_ISSUE_MESSAGES['candlestick-fields-missing']('low'));
+  });
+
+  it('names the row with high below low', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1, 2] },
+        { name: 'open', type: FieldType.number, values: [1, 1] },
+        { name: 'high', type: FieldType.number, values: [2, 0] },
+        { name: 'low', type: FieldType.number, values: [0, 1] },
+        { name: 'close', type: FieldType.number, values: [1, 1] },
+      ],
+    });
+    expect(getCandlestickDataIssue(makeContext([frame], 'candlestick'))).toEqual({
+      reason: 'high-below-low',
+      message: CANDLESTICK_ISSUE_MESSAGES['high-below-low'](2),
+    });
   });
 
   it('gives no issue for other series types', () => {

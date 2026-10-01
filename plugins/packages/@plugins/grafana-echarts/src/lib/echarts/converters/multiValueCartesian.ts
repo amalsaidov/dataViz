@@ -166,9 +166,17 @@ export function resolveMultiValueSources(ctx: ChartContext<MultiValueSeriesType>
   return fields ? { fields, rows: resolveRowIndices(frame, ctx.timeRange) } : null;
 }
 
+/** The fix steps for each candlestick data issue (#931). Rows are numbered from 1. */
+export const CANDLESTICK_ISSUE_MESSAGES = {
+  'candlestick-time-missing': 'A candlestick needs a time field. Add a time field, or select another series type.',
+  'candlestick-fields-missing': (name: string) =>
+    `Field ${name} is missing. A candlestick needs the number fields open, high, low and close. Rename a field with Organize fields, or select another series type.`,
+  'high-below-low': (row: number) => `Row ${row} has high below low. A candlestick needs high at or above low.`,
+};
+
 /**
  * The data issue of a candlestick, or `undefined` when the data fits. A candlestick needs a time field (it has no
- * category axis) and the numeric fields `open`, `high`, `low` and `close`. The series type picker can select
+ * category axis), the numeric fields `open`, `high`, `low` and `close`, and high at or above low in each row. The series type picker can select
  * candlestick for any data, so the panel shows this issue in place of the chart.
  * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/candlestick/
  */
@@ -176,15 +184,24 @@ export function getCandlestickDataIssue(ctx: ChartContext): ChartDataIssue | und
   if (ctx.seriesType !== 'candlestick') {
     return undefined;
   }
-  const frame = findCategoricalFrame(filterUnsupportedFields(ctx.frames));
-  if (framesHaveTimeField(ctx.frames) && frame && resolveMultiValueFields(frame, 'candlestick')) {
-    return undefined;
+  if (!framesHaveTimeField(ctx.frames)) {
+    return { reason: 'candlestick-time-missing', message: CANDLESTICK_ISSUE_MESSAGES['candlestick-time-missing'] };
   }
-  return {
-    reason: 'candlestick-fields-missing',
-    message:
-      'A candlestick needs a time field and the number fields open, high, low and close. Select another series type.',
-  };
+  const frame = findCategoricalFrame(filterUnsupportedFields(ctx.frames));
+  const missing = CANDLESTICK_FIELDS.find((name) => !frame || !findNumericFieldByName(frame, name));
+  if (!frame || missing) {
+    return {
+      reason: 'candlestick-fields-missing',
+      message: CANDLESTICK_ISSUE_MESSAGES['candlestick-fields-missing'](missing ?? CANDLESTICK_FIELDS[0]),
+    };
+  }
+  const high = findNumericFieldByName(frame, 'high')!.values;
+  const low = findNumericFieldByName(frame, 'low')!.values;
+  const row = high.findIndex((value, i) => value != null && low[i] != null && value < low[i]);
+  if (row !== -1) {
+    return { reason: 'high-below-low', message: CANDLESTICK_ISSUE_MESSAGES['high-below-low'](row + 1) };
+  }
+  return undefined;
 }
 
 /** The data issue of a boxplot without the number fields min, q1, median, q3 and max. */
