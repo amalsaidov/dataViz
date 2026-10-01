@@ -109,6 +109,8 @@ export interface CartesianBandLayout {
   bandCount: number;
   /** Plot length (px) along that axis. Unknown sizes no labels automatically. */
   plotLength?: number;
+  /** Bars of different series at the same x overlap, as core Time series (not side by side). */
+  overlapBars?: boolean;
 }
 
 /** The data-dependent part of one series for `buildCartesianSeries`. */

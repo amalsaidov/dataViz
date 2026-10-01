@@ -17,6 +17,7 @@ import {
   estimateBarThickness,
   getBarFillColor,
   getBarGaps,
+  getOverlapBarGaps,
   getBarLabelFontSize,
   getBarValueEndRadius,
   hasPerBarColor,
@@ -220,7 +221,11 @@ export function resolveSeriesValues(
   // The last bar of each bar stack gets the value-end corners. Each bar stack takes one slot.
   const barStacks = [...getStacks(sources).values()].filter((indexes) => sources[indexes[0]].isBar);
   const topStacked = new Set(barStacks.map((indexes) => indexes[indexes.length - 1]));
-  const slots = sources.filter((source) => source.isBar && !source.stacked).length + barStacks.length;
+  // Overlapping bars (core Time series) share one slot.
+  const slots = layout.overlapBars
+    ? Math.min(1, sources.filter((source) => source.isBar).length)
+    : sources.filter((source) => source.isBar && !source.stacked).length + barStacks.length;
+  const barGaps = layout.overlapBars ? getOverlapBarGaps() : getBarGaps(slots);
 
   const labelTexts = sources.map((source, i) =>
     source.isBar ? getBarLabelTexts(source, drawn[i], percent, source.formatValue, theme) : undefined
@@ -247,6 +252,6 @@ export function resolveSeriesValues(
     if (!source.isBar) {
       return { data };
     }
-    return { data, labelTexts: labelTexts[i], labelFontSize, barGaps: getBarGaps(slots) };
+    return { data, labelTexts: labelTexts[i], labelFontSize, barGaps };
   });
 }

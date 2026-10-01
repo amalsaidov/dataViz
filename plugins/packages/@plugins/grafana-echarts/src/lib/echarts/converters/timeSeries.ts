@@ -78,7 +78,7 @@ export function timeSeriesToEChartsOption(
   );
   const resolved = resolveSeriesValues(
     cartesian,
-    { horizontal: false, bandCount, plotLength: layout.plotLength },
+    { horizontal: false, bandCount, plotLength: layout.plotLength, overlapBars: true },
     options,
     theme
   );

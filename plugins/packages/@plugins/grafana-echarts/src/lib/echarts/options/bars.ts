@@ -74,6 +74,15 @@ export function getBarGaps(slotsPerCategory: number): { barCategoryGap: string; 
   return { barCategoryGap: toPercent(1 - groupWidth), barGap: toPercent(barGap) };
 }
 
+/**
+ * ECharts bar spacing for core Time series: each bar fills 97% of its band, and
+ * the bars of different series at the same x draw on top of each other.
+ * https://echarts.apache.org/en/option.html#series-bar.barGap
+ */
+export function getOverlapBarGaps(): { barCategoryGap: string; barGap: string } {
+  return { barCategoryGap: toPercent(1 - CARTESIAN_SLOT_WIDTH), barGap: '-100%' };
+}
+
 function toPercent(fraction: number): string {
   return `${Math.round(fraction * 100)}%`;
 }

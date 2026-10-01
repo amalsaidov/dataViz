@@ -3,6 +3,7 @@ import { StackingMode, VizOrientation } from '@grafana/schema';
 import {
   estimateBarThickness,
   getBarGaps,
+  getOverlapBarGaps,
   getBarItemStyle,
   getBarLabelFontSize,
   getBarValueEndRadius,
@@ -39,6 +40,10 @@ describe('getBarGaps', () => {
   it('fills 97% of the category with one bar or one stack, and 70% with a group', () => {
     expect(getBarGaps(1)).toEqual({ barCategoryGap: '3%', barGap: '3%' });
     expect(getBarGaps(3)).toEqual({ barCategoryGap: '30%', barGap: '3%' });
+  });
+
+  it('draws the bars of a time band on top of each other, as core Time series', () => {
+    expect(getOverlapBarGaps()).toEqual({ barCategoryGap: '3%', barGap: '-100%' });
   });
 });
 
