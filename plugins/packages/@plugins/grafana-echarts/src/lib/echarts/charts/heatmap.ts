@@ -1,4 +1,4 @@
-import { getFieldShapeIssue } from './dataShape';
+import { getHeatmapIssue } from './heatmapIssue';
 import { type HeatmapSeriesType } from 'editor/types';
 import { collectTimeSeriesFields } from 'lib/echarts/converters/frames';
 import { heatmapLayoutDefault } from 'lib/echarts/options/constants';
@@ -27,7 +27,7 @@ export const heatmapChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
 
   getDataIssue(ctx) {
-    return getFieldShapeIssue(ctx.frames, { number: true });
+    return getHeatmapIssue(ctx.frames, ctx.options.heatmapLayout ?? heatmapLayoutDefault);
   },
   buildLegendItems(ctx, calcs) {
     return buildBinnedHeatmapLegendItems(ctx, calcs);
