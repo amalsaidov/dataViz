@@ -109,7 +109,7 @@ export function endpointsFromName(name: string, labels?: Labels): GraphEndpoints
 
 /** Reads endpoints from labels, then falls back to the field name. */
 export function endpointsOf(field: Field, declared?: GraphEndpointKeys): GraphEndpoints | undefined {
-  return endpointLabelsOf(field, declared) ?? endpointsFromName(field.name, field.labels);
+  return endpointLabelsOf(field, declared) ?? endpointsFromName(field.name ?? '', field.labels);
 }
 
 /** Finds original label names after a query copies endpoints to canonical labels. */

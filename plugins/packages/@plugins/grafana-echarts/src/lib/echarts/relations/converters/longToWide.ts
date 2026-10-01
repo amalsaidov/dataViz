@@ -61,7 +61,7 @@ export function isLongEdgesFrame(frame: DataFrame): boolean {
     return false;
   }
   const value = seriesValueField(frame);
-  if (!value || endpointsFromName(value.name, value.labels) != null) {
+  if (!value || endpointsFromName(value.name ?? '', value.labels) != null) {
     return false;
   }
   return endpointLabelsOf(value) != null || wireEndpoints(frame, value) != null;

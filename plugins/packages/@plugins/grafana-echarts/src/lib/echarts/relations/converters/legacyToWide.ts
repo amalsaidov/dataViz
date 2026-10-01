@@ -55,13 +55,13 @@ const DETAIL_PREFIX = 'detail__';
  */
 
 function findField<V, C>(frame: DataFrame, name: string): ConfigTypedField<V, C> | undefined {
-  return frame.fields.find((field) => field.name.toLowerCase() === name);
+  return frame.fields.find((field) => field.name?.toLowerCase() === name);
 }
 
 /** Return Grafana's numeric value column from an instant datasource response. */
 function genericValueField(frame: DataFrame): Field | undefined {
   return frame.fields.find((field) => {
-    const name = field.name.toLowerCase();
+    const name = (field.name ?? '').toLowerCase();
     return field.type === FieldType.number && (name === 'value' || name.startsWith('value #'));
   });
 }
@@ -137,7 +137,7 @@ function toLineType(dashArray: string | undefined): 'dashed' | 'dotted' | undefi
 function detailLabels(frame: DataFrame, row: number): Labels {
   const labels: Labels = {};
   for (const field of frame.fields) {
-    const name = field.name.toLowerCase();
+    const name = (field.name ?? '').toLowerCase();
     if (!name.startsWith(DETAIL_PREFIX)) {
       continue;
     }

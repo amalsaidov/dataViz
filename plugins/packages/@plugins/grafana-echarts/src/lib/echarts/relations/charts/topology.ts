@@ -16,7 +16,7 @@ function endpointAt(field: Field | undefined, row: number): string | undefined {
 
 /** Return a case-insensitive field match. */
 function fieldNamed(frame: DataFrame, name: string): Field | undefined {
-  return frame.fields.find((field) => field.name.toLowerCase() === name);
+  return frame.fields.find((field) => field.name?.toLowerCase() === name);
 }
 
 /** Read the endpoints and declared node count from either graph contract. */

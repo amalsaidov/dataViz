@@ -730,3 +730,21 @@ describe('relationsChartModule', () => {
     expect(relationsChartModule.singleTooltipOnly).toBe(true);
   });
 });
+
+describe('frame with unnamed fields', () => {
+  // A malformed frame: its fields have no `name` (#868).
+  const unnamedFrame = {
+    length: 2,
+    fields: [
+      { type: FieldType.string, values: ['a', 'b'], config: {} },
+      { type: FieldType.number, values: [1, 2], config: {} },
+    ],
+  } as unknown as DataFrame;
+
+  it.each(['graph', 'sankey', 'chord'] as const)('reports missing edges for %s', (seriesType) => {
+    expect(relationsChartModule.getDataIssue?.(ctx([unnamedFrame], emptyFieldConfig, seriesType))).toEqual({
+      reason: 'unsupported-frame-shape',
+      message: 'Graph data is missing edges. Add source and target labels to each numeric edge field.',
+    });
+  });
+});
