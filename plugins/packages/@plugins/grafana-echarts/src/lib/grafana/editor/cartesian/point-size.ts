@@ -1,6 +1,7 @@
 import { type PanelOptionsEditorBuilder } from '@grafana/data';
 import { CARTESIAN_POINT_SIZE_DEFAULT, cartesianGraphStylesCategoryName, pointSizePath } from 'editor/cartesian';
 import { type PanelOptions } from 'types';
+import { showIfSeriesTypes } from './series-types';
 
 /**
  * Register the Default-tier cartesian "Point size" input (px; ECharts `symbolSize`).
@@ -15,5 +16,6 @@ export function addCartesianPointSizeOptions(builder: PanelOptionsEditorBuilder<
     description: 'Marker size for line/scatter points (px). 0 hides the points.',
     defaultValue: CARTESIAN_POINT_SIZE_DEFAULT,
     settings: { min: 0, max: 40, integer: true },
+    showIf: showIfSeriesTypes(['line', 'scatter', 'effectScatter']),
   });
 }

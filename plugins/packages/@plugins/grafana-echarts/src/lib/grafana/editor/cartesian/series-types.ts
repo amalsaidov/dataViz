@@ -58,3 +58,6 @@ export const showIfSeriesTypes =
 
 /** The `showIf` of a bar option that histogram mode ignores. */
 export const showIfBarOption = showIfSeriesTypes(['bar']);
+
+/** The `showIf` of an option that only line series read. */
+export const showIfLineOption = showIfSeriesTypes(['line']);

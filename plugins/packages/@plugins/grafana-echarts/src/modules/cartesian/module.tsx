@@ -25,6 +25,7 @@ import { addCartesianFillOpacityOptions } from 'lib/grafana/editor/cartesian/fil
 import { addCartesianHistogramFieldConfig, addCartesianHistogramOptions } from 'lib/grafana/editor/cartesian/histogram';
 import { addCartesianLineWidthOptions } from 'lib/grafana/editor/cartesian/line-width';
 import { addCartesianPointSizeOptions } from 'lib/grafana/editor/cartesian/point-size';
+import { showIfLineOption } from 'lib/grafana/editor/cartesian/series-types';
 import { addCartesianSpanNullsFieldConfig } from 'lib/grafana/editor/cartesian/span-nulls';
 import { addCartesianValueLabelOptions } from 'lib/grafana/editor/cartesian/value-labels';
 import { addCartesianXTickLabelOptions } from 'lib/grafana/editor/cartesian/x-tick-labels';
@@ -219,7 +220,7 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
     // thresholds; these let power users override the auto behavior. Cartesian
     // only — the time-series fast path doesn't apply to the other families, which
     // register the shared animation switch on its own via `addAnimationOption`.
-    addPerformanceOptions(builder);
+    addPerformanceOptions(builder, showIfLineOption);
 
     // Core "Annotations" options: multi-row markers, and hide the lines and bands.
     addCartesianAnnotationOptions(builder);

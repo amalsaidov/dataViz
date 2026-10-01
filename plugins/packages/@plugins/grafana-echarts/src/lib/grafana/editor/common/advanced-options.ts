@@ -1,4 +1,6 @@
 import {
+  type DataFrame,
+  type FieldConfigSource,
   type NumberFieldConfigSettings,
   type PanelOptionsEditorBuilder,
   type SelectFieldConfigSettings,
@@ -31,8 +33,15 @@ const advancedCategory = [advancedOptionsCategoryName];
 /** Add the visible tier marker to an Advanced option description. */
 const advancedDescription = (description: string): string => `Advanced. ${description}`;
 
+/**
+ * The arguments of a Grafana `showIf` after the options. Grafana 13.3 adds `context.fieldConfig`
+ * (grafana/grafana#132398). A rest parameter keeps `Function.length` at 1 (`src/standalone/vizOptions.ts`).
+ * https://github.com/grafana/grafana/pull/132398
+ */
+export type ShowIfRest = [data?: DataFrame[], annotations?: DataFrame[], context?: { fieldConfig?: FieldConfigSource }];
+
 /** Extra visibility predicate composed on top of the Advanced-mode gate. */
-export type ExtraShowIf = (options: PanelOptions) => boolean | undefined;
+export type ExtraShowIf = (options: PanelOptions, ...rest: ShowIfRest) => boolean | undefined;
 
 /**
  * Compose the Advanced-mode gate with an optional extra predicate: the option is
@@ -41,7 +50,7 @@ export type ExtraShowIf = (options: PanelOptions) => boolean | undefined;
  * an option's `showIf`.
  */
 export function showIfAdvanced(extra?: ExtraShowIf): ExtraShowIf {
-  return (options) => isAdvancedEditorMode(options) && (extra?.(options) ?? true);
+  return (options, ...rest) => isAdvancedEditorMode(options) && (extra?.(options, ...rest) ?? true);
 }
 
 /**
@@ -56,7 +65,7 @@ export function composeShowIf(...predicates: Array<ExtraShowIf | undefined>): Ex
   if (defined.length === 0) {
     return undefined;
   }
-  return (options) => defined.every((predicate) => predicate(options) ?? true);
+  return (options, ...rest) => defined.every((predicate) => predicate(options, ...rest) ?? true);
 }
 
 /** Fields shared by every advanced-option spec. */

@@ -13,7 +13,7 @@ import {
 } from 'editor/constants';
 import { cartesianGraphStylesCategoryName } from 'editor/cartesian';
 import { type PerformanceMode } from 'editor/types';
-import { addAdvancedBooleanSwitch } from 'lib/grafana/editor/common/advanced-options';
+import { addAdvancedBooleanSwitch, type ExtraShowIf } from 'lib/grafana/editor/common/advanced-options';
 import { type PanelOptions } from 'types';
 
 /**
@@ -37,8 +37,11 @@ import { type PanelOptions } from 'types';
  *   could not fire before the render that needed them (see `resolveAnimation`) —
  *   so animation is simply off unless asked for. Because off *is* the default, a
  *   plain switch is now unambiguous: what it shows is what the chart does.
+ *
+ * `lineShowIf` hides Show points and Downsampling when no line series reads them. The caller gives it, so `common/`
+ * does not import family code.
  */
-export function addPerformanceOptions(builder: PanelOptionsEditorBuilder<PanelOptions>) {
+export function addPerformanceOptions(builder: PanelOptionsEditorBuilder<PanelOptions>, lineShowIf?: ExtraShowIf) {
   // Core Time series "Show points" (`custom.showPoints`, contract #130), so Default tier.
   builder.addRadio<PerformanceMode, SelectFieldConfigSettings<PerformanceMode>>({
     category: [cartesianGraphStylesCategoryName],
@@ -47,6 +50,7 @@ export function addPerformanceOptions(builder: PanelOptionsEditorBuilder<PanelOp
     description: 'Point markers on line series. Auto hides them once the chart has many points in total',
     defaultValue: PERFORMANCE_SHOW_POINTS_DEFAULT,
     settings: { options: performanceModeOptions },
+    showIf: lineShowIf,
   });
 
   addAdvancedBooleanSwitch(builder, {
@@ -54,6 +58,7 @@ export function addPerformanceOptions(builder: PanelOptionsEditorBuilder<PanelOp
     name: performanceDownsamplingName,
     description: 'Sample dense line series toward pixel resolution (LTTB) to cut drawn points',
     defaultValue: PERFORMANCE_DOWNSAMPLING_DEFAULT,
+    showIf: lineShowIf,
   });
 
   addAdvancedBooleanSwitch(builder, {
