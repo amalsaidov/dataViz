@@ -27,22 +27,22 @@ exposes no per-field mapping or candlestick-specific styling in the editor.
 
 ## Panel options
 
-| Core Grafana option                       | ECharts equivalent                                                             | Status        |
-| ----------------------------------------- | ------------------------------------------------------------------------------ | ------------- |
-| Mode (Candles / Volume / Both)            | none                                                                           | Not supported |
-| Candle style (Candles / OHLC bars)        | none                                                                           | Not supported |
-| Color strategy (since open / prior close) | none                                                                           | Not supported |
-| Up color / down color                     | none                                                                           | Not supported |
-| Open/High/Low/Close/Volume field pickers  | none (mapping inferred in converter)                                           | Not supported |
-| Additional fields (ignore / include)      | none                                                                           | Not supported |
-| Tooltip: mode                             | `tooltip.mode` (only if candlestick is rendered)                               | Partial       |
-| Legend                                    | Grafana legend via `addLegendOptions`                                          | Partial       |
-| Annotations: points and regions           | `data.annotations` at the nearest candle                                       | Partial       |
-| Annotations: Hide lines and areas         | `options.annotations` lines and bands                                          | Supported     |
-| Annotations: Enable multi-row annotations | `options.annotations.multiLane` hides the lines and bands, as core; no markers | Partial       |
-| Annotations: Enable annotation clustering | none                                                                           | Not supported |
-| —                                         | `editorMode` radio (Default / Advanced tiers)                                  | ECharts-only  |
-| —                                         | Advanced: `animation.enabled` (off by default)                                 | Advanced      |
+| Core Grafana option                       | ECharts equivalent                                                 | Status        |
+| ----------------------------------------- | ------------------------------------------------------------------ | ------------- |
+| Mode (Candles / Volume / Both)            | none                                                               | Not supported |
+| Candle style (Candles / OHLC bars)        | none                                                               | Not supported |
+| Color strategy (since open / prior close) | none                                                               | Not supported |
+| Up color / down color                     | none                                                               | Not supported |
+| Open/High/Low/Close/Volume field pickers  | none (mapping inferred in converter)                               | Not supported |
+| Additional fields (ignore / include)      | none                                                               | Not supported |
+| Tooltip: mode                             | `tooltip.mode` (only if candlestick is rendered)                   | Partial       |
+| Legend                                    | Grafana legend via `addLegendOptions`                              | Partial       |
+| Annotations: points and regions           | `data.annotations` at the nearest candle                           | Partial       |
+| Annotations: Hide lines and areas         | `options.annotations` lines and bands                              | Supported     |
+| Annotations: Enable multi-row annotations | `options.annotations.multiLane` hides the lines and bands, as core | Partial       |
+| Annotations: Enable annotation clustering | none                                                               | Not supported |
+| —                                         | `editorMode` radio (Default / Advanced tiers)                      | ECharts-only  |
+| —                                         | Advanced: `animation.enabled` (off by default)                     | Advanced      |
 
 ## Standard (field-config) options
 
@@ -66,8 +66,8 @@ Color), matching core Candlestick which uses the timeseries graph field config.
   axis, which rounds a value to a category index. Thus each annotation time moves to
   the nearest candle. A region with both edges nearest to one candle is one line.
   Marks before the first candle or after the last candle do not draw, and regions are
-  clipped to the candles. Boxplot draws no annotations. The candlestick has no
-  annotation markers and no annotation tooltip. The annotation options (line width,
+  clipped to the candles. Boxplot draws no annotations. The candlestick draws the
+  markers under the plot (a triangle for a point, a bar for a region), but no annotation tooltip. The annotation options (line width,
   band opacity, multi-row) apply to the lines and bands as on the time axis
   ([timeseries.md](./timeseries.md)). Tests:
   [canvas baseline](../../../lib/components/annotations.canvas.test.tsx),

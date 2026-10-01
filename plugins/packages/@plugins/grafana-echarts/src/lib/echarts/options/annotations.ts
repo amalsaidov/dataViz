@@ -97,30 +97,42 @@ export function buildAnnotationSeries(
 }
 
 /**
- * The annotation series for a category x axis whose categories are the times in `categoryTimes`
- * (ascending), as the candlestick axis. Each time moves to the index of the nearest category,
- * because a category axis rounds a numeric value to an index.
+ * The marks of a category x axis whose categories are the times in `categoryTimes` (ascending),
+ * as the candlestick axis, and the axis range of the indexes. Each time moves to the index of the
+ * nearest category, because a category axis rounds a numeric value to an index.
  * https://echarts.apache.org/en/option.html#xAxis.data
  *
- * A time before the first category or after the last one gets an index out of the axis, so
- * `buildAnnotationSeries` drops that point and clips that region as on a time axis.
+ * A time before the first category or after the last one gets an index out of the range, so
+ * `buildAnnotationSeries` and `buildAnnotationMarkerSeries` drop that point and clip that region
+ * as on a time axis. Returns `undefined` when there is no category.
  */
+export function toCategoryAnnotationMarks(
+  marks: AnnotationMark[],
+  categoryTimes: number[]
+): { marks: AnnotationMark[]; range: { min: number; max: number } } | undefined {
+  if (categoryTimes.length === 0) {
+    return undefined;
+  }
+  const toIndex = (time: number) => nearestCategoryIndex(time, categoryTimes);
+  return {
+    marks: marks.map((mark) => ({
+      ...mark,
+      time: toIndex(mark.time),
+      timeEnd: mark.timeEnd == null ? undefined : toIndex(mark.timeEnd),
+    })),
+    range: { min: 0, max: categoryTimes.length - 1 },
+  };
+}
+
+/** The annotation lines and bands for a category x axis of times. See `toCategoryAnnotationMarks`. */
 export function buildCategoryAnnotationSeries(
   marks: AnnotationMark[],
   categoryTimes: number[],
   zlevel?: number,
   style?: AnnotationStyle
 ): LineSeriesOption | undefined {
-  if (categoryTimes.length === 0) {
-    return undefined;
-  }
-  const toIndex = (time: number) => nearestCategoryIndex(time, categoryTimes);
-  const indexed = marks.map((mark) => ({
-    ...mark,
-    time: toIndex(mark.time),
-    timeEnd: mark.timeEnd == null ? undefined : toIndex(mark.timeEnd),
-  }));
-  return buildAnnotationSeries(indexed, { min: 0, max: categoryTimes.length - 1 }, zlevel, style);
+  const indexed = toCategoryAnnotationMarks(marks, categoryTimes);
+  return indexed && buildAnnotationSeries(indexed.marks, indexed.range, zlevel, style);
 }
 
 /** The index of the category nearest to `time`: -1 before the first category, `length` after the last. */

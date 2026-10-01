@@ -255,9 +255,10 @@ export type EChartCandlestickSeriesOption = ComposeOption<CandlestickSeriesOptio
 export type EChartBoxPlotSeriesOption = ComposeOption<BoxplotSeriesOption>;
 export type EChartEffectScatterSeriesOption = ComposeOption<EffectScatterSeriesOption>;
 
-// The line series is the annotation overlay (lib/echarts/options/annotations.ts).
+// The line series is the annotation overlay (lib/echarts/options/annotations.ts), and the custom
+// series is the annotation markers (lib/echarts/options/annotationMarkers.ts).
 export type EChartMultiValueCartesianSeriesOption = ComposeOption<
-  CandlestickSeriesOption | BoxplotSeriesOption | LineSeriesOption
+  CandlestickSeriesOption | BoxplotSeriesOption | LineSeriesOption | CustomSeriesOption
 >;
 export type EChartCartesianSeriesOption = ComposeOption<
   // The custom series is the annotation markers (lib/echarts/options/annotationMarkers.ts).

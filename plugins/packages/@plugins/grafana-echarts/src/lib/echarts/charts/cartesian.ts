@@ -36,7 +36,7 @@ import {
 import { getDrawnSeries, isTimeSeriesStacked, timeSeriesToEChartsOption } from 'lib/echarts/converters/timeSeries';
 import { getCartesianGrid, getTimeCartesianGrid } from 'lib/echarts/grid/grid';
 import { ANNOTATION_LANE_SIZE, buildAnnotationMarkerSeries } from 'lib/echarts/options/annotationMarkers';
-import { buildAnnotationSeries, buildCategoryAnnotationSeries } from 'lib/echarts/options/annotations';
+import { buildAnnotationSeries, toCategoryAnnotationMarks } from 'lib/echarts/options/annotations';
 import { AXIS_FONT_SIZE } from 'lib/echarts/options/base';
 import { isHorizontalBars, resolvePanelStacking } from 'lib/echarts/options/bars';
 import {
@@ -350,7 +350,16 @@ function buildMultiValueOption(
   // via Grafana's timezone-aware formatter; non-time categories pass through.
   const xAxis = mergeAxisStyle(cartesianCategoryDefaultOptions.xAxis, axisStyle, {
     data: multiValueData?.categories ?? [],
-    axisLabel: { formatter: getTimeAxisLabelFormatter(timeRange, timeZone), ...getXTickRotate(options.xTickRotate) },
+    axisLabel: {
+      formatter: getTimeAxisLabelFormatter(timeRange, timeZone),
+      ...getXTickRotate(options.xTickRotate),
+      ...(ctx.seriesType === 'candlestick'
+        ? getAnnotationLaneMargin(
+            readAnnotationDisplay(options.annotations).multiLane,
+            countAnnotationLanes(ctx.annotations)
+          )
+        : {}),
+    },
   });
 
   const baseSeries = multiValueData?.series;
@@ -363,7 +372,7 @@ function buildMultiValueOption(
   const visibleSeries = seriesArray.filter((chartSeries) => !hidden.has(String(chartSeries.name ?? '')));
   const thresholdSeries = attachThresholdMarks(visibleSeries, cartesianThresholdMarks(ctx, false));
   const annotationSeries = candlestickAnnotationSeries(ctx, multiValueData?.categories);
-  const series = annotationSeries ? [...thresholdSeries, annotationSeries] : thresholdSeries;
+  const series = [...thresholdSeries, ...annotationSeries];
 
   return {
     ...cartesianCategoryDefaultOptions,
@@ -386,19 +395,27 @@ function getAnnotationLaneMargin(multiLane: boolean, lanes: number): { margin?: 
 
 /**
  * The annotation series of a candlestick with a time field, as core Candlestick (it is built on
- * the Time series panel). Each category label is the ISO time of its row (see
+ * the Time series panel): the lines and bands, then the markers under the plot (a triangle for a
+ * point, a bar for a region). Each category label is the ISO time of its row (see
  * `multiValueCartesian`). Boxplot has no core panel with annotations, so it draws none.
  */
 function candlestickAnnotationSeries(ctx: ChartContext<MultiValueSeriesType>, categories: unknown[] | undefined) {
   if (ctx.seriesType !== 'candlestick' || !categories || !framesHaveTimeField(ctx.frames)) {
-    return undefined;
+    return [];
   }
-  return buildCategoryAnnotationSeries(
+  const indexed = toCategoryAnnotationMarks(
     readAnnotations(ctx.annotations, ctx.theme),
-    categories.map((label) => Date.parse(String(label))),
-    ctx.options.zLevel?.series,
-    readAnnotationDisplay(ctx.options.annotations)
+    categories.map((label) => Date.parse(String(label)))
   );
+  if (!indexed) {
+    return [];
+  }
+  const zlevel = ctx.options.zLevel?.series;
+  const display = readAnnotationDisplay(ctx.options.annotations);
+  return [
+    buildAnnotationSeries(indexed.marks, indexed.range, zlevel, display),
+    buildAnnotationMarkerSeries(indexed.marks, indexed.range, { zlevel, multiLane: display.multiLane }),
+  ].filter((entry) => entry != null);
 }
 
 /**

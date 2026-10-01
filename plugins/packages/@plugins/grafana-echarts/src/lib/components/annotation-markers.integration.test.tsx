@@ -176,6 +176,48 @@ describe('annotation markers', () => {
   });
 });
 
+// OHLC rows at `times`: candlestick draws on a category axis of these times.
+const ohlcFrame = toDataFrame({
+  name: 'BTC',
+  fields: [
+    { name: 'time', type: FieldType.time, values: times },
+    { name: 'open', type: FieldType.number, values: [10, 18, 22, 15] },
+    { name: 'high', type: FieldType.number, values: [20, 25, 28, 24] },
+    { name: 'low', type: FieldType.number, values: [5, 12, 18, 11] },
+    { name: 'close', type: FieldType.number, values: [18, 22, 15, 21] },
+  ],
+});
+
+describe('candlestick annotation markers', () => {
+  // A region from candle 1 to candle 3.
+  const regionFrame = toDataFrame({
+    meta: { dataTopic: DataTopic.Annotations },
+    fields: [
+      { name: 'time', type: FieldType.time, values: [times[1]] },
+      { name: 'timeEnd', type: FieldType.time, values: [times[3]] },
+      { name: 'isRegion', type: FieldType.boolean, values: [true] },
+      { name: 'color', type: FieldType.string, values: ['blue'] },
+    ],
+  });
+  const regionBar = async (seriesType: 'line' | 'candlestick', frame: DataFrame) => {
+    const { container } = render(getComponent([frame], seriesType, panelOptions, { annotations: [regionFrame] }));
+    const { seriesEvents } = await getCanvasEvents(container);
+    return fillPaths(seriesEvents).filter(({ fill }) => fill === '#5794f2');
+  };
+
+  it('draws the region bar of the time series panel, from the edge candles', async () => {
+    const [candle] = await regionBar('candlestick', ohlcFrame);
+    const [line] = await regionBar('line', seriesFrame);
+    const [[left, top], [right, bottom]] = candle.points;
+    // The same 5 px bar under the plot as on the time axis.
+    expect(bottom - top).toBe(5);
+    expect(top).toBe(line.points[0][1]);
+    // One bar with a width, from the second candle to the fourth.
+    expect(right - left).toBeGreaterThan(0);
+    expect(candle.points).toHaveLength(2);
+  });
+});
+
 describe('annotation marker tooltip', () => {
   it.each([TooltipDisplayMode.Single, TooltipDisplayMode.Multi])(
     'shows the time, title, text and tags of a point in %s mode',
