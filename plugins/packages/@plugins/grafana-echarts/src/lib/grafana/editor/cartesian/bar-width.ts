@@ -1,7 +1,7 @@
 import { type PanelOptionsEditorBuilder } from '@grafana/data';
 import { barWidthPath, CARTESIAN_BAR_WIDTH_DEFAULT, cartesianBarChartCategoryName } from 'editor/cartesian';
 import { type PanelOptions } from 'types';
-import { showIfBarOption } from './bar-only';
+import { showIfBarOption } from './series-types';
 
 /**
  * Register the Default-tier cartesian "Bar width" input (percentage of the category

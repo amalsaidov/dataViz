@@ -5,7 +5,7 @@ import {
   cartesianBarChartCategoryName,
 } from 'editor/cartesian';
 import { type PanelOptions } from 'types';
-import { showIfBarOption } from './bar-only';
+import { showIfSeriesTypes } from './series-types';
 
 /**
  * Register the Default-tier "Bar fill opacity" input (0 to 100; core Bar chart "Fill
@@ -20,6 +20,6 @@ export function addCartesianBarFillOpacityOptions(builder: PanelOptionsEditorBui
     description: 'Fill opacity of bars (0–100). The border stays solid.',
     defaultValue: CARTESIAN_BAR_FILL_OPACITY_DEFAULT,
     settings: { min: 0, max: 100, integer: true },
-    showIf: showIfBarOption,
+    showIf: showIfSeriesTypes(['bar'], { histogram: true }),
   });
 }

@@ -12,7 +12,7 @@ import {
 } from 'editor/cartesian';
 import { resolvePanelStacking } from 'lib/echarts/options/bars';
 import { type PanelOptions } from 'types';
-import { showIfBarOption } from './bar-only';
+import { showIfBarOption, showIfSeriesTypes } from './series-types';
 
 /** Editor category of the core Bar chart options. */
 const category = [cartesianBarChartCategoryName];
@@ -20,7 +20,8 @@ const category = [cartesianBarChartCategoryName];
 /**
  * Register the core Bar chart panel options: Stacking, Orientation, "Highlight
  * full area on hover" and "Color by field". Core-parity controls, so they show in
- * every editor mode. All but Stacking show only for a bar series (`showIfBarOption`). Core: `public/app/plugins/panel/barchart/module.tsx`.
+ * every editor mode. Stacking shows for a bar or line series and in histogram mode. The others show only for a bar series outside
+ * histogram mode (`showIfBarOption`). Core: `public/app/plugins/panel/barchart/module.tsx`.
  * https://grafana.com/developers/plugin-tools/reference/plugin-json
  */
 export function addCartesianBarChartOptions(builder: PanelOptionsEditorBuilder<PanelOptions>) {
@@ -33,6 +34,8 @@ export function addCartesianBarChartOptions(builder: PanelOptionsEditorBuilder<P
       category,
       defaultValue: StackingMode.None,
       settings: { options: stackingOptions },
+      // Histogram mode stacks its bars too (`histogramStyle.ts`).
+      showIf: showIfSeriesTypes(['bar', 'line'], { histogram: true }),
     })
     .addRadio({
       path: orientationPath,

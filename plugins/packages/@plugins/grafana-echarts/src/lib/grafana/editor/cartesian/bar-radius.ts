@@ -1,7 +1,7 @@
 import { type PanelOptionsEditorBuilder } from '@grafana/data';
 import { barRadiusPath, CARTESIAN_BAR_RADIUS_DEFAULT, cartesianBarChartCategoryName } from 'editor/cartesian';
 import { type PanelOptions } from 'types';
-import { showIfBarOption } from './bar-only';
+import { showIfBarOption } from './series-types';
 
 /**
  * Register the Default-tier cartesian "Bar corner radius" input (px; ECharts
