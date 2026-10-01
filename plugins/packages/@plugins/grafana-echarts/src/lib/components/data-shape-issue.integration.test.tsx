@@ -4,6 +4,7 @@ import { type SeriesType } from 'editor/types';
 import { type ChartFamily } from 'lib/echarts/charts/autoSeriesType';
 import React from 'react';
 import { getComponent } from 'test/panel';
+import { STREAM_ISSUE_MESSAGES } from 'lib/echarts/charts/streamIssue';
 
 // Each chart kind shows the Grafana error view, and no chart, for a frame that it cannot draw (#189).
 
@@ -41,7 +42,7 @@ const cases: Array<[ChartFamily, SeriesType, typeof stringOnly, Record<string, u
   ['multivariate', 'parallel', stringOnly, { needsNumberField: true }],
   ['hierarchy', 'treemap', stringOnly, { needsNumberField: true }],
   ['hierarchy', 'sunburst', stringOnly, { needsNumberField: true }],
-  ['stream', 'themeRiver', numberOnly, { needsTimeField: true }],
+  ['stream', 'themeRiver', numberOnly, { message: STREAM_ISSUE_MESSAGES['time-field-missing'] }],
   ['cartesian', 'boxplot', numberOnly, {}],
 ];
 

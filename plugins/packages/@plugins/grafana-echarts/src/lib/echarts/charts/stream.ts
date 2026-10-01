@@ -1,4 +1,4 @@
-import { getFieldShapeIssue } from './dataShape';
+import { getStreamIssue } from './streamIssue';
 import { type VizLegendItem } from '@grafana/ui';
 import { resolveStreamChartType, STREAM_LAYER_SOURCE_DEFAULT, streamLayerSourcePath } from 'editor/stream';
 import { frameToStream, type StreamData, visibleStreamLayers } from 'lib/echarts/converters/stream';
@@ -42,7 +42,7 @@ export const streamChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
 
   getDataIssue(ctx) {
-    return getFieldShapeIssue(ctx.frames, { time: true, number: true });
+    return getStreamIssue(ctx.frames, () => buildStreamData(ctx), resolveStreamChartType(ctx.options) !== 'bubble');
   },
 
   /**
