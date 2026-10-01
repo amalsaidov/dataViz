@@ -6,7 +6,7 @@ import { type ChartModule } from 'lib/echarts/charts/types';
 import React, { type ReactElement } from 'react';
 import { getComponent } from 'test/panel';
 import { makeLazyPanel } from './LazyPanel';
-import { renderErrorMessage } from './PanelRenderErrorView';
+import { renderErrorMessage } from './renderErrorMessage';
 
 // A chart module that throws while the panel renders, for each frame named `bad`.
 const mockChartModule: ChartModule = {

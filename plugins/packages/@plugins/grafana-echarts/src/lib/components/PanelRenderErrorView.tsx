@@ -2,28 +2,12 @@ import { type PanelProps } from '@grafana/data';
 import { PanelDataErrorView } from '@grafana/runtime';
 import { type ChartFamily } from 'lib/echarts/charts/autoSeriesType';
 import React from 'react';
+import { renderErrorMessage } from './renderErrorMessage';
 
 interface PanelRenderErrorViewProps {
   family: ChartFamily;
   panel: PanelProps;
 }
-
-// The name of the chart kind of each family, for the error message.
-const CHART_NAMES: Record<ChartFamily, string> = {
-  cartesian: 'cartesian chart',
-  heatmap: 'heatmap',
-  'part-to-whole': 'part-to-whole chart',
-  multivariate: 'multivariate chart',
-  hierarchy: 'hierarchy chart',
-  relations: 'relations chart',
-  stream: 'stream chart',
-  geo: 'geo map',
-  timeline: 'state timeline',
-  'status-history': 'status history',
-};
-
-/** The message for a render error. The raw error text goes to the console only. */
-export const renderErrorMessage = (family: ChartFamily) => `This data can't be shown as a ${CHART_NAMES[family]}.`;
 
 /**
  * The view of the Grafana panel when the chart throws while it renders. It shows the error view of Grafana with a
