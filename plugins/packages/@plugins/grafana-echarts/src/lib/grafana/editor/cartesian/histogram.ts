@@ -58,7 +58,8 @@ export function addCartesianHistogramOptions(builder: PanelOptionsEditorBuilder<
 
 /**
  * Register the field settings of the core Histogram panel: Stacking (with a group in an override), Line width,
- * Fill opacity and Gradient mode. The histogram mode reads them from each field (`getHistogramFieldStyles`).
+ * Fill opacity and Gradient mode. The histogram mode reads them from each field (`getHistogramFieldStyles`). The
+ * time series and category modes read Line width and Fill opacity per field (`resolveFieldStyleOptions`).
  * They have no default value. Thus a panel with no field setting keeps its panel options (`stacking`,
  * `barFillOpacity` and `lineWidth`).
  * Core source: https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/module.tsx
@@ -66,7 +67,7 @@ export function addCartesianHistogramOptions(builder: PanelOptionsEditorBuilder<
  */
 export function addCartesianHistogramFieldConfig(builder: FieldConfigEditorBuilder<EChartsGraphFieldConfig>) {
   const category = [histogramCategoryName];
-  const description = 'Histogram mode. Empty uses the panel option.';
+  const description = 'Empty uses the panel option.';
   commonOptionsBuilder.addStackingConfig(builder, undefined, category);
   builder
     .addSliderInput({

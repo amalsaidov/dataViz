@@ -291,6 +291,8 @@ export interface EChartsFieldConfig extends HideableFieldConfig {
   // Per-field override for stacking, honored only when the field renders as
   // `bar`. Overrides the panel-level `stackSeries` default.
   stackSeries?: boolean;
+  // Core `custom.stacking.group`: fields stack only with the fields of the same group. Default `A`.
+  stackGroup?: string;
   // Per-field y-axis placement. Fields are grouped onto one y-axis per distinct
   // unit; this controls which side that unit's axis renders on (or hides it).
   // Only `Left`, `Right`, `Hidden`, and `Auto` are meaningful for a y-axis.

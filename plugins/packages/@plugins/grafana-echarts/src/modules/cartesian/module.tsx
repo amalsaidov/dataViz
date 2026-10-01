@@ -23,6 +23,7 @@ import { addCartesianBarRadiusOptions } from 'lib/grafana/editor/cartesian/bar-r
 import { addCartesianBarWidthOptions } from 'lib/grafana/editor/cartesian/bar-width';
 import { addCartesianFillOpacityOptions } from 'lib/grafana/editor/cartesian/fill-opacity';
 import { addCartesianHistogramFieldConfig, addCartesianHistogramOptions } from 'lib/grafana/editor/cartesian/histogram';
+import { addCartesianSeriesStyleFieldConfig } from 'lib/grafana/editor/cartesian/series-style';
 import { addCartesianLineWidthOptions } from 'lib/grafana/editor/cartesian/line-width';
 import { addCartesianPointSizeOptions } from 'lib/grafana/editor/cartesian/point-size';
 import { showIfBarOption, showIfLineOption } from 'lib/grafana/editor/cartesian/series-types';
@@ -94,6 +95,17 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
         showIf: (config) => config.seriesType === 'bar' || config.seriesType === 'line',
       });
 
+      // Core `custom.stacking.group`: a field stacks only with the fields of the same group. Read back in
+      // `getFieldStackId`. No default, as the Stacking switch above.
+      // https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/time-series/#stack-series
+      builder.addTextInput({
+        path: 'stackGroup',
+        name: 'Stack group',
+        category: ['Bar chart'],
+        description: 'Stack this field only with the stacked fields of the same group. Empty is the group A.',
+        settings: { placeholder: 'A' },
+      });
+
       // The standard "Axis" field config of core Time series and Bar chart:
       // placement, label, width, grid lines, color, border, scale, centered zero
       // and soft min/max. Read back in `buildCartesianYAxes`. Fields are grouped
@@ -142,9 +154,11 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
         },
       });
 
-      // Core Histogram field settings: Stacking, Line width, Fill opacity and Gradient mode. Only the
-      // histogram mode reads them.
+      // Core Histogram field settings: Stacking, Line width, Fill opacity and Gradient mode.
       addCartesianHistogramFieldConfig(builder);
+
+      // Core Time series Point size and Show points, per field (overrides only).
+      addCartesianSeriesStyleFieldConfig(builder);
 
       // Register the standard `custom.hideFrom` field config ("Hide in area"
       // switches). Required so the legend visibility toggle's `byName` override

@@ -1,8 +1,10 @@
 import { type Field } from '@grafana/data';
-import { type CartesianSingleValueSeriesType } from 'editor/types';
+import { LINE_STACK_GROUP_ID, STACK_GROUP_ID } from 'editor/cartesian';
+import { type CartesianSingleValueSeriesType, type PerformanceMode } from 'editor/types';
 import { isCartesianSingleValueSeriesType } from 'lib/echarts/charts/narrowing';
 import { type SpanNulls } from 'lib/echarts/converters/spanNulls';
 import { getFieldConfigFromField } from 'lib/grafana/fields/fieldConfig';
+import { type PanelOptions } from 'types';
 
 /**
  * Per-field cartesian render overrides, shared by both cartesian converters
@@ -38,6 +40,20 @@ export function resolveFieldStack(field: Field, panelStack = false): boolean {
   return override ?? panelStack;
 }
 
+/** The default stack group of core Time series (`custom.stacking.group`). */
+export const DEFAULT_STACK_GROUP = 'A';
+
+/**
+ * The ECharts `stack` id of a stacked field: its draw style (bar or line) and its stack group, as the
+ * stack key of core `getStackingGroups`. The default group keeps the id without a group.
+ * https://echarts.apache.org/en/option.html#series-bar.stack
+ */
+export function getFieldStackId(field: Field, isBar: boolean): string {
+  const base = isBar ? STACK_GROUP_ID : LINE_STACK_GROUP_ID;
+  const group = getFieldConfigFromField(field).custom?.stackGroup;
+  return typeof group !== 'string' || group === '' || group === DEFAULT_STACK_GROUP ? base : `${base}:${group}`;
+}
+
 /**
  * The "Connect null values" setting of a field (core `custom.spanNulls`, default `false`). A value
  * that is not a boolean or a finite number reads as `false`. See `spanNulls.ts`.
@@ -49,3 +65,31 @@ export function resolveFieldSpanNulls(field: Field): SpanNulls {
   }
   return false;
 }
+
+/**
+ * The panel options of one series, with the series style of its field: `custom.lineWidth`,
+ * `custom.fillOpacity`, `custom.pointSize` and `custom.showPoints`. A field value wins over the panel
+ * option, as in core Time series. A field with no value keeps the panel option.
+ * Core: https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/time-series/#graph-styles
+ */
+export function resolveFieldStyleOptions(field: Field, options: PanelOptions): PanelOptions {
+  const custom: Record<string, unknown> = { ...getFieldConfigFromField(field).custom };
+  const number = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : undefined);
+  const lineWidth = number(custom.lineWidth);
+  const fillOpacity = number(custom.fillOpacity);
+  const pointSize = number(custom.pointSize);
+  const showPoints = SHOW_POINTS.find((mode) => mode === custom.showPoints);
+  if (lineWidth === undefined && fillOpacity === undefined && pointSize === undefined && showPoints === undefined) {
+    return options;
+  }
+  return {
+    ...options,
+    ...(lineWidth !== undefined ? { lineWidth } : {}),
+    ...(fillOpacity !== undefined ? { fillOpacity } : {}),
+    ...(pointSize !== undefined ? { pointSize } : {}),
+    ...(showPoints !== undefined ? { performance: { ...options.performance, showPoints } } : {}),
+  };
+}
+
+/** The core `showPoints` values (`VisibilityMode`). They are the same as the panel `performance.showPoints`. */
+const SHOW_POINTS: PerformanceMode[] = ['auto', 'always', 'never'];

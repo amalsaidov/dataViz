@@ -8,6 +8,7 @@ import {
   resolveFieldSeriesType,
   resolveFieldSpanNulls,
   resolveFieldStack,
+  resolveFieldStyleOptions,
 } from 'lib/echarts/converters/fieldOverrides';
 import { findColorByField, resolveSeriesValues } from 'lib/echarts/converters/cartesianValues';
 import { type CartesianLayout, type CategoryCartesianData } from 'lib/echarts/converters/types';
@@ -82,6 +83,8 @@ export function categoryCartesianToEChartsOption(
 
   const echartsSeries: CartesianOption['series'] = model.series.map(({ name, color, values }, i) => {
     const { resolvedType, stacked } = sources[i];
+    // The field style (line width, fill opacity, point size and show points) wins over the panel option.
+    const seriesOptions = resolveFieldStyleOptions(sources[i].field, options);
     return buildCartesianSeries(
       {
         name,
@@ -92,14 +95,14 @@ export function categoryCartesianToEChartsOption(
         // Keyed off the resolved type: line and bar/scatter arm different levers
         // (LTTB sampling vs `large`), so passing the panel type would put an
         // overridden field on the wrong fast path.
-        perf: getSeriesPerfOptions({ type: resolvedType, density, options, values }),
+        perf: getSeriesPerfOptions({ type: resolvedType, density, options: seriesOptions, values }),
         ...(stacked ? { stack: STACK_GROUP_ID } : {}),
         // A category axis has no x distance, so only `true` connects. The chart module reports a
         // numeric threshold here as not supported (see `getSpanNullsNotices`).
         ...(resolvedType === 'line' && resolveFieldSpanNulls(sources[i].field) === true ? { connectNulls: true } : {}),
       },
       resolvedType,
-      options,
+      seriesOptions,
       theme
     );
   });

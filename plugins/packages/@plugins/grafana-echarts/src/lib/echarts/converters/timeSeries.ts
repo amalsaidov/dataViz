@@ -1,12 +1,13 @@
 import { type Field, getFieldDisplayName } from '@grafana/data';
 import { StackingMode } from '@grafana/schema';
-import { LINE_STACK_GROUP_ID, STACK_GROUP_ID } from 'editor/cartesian';
 import { type CartesianSingleValueSeriesType, type HeatmapSeriesType, type SeriesType } from 'editor/types';
 import { type CartesianContextWithOverlay, type EChartSingleValueCartesianSeries } from 'lib/echarts/charts/types';
 import {
+  getFieldStackId,
   resolveFieldSeriesType,
   resolveFieldSpanNulls,
   resolveFieldStack,
+  resolveFieldStyleOptions,
 } from 'lib/echarts/converters/fieldOverrides';
 import { findColorByField, resolveSeriesValues } from 'lib/echarts/converters/cartesianValues';
 import { forEachTimeSeriesField, type TimeSeriesFieldRef } from 'lib/echarts/converters/frames';
@@ -54,6 +55,7 @@ export function timeSeriesToEChartsOption(
     // The frame rows that the series draws, and the drawn values (see `getDrawnSeries`). The field
     // keeps its values.
     const { rows, values, drawnValues, connected } = drawn[i];
+    const stacked = isTimeSeriesStacked(field, type, stackAll);
     return {
       field,
       values,
@@ -63,7 +65,8 @@ export function timeSeriesToEChartsOption(
       color: getCartesianSeriesColor(field, frames, theme),
       xs: rows.map((row) => timeField.values[row]),
       isBar,
-      stacked: isTimeSeriesStacked(field, type, stackAll),
+      stacked,
+      ...(stacked ? { stackId: getFieldStackId(field, isBar) } : {}),
       formatValue: getValueFormatter(field, theme, timeZone),
       colorField: findColorByField(frame, frames, options),
     };
@@ -109,10 +112,12 @@ export function timeSeriesToEChartsOption(
     // marker the `highlight` dispatch drives.
     const connectNulls = type === 'line' && resolveFieldSpanNulls(field) === true;
     const drawnValues = sources[i].drawnValues ?? sources[i].values;
+    // The field style (line width, fill opacity, point size and show points) wins over the panel option.
+    const seriesOptions = resolveFieldStyleOptions(field, options);
     const perf = getSeriesPerfOptions({
       type,
       density,
-      options,
+      options: seriesOptions,
       // A connected line draws a segment between each two values, so the symbol check skips the nulls.
       values: connectNulls ? drawnValues.filter((value) => value != null) : drawnValues,
     });
@@ -125,11 +130,11 @@ export function timeSeriesToEChartsOption(
         ...resolved[cartesianIndex++],
         perf,
         hover: true,
-        ...(sources[i].stacked ? { stack: sources[i].isBar ? STACK_GROUP_ID : LINE_STACK_GROUP_ID } : {}),
+        ...(sources[i].stackId ? { stack: sources[i].stackId } : {}),
         ...(connectNulls ? { connectNulls } : {}),
       },
       type,
-      options,
+      seriesOptions,
       theme
     );
   });
@@ -147,7 +152,8 @@ export function isTimeSeriesStacked(field: Field, type: SeriesType, stackAll: bo
  * The frame rows that the series of each field draws, in order, and the value that it draws at each
  * row. The tooltip maps an ECharts `dataIndex` back to its frame row with `rows`.
  *
- * - The stacked line series of one time field: the null rules of a stack (see `stackedLineSeries`).
+ * - The stacked line series of one time field and one stack group: the null rules of a stack (see
+ *   `stackedLineSeries`).
  * - A `line` series with a numeric "Connect null values": the nulls that the line connects over are
  *   left out (see `spannedRows`).
  * - Other series: each row, with the field values.
@@ -156,17 +162,23 @@ export function getDrawnSeries(
   refs: Array<{ field: Field; timeField: Field; type: SeriesType }>,
   stackAll: boolean
 ): DrawnSeries[] {
-  const stacks = new Map<Field, Field[]>();
+  // The stacks of lines, by time field and by stack id.
+  const stacks = new Map<Field, Map<string, Field[]>>();
   for (const { field, timeField, type } of refs) {
     if (type === 'line' && isTimeSeriesStacked(field, type, stackAll)) {
-      stacks.set(timeField, [...(stacks.get(timeField) ?? []), field]);
+      const byId = stacks.get(timeField) ?? new Map<string, Field[]>();
+      const id = getFieldStackId(field, false);
+      byId.set(id, [...(byId.get(id) ?? []), field]);
+      stacks.set(timeField, byId);
     }
   }
   const stacked = new Map<Field, DrawnSeries>();
-  stacks.forEach((fields, timeField) => {
-    const series = stackedLineSeries(timeField.values, fields);
-    fields.forEach((field, i) => stacked.set(field, series[i]));
-  });
+  stacks.forEach((byId, timeField) =>
+    byId.forEach((fields) => {
+      const series = stackedLineSeries(timeField.values, fields);
+      fields.forEach((field, i) => stacked.set(field, series[i]));
+    })
+  );
 
   return refs.map(({ field, timeField, type }) => {
     const inStack = stacked.get(field);

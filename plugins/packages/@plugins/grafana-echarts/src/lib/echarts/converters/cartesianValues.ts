@@ -51,12 +51,10 @@ export function resolveDrawnValues(
   stacking: StackingMode
 ): Array<Array<number | null>> {
   const drawn = sources.map(({ values, drawnValues }) => drawnValues ?? values);
+  const stacks = getStacks(sources);
   if (stacking === StackingMode.Percent) {
-    // Bars and lines stack in different groups (see `LINE_STACK_GROUP_ID`), so each has its own total.
-    for (const isBar of [true, false]) {
-      const stackedIndexes = sources.flatMap((source, index) =>
-        source.stacked && source.isBar === isBar ? [index] : []
-      );
+    // Each stack has its own total (see `getStacks`).
+    for (const stackedIndexes of stacks.values()) {
       const shares = toPercentOfTotal(stackedIndexes.map((index) => drawn[index]));
       stackedIndexes.forEach((index, i) => (drawn[index] = shares[i]));
     }
@@ -64,17 +62,33 @@ export function resolveDrawnValues(
   const result = drawn.map((values, index) =>
     isNegativeY(sources[index].field) ? values.map((value) => (value == null ? null : -value)) : values
   );
-  const lines = sources.flatMap((source, index) => (source.stacked && !source.isBar ? [index] : []));
-  const xs = sources[lines[0]]?.xs;
-  if (xs && lines.some((index) => sources[index].connected)) {
-    const connected = connectStackedLines(
-      xs,
-      lines.map((index) => result[index]),
-      lines.map((index) => sources[index].connected ?? [])
-    );
-    lines.forEach((index, i) => (result[index] = connected[i]));
+  for (const lines of stacks.values()) {
+    const xs = sources[lines[0]]?.xs;
+    if (!sources[lines[0]].isBar && xs && lines.some((index) => sources[index].connected)) {
+      const connected = connectStackedLines(
+        xs,
+        lines.map((index) => result[index]),
+        lines.map((index) => sources[index].connected ?? [])
+      );
+      lines.forEach((index, i) => (result[index] = connected[i]));
+    }
   }
   return result;
+}
+
+/**
+ * The indexes of the stacked sources, by stack. A source without a `stackId` is in the one stack of its
+ * draw style: bars and lines stack in different groups (see `LINE_STACK_GROUP_ID`).
+ */
+export function getStacks(sources: CartesianValueSource[]): Map<string, number[]> {
+  const stacks = new Map<string, number[]>();
+  sources.forEach((source, index) => {
+    if (source.stacked) {
+      const id = source.stackId ?? (source.isBar ? 'bar' : 'line');
+      stacks.set(id, [...(stacks.get(id) ?? []), index]);
+    }
+  });
+  return stacks;
 }
 
 /** Core Time series / Bar chart `custom.transform: negative-Y`: the series draws below zero. */
@@ -203,8 +217,10 @@ export function resolveSeriesValues(
   const stacking = resolvePanelStacking(options);
   const percent = stacking === StackingMode.Percent;
   const drawn = resolveDrawnValues(sources, stacking);
-  const topStacked = sources.map((source) => source.isBar && source.stacked).lastIndexOf(true);
-  const slots = sources.filter((source) => source.isBar && !source.stacked).length + (topStacked >= 0 ? 1 : 0);
+  // The last bar of each bar stack gets the value-end corners. Each bar stack takes one slot.
+  const barStacks = [...getStacks(sources).values()].filter((indexes) => sources[indexes[0]].isBar);
+  const topStacked = new Set(barStacks.map((indexes) => indexes[indexes.length - 1]));
+  const slots = sources.filter((source) => source.isBar && !source.stacked).length + barStacks.length;
 
   const labelTexts = sources.map((source, i) =>
     source.isBar ? getBarLabelTexts(source, drawn[i], percent, source.formatValue, theme) : undefined
@@ -224,7 +240,7 @@ export function resolveSeriesValues(
       values: source.values,
       horizontal: layout.horizontal,
       colors: getPerBarColors(source, source.colorField, source.rows, theme),
-      radius: source.isBar && (!source.stacked || i === topStacked) ? radius : 0,
+      radius: source.isBar && (!source.stacked || topStacked.has(i)) ? radius : 0,
       barFillOpacity: options.barFillOpacity,
       connected: source.connected,
     });

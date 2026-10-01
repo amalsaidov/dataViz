@@ -70,6 +70,8 @@ export interface CartesianValueSource {
   xs?: ArrayLike<OptionDataValue>;
   /** True for a series in a stack: a bar, or a line on a time axis. */
   stacked: boolean;
+  /** The ECharts `stack` id of a stacked series, if it is not the one stack of its draw style (bar or line). */
+  stackId?: string;
   isBar: boolean;
 }
 

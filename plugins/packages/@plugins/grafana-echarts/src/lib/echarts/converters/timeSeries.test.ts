@@ -259,6 +259,44 @@ describe('timeSeriesToEChartsOption', () => {
       expect(result[0]).toMatchObject({ name: 'asBar', type: 'bar', stack: 'total' });
       expect(result[1]).toMatchObject({ name: 'asLine', type: 'line', stack: 'total-line' });
     });
+
+    const groupFrame = () =>
+      toDataFrame({
+        fields: [
+          { name: 'time', type: FieldType.time, values: [1, 2] },
+          { name: 'a', type: FieldType.number, values: [1, 3] },
+          { name: 'b', type: FieldType.number, values: [3, 1], config: { custom: { stackGroup: 'A' } } },
+          { name: 'c', type: FieldType.number, values: [2, 2], config: { custom: { stackGroup: 'B' } } },
+          { name: 'd', type: FieldType.number, values: [2, 6], config: { custom: { stackGroup: 'B' } } },
+        ],
+      });
+
+    it('stacks each stack group apart, as the core stacking group', () => {
+      const result = runSeries([groupFrame()], 'line', { stacking: 'normal' as PanelOptions['stacking'] });
+
+      expect(result.map((series) => (series as LineSeriesOption).stack)).toEqual([
+        'total-line',
+        'total-line',
+        'total-line:B',
+        'total-line:B',
+      ]);
+    });
+
+    it('takes the percent of each stack group from the total of that group', () => {
+      const result = runSeries([groupFrame()], 'bar', { stacking: 'percent' as PanelOptions['stacking'] });
+      const drawn = result.map((series) =>
+        ((series as LineSeriesOption).data as Array<{ value: number[] } | number[]>).map(
+          (item) => (Array.isArray(item) ? item : item.value)[1]
+        )
+      );
+
+      expect(drawn).toEqual([
+        [0.25, 0.75],
+        [0.75, 0.25],
+        [0.5, 0.25],
+        [0.5, 0.75],
+      ]);
+    });
   });
 
   describe('performance fast-path props', () => {
