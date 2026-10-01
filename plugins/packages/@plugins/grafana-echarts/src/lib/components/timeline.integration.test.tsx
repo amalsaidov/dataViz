@@ -2,6 +2,8 @@ import { VisibilityMode } from '@grafana/schema';
 import {
   barRects,
   barTexts,
+  DENSE_ROWS,
+  denseFrame,
   renderTimeline,
   shortStateFrame,
   singleLaneFrame,
@@ -60,6 +62,22 @@ describe('state timeline bars', () => {
     // The Gantt shape ends at its end time; a plain frame ends at the right grid edge.
     const right = (list: typeof rects) => Math.max(...list.map((rect) => rect.x + rect.width));
     expect(right(rects)).toBeLessThan(right(one));
+  });
+});
+
+describe('state timeline dense lanes', () => {
+  it('draws at most one 1 px bar per pixel column', async () => {
+    const thin = (await bars([denseFrame()])).filter((rect) => rect.width === 1);
+    expect(thin.length).toBeGreaterThan(100);
+    expect(new Set(thin.map((rect) => rect.x)).size).toBe(thin.length);
+  });
+
+  it('draws fewer bars than states, with no gap in the lane', async () => {
+    const rects = await bars([denseFrame()]);
+    expect(rects.length).toBeLessThan(DENSE_ROWS / 2);
+    const sorted = [...rects].sort((a, b) => a.x - b.x);
+    const gaps = sorted.slice(1).filter((rect, i) => rect.x > sorted[i].x + sorted[i].width);
+    expect(gaps).toHaveLength(0);
   });
 });
 

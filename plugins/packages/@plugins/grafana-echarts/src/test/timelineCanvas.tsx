@@ -214,3 +214,26 @@ export const statusGridFrame = () => {
     ],
   });
 };
+
+/** Rows in `denseFrame`: more than the pixel width of the test grid. */
+export const DENSE_ROWS = 2000;
+
+/** One lane of `DENSE_ROWS` states that alternate, so no state merges: bars under 1 px. */
+export const denseFrame = () => {
+  const denseStep = (times[8] - times[0]) / DENSE_ROWS;
+  return toDataFrame({
+    fields: [
+      {
+        name: 'time',
+        type: FieldType.time,
+        values: Array.from({ length: DENSE_ROWS }, (_, i) => from + i * denseStep),
+      },
+      {
+        name: 'server A',
+        type: FieldType.string,
+        values: Array.from({ length: DENSE_ROWS }, (_, i) => (i % 2 ? 'OK' : 'ERROR')),
+        config: stateConfig(),
+      },
+    ],
+  });
+};

@@ -66,7 +66,9 @@ so a panel switched from core keeps its settings.
   panel measures to the end of the hovered bar.
 - **Density.** With 64 lanes of 1000 unmerged states, the first render takes about 2.9 s of long
   tasks against 272 ms for core, and a hover costs up to about 100 ms. Core draws one path per
-  colour; this panel draws one element per bar.
+  colour. This panel draws one element per bar, but it does not draw a 1 px bar that the next bar
+  of its lane covers. Thus a lane has at most about one element per pixel. See the "Dense lanes"
+  panels of `timeline-core-parity`.
 
 The open items are in [#211](https://github.com/grafana-experimental/grafana-beyond/issues/211).
 

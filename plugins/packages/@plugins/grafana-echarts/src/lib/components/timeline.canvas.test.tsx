@@ -1,6 +1,13 @@
 import { normalizeCanvasEvents } from 'test/canvas';
 import { height, width } from 'test/panel';
-import { booleansFrame, renderTimeline, startEndFrame, stringsFrame, thresholdsFrame } from 'test/timelineCanvas';
+import {
+  booleansFrame,
+  denseFrame,
+  renderTimeline,
+  startEndFrame,
+  stringsFrame,
+  thresholdsFrame,
+} from 'test/timelineCanvas';
 import { type PanelOptions } from 'types';
 
 // State timeline core-parity baselines: the series layer (bars and value text) for
@@ -32,6 +39,11 @@ describe('state timeline core parity canvas', () => {
 
     it('start and end time fields', async () => {
       const { bars, context } = await renderBars([startEndFrame()]);
+      expect(bars).toMatchCanvasSnapshot(context, { width, height });
+    });
+
+    it('dense states under 1 px', async () => {
+      const { bars, context } = await renderBars([denseFrame()]);
       expect(bars).toMatchCanvasSnapshot(context, { width, height });
     });
   });

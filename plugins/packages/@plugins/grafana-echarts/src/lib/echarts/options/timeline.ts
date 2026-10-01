@@ -134,83 +134,111 @@ export function getTimelineText(
 }
 
 /**
- * The `renderItem` for the timeline: a rect per bar with the value colour at
- * `fillOpacity`, a border of `lineWidth` in the full value colour drawn inside the
- * bar, and the value text. Pixel positions are rounded, as core does. Changes mode
+ * The pixel box of a bar. Pixel positions are rounded, as core does. Changes mode
  * rounds both edges. Samples mode (`cells`) rounds the width once, less the line
  * width, and centres the cell on its sample, so every cell has the same width, as in
- * core's `round(colWid * colWidth - strokeWidth)`.
+ * core's `round(colWid * colWidth - strokeWidth)`. Core keeps bars at least 1px wide,
+ * so short states stay visible.
+ */
+function getBarBox(
+  coord: (point: number[]) => number[],
+  [start, end, laneTop, laneBottom]: number[],
+  lineWidth: number,
+  cells: boolean
+): ZRRectLike {
+  const [x0, y0] = coord([start, laneTop]);
+  const [x1, y1] = coord([end, laneBottom]);
+  const width = Math.max(1, Math.round(x1 - x0 - (cells ? lineWidth : 0)));
+  const left = cells ? Math.round((x0 + x1) / 2 - width / 2) : Math.round(x0);
+  return {
+    x: left,
+    y: Math.round(y0),
+    width: cells ? width : Math.max(1, Math.round(x1) - left),
+    height: Math.round(y1 - y0),
+  };
+}
+
+/**
+ * The `renderItem` for the timeline: a rect per bar with the value colour at
+ * `fillOpacity`, a border of `lineWidth` in the full value colour drawn inside the
+ * bar, and the value text. `data` is the encoded series data (`encodeTimelineData`).
+ *
+ * Dense lanes have many bars under 1 px. A bar that the next bar of its lane covers
+ * fully (the same pixel box) is not drawn, so a lane has at most about one element per
+ * pixel. The hover then shows the bar on top, which is the bar that is visible. A bar
+ * with no text is a rect, not a group, to halve the element count.
  * https://echarts.apache.org/en/option.html#series-custom.renderItem
  */
 export function makeTimelineRenderItem(
   items: TimelineItem[],
+  data: number[][],
   textOptions: TimelineTextOptions,
   cells = false
 ): CustomSeriesRenderItem {
   const pxPerChar = getPxPerChar(textOptions.font);
 
   return (params, api) => {
-    const item = items[params.dataIndex];
+    const index = params.dataIndex;
+    const item = items[index];
     // ECharts types `coordSys` only as `{ type }`; on cartesian2d it is the grid rect.
     if (!item || !isRect(params.coordSys)) {
       return;
     }
     const grid = params.coordSys;
-    const [x0, y0] = api.coord([api.value(0), api.value(2)]);
-    const [x1, y1] = api.coord([api.value(1), api.value(3)]);
+    const coord = (point: number[]) => api.coord(point);
     const { segment, lane } = item;
-    const top = Math.round(y0);
-    // Core keeps bars at least 1px wide, so short states stay visible. A Samples cell is
-    // `colWidth` of the interval less the line width, and the border sits inside it.
-    const cellWidth = Math.max(1, Math.round(x1 - x0 - (cells ? lane.lineWidth : 0)));
-    const left = cells ? Math.round((x0 + x1) / 2 - cellWidth / 2) : Math.round(x0);
-    const box: ZRRectLike = {
-      x: left,
-      y: top,
-      width: cells ? cellWidth : Math.max(1, Math.round(x1) - left),
-      height: Math.round(y1 - y0),
-    };
+    const lineWidth = lane.lineWidth;
+    const box = getBarBox(coord, data[index], lineWidth, cells);
+    const next = items[index + 1];
+    if (next && next.laneIndex === item.laneIndex && box.width === 1) {
+      const nextBox = getBarBox(coord, data[index + 1], lineWidth, cells);
+      if (nextBox.x === box.x && nextBox.width === 1) {
+        return;
+      }
+    }
     if (!clipRectByRect(box, grid)) {
       return;
     }
 
-    const lineWidth = lane.lineWidth;
     const inset = lineWidth / 2;
-    const children: NonNullable<Extract<ReturnType<CustomSeriesRenderItem>, { type: 'group' }>['children']> = [
-      {
-        type: 'rect',
-        // The border sits inside the bar, as in core.
-        shape: {
-          x: box.x + inset,
-          y: box.y + inset,
-          width: Math.max(0, box.width - lineWidth),
-          height: Math.max(0, box.height - lineWidth),
-        },
-        style: {
-          fill: segment.fillColor,
-          ...(lineWidth > 0 ? { stroke: segment.color, lineWidth } : {}),
-        },
+    const rect = {
+      type: 'rect' as const,
+      // The border sits inside the bar, as in core.
+      shape: {
+        x: box.x + inset,
+        y: box.y + inset,
+        width: Math.max(0, box.width - lineWidth),
+        height: Math.max(0, box.height - lineWidth),
       },
-    ];
+      style: {
+        fill: segment.fillColor,
+        ...(lineWidth > 0 ? { stroke: segment.color, lineWidth } : {}),
+      },
+    };
 
     const label = getTimelineText(segment.text, box, grid, lineWidth, textOptions, pxPerChar);
-    if (label && label.text.length > 0) {
-      children.push({
-        type: 'text',
-        x: label.x,
-        y: Math.round(box.y + box.height / 2),
-        silent: true,
-        style: {
-          text: label.text,
-          fill: segment.textColor,
-          font: textOptions.font,
-          align: textOptions.alignValue,
-          verticalAlign: 'middle',
-        },
-      });
+    if (!label || label.text.length === 0) {
+      return rect;
     }
-
-    return { type: 'group', children };
+    return {
+      type: 'group',
+      children: [
+        rect,
+        {
+          type: 'text',
+          x: label.x,
+          y: Math.round(box.y + box.height / 2),
+          silent: true,
+          style: {
+            text: label.text,
+            fill: segment.textColor,
+            font: textOptions.font,
+            align: textOptions.alignValue,
+            verticalAlign: 'middle',
+          },
+        },
+      ],
+    };
   };
 }
 
@@ -267,16 +295,17 @@ export function getTimelineSeries(
   cellWidth?: number
 ): CustomSeriesOption {
   const items = getTimelineItems(model);
+  const data = encodeTimelineData(items, bands, cellWidth);
   return {
     name: 'Timeline',
     type: 'custom',
     coordinateSystem: 'cartesian2d',
     zlevel,
     clip: true,
-    renderItem: makeTimelineRenderItem(items, textOptions, cellWidth != null),
+    renderItem: makeTimelineRenderItem(items, data, textOptions, cellWidth != null),
     // https://echarts.apache.org/en/option.html#series-custom.encode
     encode: { x: [0, 1], y: [2, 3] },
-    data: encodeTimelineData(items, bands, cellWidth),
+    data,
     legendHoverLink: false,
     tooltip: seriesTooltip(buildTimelineTooltipModel(items, tooltipCtx), tooltipCtx.tooltipSink),
   };
