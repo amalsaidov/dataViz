@@ -17,7 +17,8 @@ import { addFunnelLabelPositionOptions } from 'lib/grafana/editor/funnel/label-p
 import { addFunnelOrientOptions } from 'lib/grafana/editor/funnel/orient';
 import { addFunnelSizeOptions } from 'lib/grafana/editor/funnel/size';
 import { addPieAngleOptions } from 'lib/grafana/editor/pie/angle-inputs';
-import { addPieAnimationTextStyleOptions } from 'lib/grafana/editor/pie/animation-text-style';
+import { addPieTextStyleOptions } from 'lib/grafana/editor/pie/animation-text-style';
+import { addAnimationOption } from 'lib/grafana/editor/common/animation';
 import { addPieBorderRadiusOptions } from 'lib/grafana/editor/pie/border-radius-input';
 import { addPieCenterValueReducerOptions } from 'lib/grafana/editor/pie/center-value-reducer-select';
 import { addPieClockwiseOverlapOptions } from 'lib/grafana/editor/pie/clockwise-overlap';
@@ -146,7 +147,9 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsFieldConfig>(makeLazy
     addPieZeroSumOptions(builder, isPieVariant); // Zero-sum / empty (stillShowZeroSum/showEmptyCircle)
     addPieClockwiseOverlapOptions(builder, isPieVariant); // Clockwise / avoidLabelOverlap
     addPieLabelColorOptions(builder, isPieVariant); // Label color (label.color)
-    addPieAnimationTextStyleOptions(builder, isPieVariant); // Animation + label text shadow/stroke
+    // Animation applies to the pie and the funnel.
+    addAnimationOption(builder);
+    addPieTextStyleOptions(builder, isPieVariant); // Label text shadow/stroke
 
     // --- Funnel-only options (shown whenever the funnel variant is selected; each
     // gates on `isFunnelVariant` internally). Unlike the pie's ECharts-only extras,

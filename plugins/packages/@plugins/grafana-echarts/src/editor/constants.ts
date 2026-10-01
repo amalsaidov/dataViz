@@ -157,7 +157,7 @@ export const PERFORMANCE_DOWNSAMPLING_DEFAULT = true;
 
 /**
  * Shared animation toggle, offered as an opt-in Advanced switch by every family
- * that exposes it (cartesian here, part-to-whole via `pieAnimationEnabledPath`).
+ * that exposes it (cartesian here, the others via `addAnimationOption`).
  *
  * **Off by default, for every panel.** Density thresholds were tried first and
  * could not work: a panel cannot know a response is dense until it has it, and
