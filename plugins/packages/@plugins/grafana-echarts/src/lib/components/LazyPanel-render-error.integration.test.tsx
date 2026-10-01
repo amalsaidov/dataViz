@@ -1,10 +1,12 @@
 import { FieldType, toDataFrame } from '@grafana/data';
 import { LegendDisplayMode } from '@grafana/schema';
 import { render, screen } from '@testing-library/react';
+import { type ChartFamily } from 'lib/echarts/charts/autoSeriesType';
 import { type ChartModule } from 'lib/echarts/charts/types';
 import React, { type ReactElement } from 'react';
 import { getComponent } from 'test/panel';
 import { makeLazyPanel } from './LazyPanel';
+import { renderErrorMessage } from './PanelRenderErrorView';
 
 // A chart module that throws while the panel renders, for each frame named `bad`.
 const mockChartModule: ChartModule = {
@@ -32,14 +34,43 @@ const frame = (name: string) => toDataFrame({ name, fields: [{ name: 'value', ty
 const panelProps = (name: string) =>
   (getComponent([frame(name)], 'line') as ReactElement<{ children: ReactElement }>).props.children.props;
 
+const families: ChartFamily[] = [
+  'cartesian',
+  'part-to-whole',
+  'geo',
+  'heatmap',
+  'hierarchy',
+  'multivariate',
+  'stream',
+  'timeline',
+  'status-history',
+];
+
 describe('LazyPanel render error', () => {
+  it.each(families)('shows the generic message for %s, and logs the raw error', async (family) => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const LazyPanel = makeLazyPanel(family);
+
+    const { container } = render(<LazyPanel {...panelProps('bad')} />);
+
+    expect(await screen.findByText(renderErrorMessage(family))).toBeInTheDocument();
+    expect(screen.getByText(/^This data can't be shown as a .+\.$/)).toBeInTheDocument();
+    expect(screen.queryByText(/c is undefined/)).toBeNull();
+    expect(container.querySelector('[data-viz-state="error"]')).not.toBeNull();
+    expect(consoleError).toHaveBeenCalledWith(
+      'ECharts panel render error',
+      expect.objectContaining({ message: 'c is undefined', stack: expect.any(String) })
+    );
+    consoleError.mockRestore();
+  });
+
   it('shows the Grafana error view, and the next data renders the chart again', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     const LazyPanel = makeLazyPanel('cartesian');
 
     const { container, rerender } = render(<LazyPanel {...panelProps('bad')} />);
 
-    expect(await screen.findByText('c is undefined')).toBeInTheDocument();
+    expect(await screen.findByText(renderErrorMessage('cartesian'))).toBeInTheDocument();
     expect(container.querySelector('[data-viz-state="error"]')).not.toBeNull();
     expect(consoleError).toHaveBeenCalledWith('ECharts panel render error', expect.any(Error));
 

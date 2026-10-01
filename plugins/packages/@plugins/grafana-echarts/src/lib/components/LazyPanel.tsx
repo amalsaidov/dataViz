@@ -50,7 +50,7 @@ export const makeLazyPanel = (family: ChartFamily, preload?: () => Promise<void>
         <ChartErrorBoundary
           resetKeys={[props.data, props.options, props.fieldConfig]}
           onError={logRenderError}
-          fallback={(error) => <PanelRenderErrorView error={error} panel={props} />}
+          fallback={() => <PanelRenderErrorView family={family} panel={props} />}
         >
           <Loaded {...props} family={family} />
         </ChartErrorBoundary>
