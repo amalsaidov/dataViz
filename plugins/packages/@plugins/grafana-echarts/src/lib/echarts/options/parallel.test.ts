@@ -48,6 +48,33 @@ describe('getParallelComponent', () => {
     expect(top).toBeGreaterThanOrEqual(15 + 16);
   });
 
+  // Issue #782: the outer names of a horizontal chart are centred on the outer
+  // axes, so a long first or last name widens its side.
+  it('widens the horizontal sides for long outer names', () => {
+    const short = getParallelComponent('horizontal', theme, undefined, ['CPU', 'Disk']);
+    const long = getParallelComponent('horizontal', theme, undefined, [
+      'A very long first name',
+      'Disk',
+      'Network Mbit/s',
+    ]);
+    expect(short).toMatchObject({ left: 40, right: 40 });
+    expect(long.left).toBeGreaterThan(40);
+    expect(long.right).toBeGreaterThan(40);
+  });
+
+  it('widens the vertical name column for the widest name', () => {
+    const long = getParallelComponent('vertical', theme, undefined, ['CPU', 'A very long axis name']);
+    expect(long.right).toBeGreaterThan(80);
+  });
+
+  // A truncated name keeps the reserved room in a narrow panel.
+  it('caps the reserved name room and truncates longer names', () => {
+    const name = 'x'.repeat(200);
+    const { right, parallelAxisDefault } = getParallelComponent('vertical', theme, undefined, [name]);
+    expect(right).toBe(120 + 15 + 4);
+    expect(parallelAxisDefault?.nameTextStyle).toMatchObject({ width: 120, overflow: 'truncate' });
+  });
+
   it('reserves extra room only for a native ECharts legend', () => {
     const bottom = getParallelComponent('horizontal', theme, { placement: 'bottom' } as VizLegendOptions);
     const right = getParallelComponent('horizontal', theme, { placement: 'right' } as VizLegendOptions);

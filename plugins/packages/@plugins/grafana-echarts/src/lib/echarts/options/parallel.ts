@@ -1,6 +1,7 @@
 import { type GrafanaTheme2 } from '@grafana/data';
 import { type VizLegendOptions } from '@grafana/schema';
 import { type ParallelComponentOption, type ParallelSeriesOption } from 'echarts';
+import { format } from 'echarts/core';
 import { type ECBasicOption } from 'echarts/types/dist/shared';
 import {
   PARALLEL_ANIMATION_ENABLED_DEFAULT,
@@ -83,6 +84,49 @@ const VERTICAL_BOX = {
   right: 80,
 };
 
+/**
+ * Widest axis name in px. A longer name is truncated with an ellipsis, so that
+ * the name room does not take a narrow panel.
+ * https://echarts.apache.org/en/option.html#parallelAxis.nameTextStyle.overflow
+ */
+const AXIS_NAME_MAX_WIDTH = 120;
+
+/** Space between a name and the panel edge. */
+const AXIS_NAME_EDGE_GAP = 4;
+
+/**
+ * Width of an axis name in px, at most `AXIS_NAME_MAX_WIDTH`. Uses the ECharts
+ * text measure, so the value agrees with the drawn name.
+ * https://echarts.apache.org/en/api.html#echarts.format
+ */
+function getAxisNameWidth(name: string, theme: GrafanaTheme2): number {
+  const font = `${AXIS_FONT_SIZE}px ${theme.typography.fontFamily}`;
+  return Math.min(format.getTextRect(name, font).width, AXIS_NAME_MAX_WIDTH);
+}
+
+/**
+ * The box sides that hold the axis names. Each side is at least its constant
+ * in `HORIZONTAL_BOX` / `VERTICAL_BOX`, and more when a name needs more room.
+ * Horizontal: the first and last names are centred on the outer axes, so each
+ * side holds half of its name. Vertical: the names are to the right of the
+ * axes, so `right` holds the widest name and the name gap.
+ */
+function getNameSides(isVertical: boolean, axisNames: string[], theme: GrafanaTheme2) {
+  const widths = axisNames.map((name) => getAxisNameWidth(name, theme));
+  if (isVertical) {
+    const widest = Math.max(0, ...widths);
+    return {
+      left: VERTICAL_BOX.left,
+      right: Math.max(VERTICAL_BOX.right, widest + AXIS_NAME_GAP + AXIS_NAME_EDGE_GAP),
+    };
+  }
+  const side = (width = 0, min: number) => Math.max(min, Math.ceil(width / 2) + AXIS_NAME_EDGE_GAP);
+  return {
+    left: side(widths[0], HORIZONTAL_BOX.left),
+    right: side(widths[widths.length - 1], HORIZONTAL_BOX.right),
+  };
+}
+
 /** Reserved for a native ECharts legend, matching the cartesian grid's gap. */
 const PARALLEL_LEGEND_PADDING = 12;
 
@@ -105,7 +149,8 @@ function getParallelAxisStyle(theme: GrafanaTheme2): NonNullable<ParallelCompone
     axisLine: { show: true, lineStyle: { color: theme.colors.border.medium } },
     axisTick: { show: true, length: 4, lineStyle: { color: gridColor } },
     axisLabel: textStyle,
-    nameTextStyle: textStyle,
+    // Truncate a long name to the width that `getNameSides` reserves.
+    nameTextStyle: { ...textStyle, width: AXIS_NAME_MAX_WIDTH, overflow: 'truncate' },
   };
 }
 
@@ -121,16 +166,18 @@ function getParallelAxisStyle(theme: GrafanaTheme2): NonNullable<ParallelCompone
  * `dim` / `name` / `type` still win.
  *
  * The box is layout-aware — see `HORIZONTAL_BOX` / `VERTICAL_BOX`, which differ
- * by more than orientation.
+ * by more than orientation. `axisNames` (in `dim` order) widen the name sides
+ * when a name needs more room than the constants give.
  * https://echarts.apache.org/en/option.html#parallel.layout
  */
 export function getParallelComponent(
   layout: ParallelLayout | undefined,
   theme: GrafanaTheme2,
-  legend?: VizLegendOptions
+  legend?: VizLegendOptions,
+  axisNames: string[] = []
 ): ParallelComponentOption {
   const isVertical = layout === 'vertical';
-  const box = isVertical ? VERTICAL_BOX : HORIZONTAL_BOX;
+  const box = { ...(isVertical ? VERTICAL_BOX : HORIZONTAL_BOX), ...getNameSides(isVertical, axisNames, theme) };
 
   return {
     ...(isVertical ? { layout: 'vertical' as const } : {}),
