@@ -1,4 +1,5 @@
 import { type ValueFormatter } from '@grafana/data';
+import { type LineInterpolation } from '@grafana/schema';
 import { type LineSeriesOption } from 'echarts';
 import {
   type CartesianShowValues,
@@ -75,6 +76,8 @@ export interface CartesianSeriesInput {
   hover?: boolean;
   /** Line series: connect the line over null values (ECharts `connectNulls`). See `spanNulls.ts`. */
   connectNulls?: boolean;
+  /** Line series: the line shape (core `custom.lineInterpolation`). See `getLineInterpolation`. */
+  lineInterpolation?: LineInterpolation;
   /** Line series: the dash segment lengths in px (ECharts `lineStyle.type`). See `resolveFieldLineDash`. */
   lineDash?: number[];
   /** Line series: draw round segment ends, so a zero-length segment is a dot (ECharts `lineStyle.cap`). */

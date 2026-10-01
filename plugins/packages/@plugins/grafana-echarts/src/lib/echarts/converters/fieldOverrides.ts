@@ -1,4 +1,5 @@
 import { type Field } from '@grafana/data';
+import { LineInterpolation } from '@grafana/schema';
 import { LINE_STACK_GROUP_ID, STACK_GROUP_ID } from 'editor/cartesian';
 import { type CartesianSingleValueSeriesType, type PerformanceMode } from 'editor/types';
 import { isCartesianSingleValueSeriesType } from 'lib/echarts/charts/narrowing';
@@ -64,6 +65,15 @@ export function resolveFieldSpanNulls(field: Field): SpanNulls {
     return spanNulls;
   }
   return false;
+}
+
+/**
+ * The "Line interpolation" of a field (core `custom.lineInterpolation`, default `linear`). An unknown value reads as
+ * `linear`. Core: https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/time-series/#line-interpolation
+ */
+export function resolveFieldLineInterpolation(field: Field): LineInterpolation {
+  const value = getFieldConfigFromField(field).custom?.lineInterpolation;
+  return value !== undefined && Object.values(LineInterpolation).includes(value) ? value : LineInterpolation.Linear;
 }
 
 /**

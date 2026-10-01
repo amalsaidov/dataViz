@@ -1,3 +1,4 @@
+import { LineInterpolation } from '@grafana/schema';
 import { formattedValueToString, type GrafanaTheme2, type TimeRange, type ValueFormatter } from '@grafana/data';
 import {
   type BarSeriesOption,
@@ -299,6 +300,32 @@ function resolveCartesianSymbol(
 }
 
 /**
+ * The ECharts line shape of core `custom.lineInterpolation`. Linear adds no key.
+ * - `smooth`: core draws a monotone cubic spline (uPlot `paths.spline`), with no overshoot past a point. ECharts
+ *   `smooth: true` with `smoothMonotone: 'x'` is the closest curve: it keeps each segment monotone along x.
+ * - `stepBefore` / `stepAfter`: the line steps at the start or at the end of a segment (uPlot `paths.stepped`
+ *   `align` -1 / 1), which is ECharts `step: 'start'` / `'end'`.
+ * Core: https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/time-series/#line-interpolation
+ * uPlot: https://github.com/leeoniya/uPlot/blob/master/src/paths/spline.js
+ * ECharts: https://echarts.apache.org/en/option.html#series-line.smooth
+ * https://echarts.apache.org/en/option.html#series-line.step
+ */
+export function getLineInterpolation(
+  lineInterpolation: LineInterpolation | undefined
+): Pick<LineSeriesOption, 'smooth' | 'smoothMonotone' | 'step'> {
+  switch (lineInterpolation) {
+    case LineInterpolation.Smooth:
+      return { smooth: true, smoothMonotone: 'x' };
+    case LineInterpolation.StepBefore:
+      return { step: 'start' };
+    case LineInterpolation.StepAfter:
+      return { step: 'end' };
+    default:
+      return {};
+  }
+}
+
+/**
  * Build one cartesian series with its value-label / geometry / style
  * options, dispatching on the resolved render type. Each branch returns a
  * concrete series literal with a literal `type`, so the result assigns to
@@ -326,6 +353,7 @@ export function buildCartesianSeries(
     perf,
     hover,
     connectNulls,
+    lineInterpolation,
     lineDash,
     lineRoundCap,
   } = input;
@@ -383,6 +411,7 @@ export function buildCartesianSeries(
         ...(areaStyle ? { areaStyle } : {}),
         // https://echarts.apache.org/en/option.html#series-line.connectNulls
         ...(connectNulls ? { connectNulls } : {}),
+        ...getLineInterpolation(lineInterpolation),
         ...symbol,
         ...emphasis,
       };

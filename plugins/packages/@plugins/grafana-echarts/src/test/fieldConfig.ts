@@ -81,6 +81,8 @@ export const testFieldConfigRegistry = new FieldConfigOptionsRegistry(() => [
   customItem('lineWidth', 'Line width'),
   customItem('lineType', 'Line type'),
   customItem('curveness', 'Curveness'),
+  // The cartesian line shape (#1035). Only the import fixtures `timeseries-points` and `timeseries-line-style` set it.
+  customItem('lineInterpolation', 'Line interpolation'),
   // A relations label prints the *formatted* stat, through the same display processor the
   // tooltip formats with, so these two are the only standard properties besides `color`
   // that a canvas can show. Registered for the reason `displayName` is: no other fixture

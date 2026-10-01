@@ -28,6 +28,7 @@ import { addCartesianSeriesStyleFieldConfig } from 'lib/grafana/editor/cartesian
 import { addCartesianLineWidthOptions } from 'lib/grafana/editor/cartesian/line-width';
 import { addCartesianPointSizeOptions } from 'lib/grafana/editor/cartesian/point-size';
 import { showIfBarOption, showIfLineOption } from 'lib/grafana/editor/cartesian/series-types';
+import { addCartesianLineInterpolationFieldConfig } from 'lib/grafana/editor/cartesian/line-interpolation';
 import { addCartesianLineStyleFieldConfig } from 'lib/grafana/editor/cartesian/line-style';
 import { addCartesianSpanNullsFieldConfig } from 'lib/grafana/editor/cartesian/span-nulls';
 import { addCartesianValueLabelOptions } from 'lib/grafana/editor/cartesian/value-labels';
@@ -139,6 +140,9 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
 
       // Core "Connect null values" of line series: Never, Always or a gap threshold.
       addCartesianSpanNullsFieldConfig(builder);
+
+      // Core "Line interpolation" of line series: Linear, Smooth, Step before or Step after.
+      addCartesianLineInterpolationFieldConfig(builder);
 
       // Threshold display (writes the custom `thresholdsStyle.mode` field
       // config; read back in `cartesianThresholdMarks`). The standard Thresholds

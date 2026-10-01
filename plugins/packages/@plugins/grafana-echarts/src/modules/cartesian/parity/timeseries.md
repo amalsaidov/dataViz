@@ -38,7 +38,7 @@ styling defaults, exposing only a small set of per-field overrides.
 
 | Core Grafana option                                    | ECharts equivalent                                                                                        | Status        |
 | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------- |
-| Style (lines/bars/points), line interpolation          | `seriesType` (line/bar/scatter)                                                                           | Partial       |
+| Style (lines/bars/points), line interpolation          | `seriesType` (line/bar/scatter); per-field `lineInterpolation` -> ECharts `smooth` / `step`               | Supported     |
 | Line width, fill opacity                               | `lineWidth`, `fillOpacity` (panel options, Default tier) -> `lineStyle.width`, `areaStyle.opacity`        | Partial       |
 | Gradient mode, line style                              | none (ECharts defaults)                                                                                   | Not supported |
 | Connect null values                                    | per-field `spanNulls` (Default tier): `true` -> `connectNulls`; a threshold (ms) spans shorter gaps       | Supported     |

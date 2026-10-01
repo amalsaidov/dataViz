@@ -3,6 +3,7 @@ import {
   type GraphFieldConfig,
   type GraphTransform,
   type HideableFieldConfig,
+  type LineInterpolation,
 } from '@grafana/schema';
 
 export type SeriesType =
@@ -302,6 +303,8 @@ export interface EChartsFieldConfig extends HideableFieldConfig {
   // Core "Connect null values" of line series: `true`, `false`, or the longest gap (x units, ms on a
   // time axis) to connect over. See `lib/echarts/converters/spanNulls.ts`.
   spanNulls?: boolean | number;
+  // Core "Line interpolation" of line series. See `getLineInterpolation` in `lib/echarts/options/cartesian.ts`.
+  lineInterpolation?: LineInterpolation;
 }
 export interface EChartsGraphFieldConfig extends GraphFieldConfig, EChartsFieldConfig {}
 /** Field config of the timeline family: core's state timeline `custom.*` keys. */
