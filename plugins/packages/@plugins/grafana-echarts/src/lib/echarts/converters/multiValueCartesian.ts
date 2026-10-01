@@ -204,19 +204,45 @@ export function getCandlestickDataIssue(ctx: ChartContext): ChartDataIssue | und
   return undefined;
 }
 
-/** The data issue of a boxplot without the number fields min, q1, median, q3 and max. */
+/** The fix steps for each boxplot data issue (#932). Rows are numbered from 1. */
+export const BOXPLOT_ISSUE_MESSAGES = {
+  'boxplot-fields-missing': (name: string) =>
+    `Field ${name} is missing. A boxplot needs the number fields min, q1, median, q3 and max. Rename a field with Organize fields, or select another series type.`,
+  'boxplot-out-of-order': (row: number, lower: string, upper: string) =>
+    `Row ${row} has ${lower} above ${upper}. Each row needs min, q1, median, q3 and max in this order.`,
+};
+
+/**
+ * The data issue of a boxplot, or `undefined` when the data fits. A boxplot needs the number fields min, q1,
+ * median, q3 and max (or five number fields). The named fields must be in order in each row.
+ */
 export function getBoxplotDataIssue(ctx: ChartContext): ChartDataIssue | undefined {
   if (ctx.seriesType !== 'boxplot') {
     return undefined;
   }
   const frame = findCategoricalFrame(filterUnsupportedFields(ctx.frames));
-  if (frame && resolveMultiValueFields(frame, 'boxplot')) {
+  if (!frame || !resolveMultiValueFields(frame, 'boxplot')) {
+    const missing = BOXPLOT_FIELDS.find((name) => !frame || !findNumericFieldByName(frame, name)) ?? BOXPLOT_FIELDS[0];
+    return { reason: 'boxplot-fields-missing', message: BOXPLOT_ISSUE_MESSAGES['boxplot-fields-missing'](missing) };
+  }
+  // Only the named fields have an order to check. Five other number fields are drawn as they are.
+  const named = BOXPLOT_FIELDS.map((name) => findNumericFieldByName(frame, name));
+  if (named.some((field) => field === undefined)) {
     return undefined;
   }
-  return {
-    reason: 'boxplot-fields-missing',
-    message: 'A boxplot needs the number fields min, q1, median, q3 and max. Select another series type.',
-  };
+  for (let row = 0; row < frame.length; row++) {
+    for (let i = 0; i < named.length - 1; i++) {
+      const lower = named[i]!.values[row];
+      const upper = named[i + 1]!.values[row];
+      if (lower != null && upper != null && lower > upper) {
+        return {
+          reason: 'boxplot-out-of-order',
+          message: BOXPLOT_ISSUE_MESSAGES['boxplot-out-of-order'](row + 1, BOXPLOT_FIELDS[i], BOXPLOT_FIELDS[i + 1]),
+        };
+      }
+    }
+  }
+  return undefined;
 }
 
 /** Frame display name for the single multi-value series, or a type fallback. */

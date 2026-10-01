@@ -1,0 +1,93 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "https://github.com/grafana-experimental/grafana-beyond/issues/932",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "seriesType": "boxplot"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "service,min,q1,q3,max\napi,1,2,4,5\ndb,2,3,5,6"
+        }
+      ],
+      "transformations": [],
+      "title": "ECharts: Field median is missing",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "https://github.com/grafana-experimental/grafana-beyond/issues/932",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "seriesType": "boxplot"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "service,min,q1,median,q3,max\napi,1,2,3,4,5\ndb,3,2,3,4,5"
+        }
+      ],
+      "transformations": [],
+      "title": "ECharts: Min above q1",
+      "type": "grafana-echartscartesian-panel"
+    }
+  ],
+  "schemaVersion": 41,
+  "tags": ["boxplot", "invalid-frame"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "2024-01-01T00:00:00.000Z",
+    "to": "2024-01-01T00:20:00.000Z"
+  },
+  "timezone": "utc",
+  "title": "Boxplot: invalid frames",
+  "uid": "boxplot-invalid-frames",
+  "version": 1
+}

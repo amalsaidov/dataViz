@@ -14,6 +14,8 @@ import { cartesianChartModule } from 'lib/echarts/charts/cartesian';
 import {
   framesLookMultiValue,
   CANDLESTICK_ISSUE_MESSAGES,
+  BOXPLOT_ISSUE_MESSAGES,
+  getBoxplotDataIssue,
   getCandlestickDataIssue,
   multiValueCartesianToEChartsOption,
   resolveMultiValueSeriesType,
@@ -360,5 +362,56 @@ describe('unnamed fields', () => {
   it('does not throw for boxplot', () => {
     expect(() => run([unnamedFrame()], 'boxplot')).not.toThrow();
     expect(() => framesLookMultiValue([unnamedFrame()])).not.toThrow();
+  });
+});
+
+describe('getBoxplotDataIssue', () => {
+  const box = (names: string[], rows: number[][]) =>
+    toDataFrame({
+      fields: [
+        { name: 'service', type: FieldType.string, values: rows.map((_, i) => `s${i}`) },
+        ...names.map((name, i) => ({ name, type: FieldType.number, values: rows.map((row) => row[i]) })),
+      ],
+    });
+
+  it('names the first missing field', () => {
+    const frame = box(['min', 'q1', 'q3', 'max'], [[1, 2, 4, 5]]);
+    expect(getBoxplotDataIssue(makeContext([frame], 'boxplot'))).toEqual({
+      reason: 'boxplot-fields-missing',
+      message: BOXPLOT_ISSUE_MESSAGES['boxplot-fields-missing']('median'),
+    });
+  });
+
+  it('names the row and the pair that are out of order', () => {
+    const frame = box(
+      ['min', 'q1', 'median', 'q3', 'max'],
+      [
+        [1, 2, 3, 4, 5],
+        [3, 2, 3, 4, 5],
+      ]
+    );
+    expect(getBoxplotDataIssue(makeContext([frame], 'boxplot'))?.message).toBe(
+      BOXPLOT_ISSUE_MESSAGES['boxplot-out-of-order'](2, 'min', 'q1')
+    );
+  });
+
+  it('gives no issue for ordered named fields', () => {
+    expect(
+      getBoxplotDataIssue(makeContext([box(['min', 'q1', 'median', 'q3', 'max'], [[1, 2, 3, 4, 5]])], 'boxplot'))
+    ).toBeUndefined();
+  });
+
+  // The renderer draws the first five number fields when the named fields are missing, so these frames keep drawing.
+  it('gives no issue when the positional fallback finds five number fields, in any order', () => {
+    expect(
+      getBoxplotDataIssue(makeContext([box(['a', 'b', 'c', 'd', 'e'], [[5, 4, 3, 2, 1]])], 'boxplot'))
+    ).toBeUndefined();
+  });
+
+  it('names a missing field only when the positional fallback also fails', () => {
+    const frame = box(['a', 'b', 'c', 'd'], [[1, 2, 3, 4]]);
+    expect(getBoxplotDataIssue(makeContext([frame], 'boxplot'))?.message).toBe(
+      BOXPLOT_ISSUE_MESSAGES['boxplot-fields-missing']('min')
+    );
   });
 });
