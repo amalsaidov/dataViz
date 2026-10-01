@@ -20,6 +20,9 @@ export function addCartesianSpanNullsFieldConfig(builder: FieldConfigEditorBuild
     editor: SpanNullsEditor,
     override: SpanNullsEditor,
     shouldApply: (field) => field.type !== FieldType.time,
+    // Only line series read it. A field-config `showIf` sees only the config of this field, so a panel-level
+    // series type does not hide it.
+    showIf: (config) => config.seriesType === undefined || config.seriesType === 'Auto' || config.seriesType === 'line',
     process: identityOverrideProcessor,
   });
 }

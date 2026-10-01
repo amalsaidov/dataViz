@@ -73,10 +73,7 @@ export const cartesianSeriesTypeOptions: Array<SelectableValue<SeriesType>> = [
  * cannot be overlaid per field; non-cartesian types (pie/radar) use other
  * coordinate systems; and heatmap is detected from the frame type.
  */
-export const cartesianOverrideOptions: Array<SelectableValue<SeriesType>> = [
-  ...cartesianTimeSeriesTypes,
-  ...multiValueSeriesTypes,
-].map((type) => ({
+export const cartesianOverrideOptions: Array<SelectableValue<SeriesType>> = cartesianTimeSeriesTypes.map((type) => ({
   value: type,
   label: type,
 }));

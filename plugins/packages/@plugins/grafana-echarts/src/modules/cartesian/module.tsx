@@ -167,7 +167,7 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
     // 'Auto' resolves the best type from the data (see `resolveAutoSeriesType`).
     // Options are data-aware: when the frames are shaped for a multi-value type
     // (candlestick OHLC / boxplot five-number summary) only candlestick/boxplot
-    // are offered; otherwise the single-value render types. This is the only
+    // are offered; otherwise every render type. This is the only
     // control that writes the panel-level `options.seriesType`, so it also lets a
     // provisioned candlestick/boxplot panel switch to another cartesian type.
     builder.addSelect<SeriesTypeOption, SelectFieldConfigSettings<SeriesTypeOption>>({
@@ -180,7 +180,9 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsGraphFieldConfig>(mak
         options: cartesianSeriesTypeOptionsWithAuto,
         getOptions: (context) =>
           Promise.resolve(
-            framesLookMultiValue(context.data) ? multiValueSeriesTypeOptionsWithAuto : cartesianOverrideOptionsWithAuto
+            framesLookMultiValue(context.data)
+              ? multiValueSeriesTypeOptionsWithAuto
+              : cartesianSeriesTypeOptionsWithAuto
           ),
         allowCustomValue: false,
       },
