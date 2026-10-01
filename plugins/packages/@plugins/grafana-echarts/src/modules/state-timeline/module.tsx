@@ -40,9 +40,8 @@ export const plugin = new PanelPlugin<PanelOptions, EChartsTimelineFieldConfig>(
     addShowValueOption(builder, category);
     addAlignValueOption(builder, category);
     addRowHeightOption(builder, category);
-    // Single/Hidden only, as `timelineChartModule.singleTooltipOnly`. Legend calcs
-    // are off: the legend lists states, as core's (`addLegendOptions(builder, false)`).
-    addCommonLegendAndTooltip(builder, { includeLegendCalcs: false, singleTooltipOnly: true });
+    // Legend calcs are off: the legend lists states, as core's (`addLegendOptions(builder, false)`).
+    addCommonLegendAndTooltip(builder, { includeLegendCalcs: false });
     return builder;
   })
   .setSuggestionsSupplier(stateTimelineSuggestionsSupplier);

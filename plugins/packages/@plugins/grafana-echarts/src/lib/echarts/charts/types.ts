@@ -473,11 +473,12 @@ export interface ChartModule {
   getTooltipDimensions?(ctx: ChartContext): string[] | undefined;
 
   /**
-   * The panel `tooltip` of the family, in place of the one of `buildPanelTooltip`. Only the geo family sets it:
-   * its tooltip modes are the core Geomap modes, not the Single, All and Hidden modes of the other panels.
+   * The panel `tooltip` of the family, in place of the one of `buildPanelTooltip`. With `undefined`, the panel
+   * uses the one of `buildPanelTooltip`. The geo family sets it: its tooltip modes are the core Geomap modes.
+   * The timeline family sets it for the "All" mode, which needs one row per lane at the hovered time.
    * https://echarts.apache.org/en/option.html#tooltip
    */
-  getTooltipOption?(ctx: ChartContext): TooltipOption;
+  getTooltipOption?(ctx: ChartContext): TooltipOption | undefined;
 
   /**
    * The family has no meaningful "All" tooltip, so a persisted

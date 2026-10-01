@@ -1,4 +1,5 @@
 import { type DataFrame, type GrafanaTheme2, type TimeRange } from '@grafana/data';
+import { TooltipDisplayMode } from '@grafana/schema';
 import { type XAXisOption } from 'echarts/types/src/coord/cartesian/AxisModel';
 import { resolveTimelineOptions } from 'editor/timeline';
 import { getCartesianGrid } from 'lib/echarts/grid/grid';
@@ -18,6 +19,9 @@ import {
 import { prepareTimeline } from 'lib/grafana/timeline/prepareTimeline';
 import { type TimelineMode, type TimelineModel, type TimelinePrepareResult } from 'lib/grafana/timeline/types';
 import { getTimeAxisLabelFormatter } from 'lib/grafana/timeAxisFormat';
+import { NOOP_TOOLTIP_SINK } from 'lib/echarts/tooltip/model';
+import { getSilentTooltipOption } from 'lib/echarts/tooltip/option';
+import { buildTimelineMultiTooltipModel } from 'lib/echarts/tooltip/timeline';
 import { type ChartContext, type ChartModule, type EChartTimelineOption } from './types';
 
 /**
@@ -107,9 +111,21 @@ function getSampleAxisBounds(model: TimelineModel, timeRange: TimeRange): { min:
 export const timelineChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
 
-  // Multi ("All") needs a hit test per lane at the hovered time. See
-  // #76.
-  singleTooltipOnly: true,
+  // "All" uses the `axis` trigger, which gives the hovered time; each lane is then
+  // searched for its state at that time. Single and Hidden use the panel tooltip.
+  // https://echarts.apache.org/en/option.html#tooltip.trigger
+  getTooltipOption(ctx) {
+    const { model } = prepare(ctx);
+    if (ctx.options.tooltip?.mode !== TooltipDisplayMode.Multi || !model) {
+      return undefined;
+    }
+    const cellWidth =
+      timelineMode(ctx) === 'samples'
+        ? getSampleCellWidth(model, resolveTimelineOptions(ctx.options).colWidth)
+        : undefined;
+    const produce = buildTimelineMultiTooltipModel(model, { timeZone: ctx.timeZone }, cellWidth);
+    return getSilentTooltipOption('axis', TooltipDisplayMode.Multi, produce, ctx.tooltipSink ?? NOOP_TOOLTIP_SINK);
+  },
 
   legendReadonly: true,
 

@@ -1,7 +1,7 @@
 import { dateTimeFormat } from '@grafana/data';
 import { type TopLevelFormatterParams } from 'echarts/types/dist/shared';
 import { fmtDuration } from 'lib/grafana/timeline/duration';
-import { type TimelineLane, type TimelineSegment } from 'lib/grafana/timeline/types';
+import { type TimelineLane, type TimelineModel, type TimelineSegment } from 'lib/grafana/timeline/types';
 import { type TimelineTooltipContext, type TooltipModel } from 'lib/echarts/tooltip/types';
 
 /** One drawn bar and the lane it belongs to, in series data order. */
@@ -48,5 +48,47 @@ export function buildTimelineTooltipModel(
       rows: [valueRow, { label: 'Duration', value: fmtDuration(segment.end - segment.start) }],
       source,
     };
+  };
+}
+
+/**
+ * The segment of a lane at `time`. Changes mode: the bar from `start` to `end`. Samples
+ * mode: the cell of `cellWidth` milliseconds centred on its sample time.
+ */
+export function findTimelineSegment(lane: TimelineLane, time: number, cellWidth?: number): TimelineSegment | undefined {
+  if (cellWidth == null) {
+    return lane.segments.find((segment) => segment.start <= time && time < segment.end);
+  }
+  const half = cellWidth / 2;
+  return lane.segments.find((segment) => Math.abs(time - segment.start) <= half);
+}
+
+/**
+ * The "All" tooltip of the timeline, as core's `StateTimelineTooltip` in Multi mode:
+ * the hovered time in the header, then one row per lane with the state at that time.
+ * A lane with no state there (a gap) has no row. The `axis` trigger gives the hovered
+ * time in `axisValue`, but only the bar nearest to it, so each lane is searched here.
+ * https://echarts.apache.org/en/option.html#tooltip.formatter
+ */
+export function buildTimelineMultiTooltipModel(
+  model: TimelineModel,
+  ctx: TimelineTooltipContext,
+  cellWidth?: number
+): (params: TopLevelFormatterParams) => TooltipModel {
+  return (params) => {
+    const param = Array.isArray(params) ? params[0] : params;
+    const time = param && 'axisValue' in param ? Number(param.axisValue) : NaN;
+    if (Number.isNaN(time)) {
+      return { header: { label: '', value: '' }, rows: [] };
+    }
+    const rows = model.lanes.flatMap((lane) => {
+      const segment = findTimelineSegment(lane, time, cellWidth);
+      if (!segment) {
+        return [];
+      }
+      const source = { field: lane.field, rowIndex: segment.rowIndex };
+      return [{ color: segment.color, label: lane.name, value: segment.text, source }];
+    });
+    return { header: { label: '', value: dateTimeFormat(time, { timeZone: ctx.timeZone }) }, rows };
   };
 }
