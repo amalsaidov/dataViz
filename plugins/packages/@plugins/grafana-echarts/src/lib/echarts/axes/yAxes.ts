@@ -70,6 +70,32 @@ function resolveGroupPlacement(fields: Field[]): AxisPlacement {
 }
 
 /**
+ * Side of the axis of each field, with the placement rules of `buildCartesianYAxes`. The legend uses it:
+ * core shows "(right y-axis)" for an item on the right axis (`yAxis: 2` in `PlotLegend`,
+ * https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/uPlot/PlotLegend.tsx,
+ * and `LegendTableItem` in
+ * https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/VizLegend/VizLegendTableItem.tsx).
+ */
+export function getFieldAxisSides(fields: Field[]): Array<Side | 'hidden'> {
+  const { units, byUnit } = groupFieldsByUnit(fields, undefined);
+  const sideOf = new Map(
+    units.map((unit, groupIndex) => {
+      const placement = resolveGroupPlacement(byUnit.get(unit) ?? []);
+      const side: Side | 'hidden' =
+        placement === AxisPlacement.Hidden
+          ? 'hidden'
+          : placement === AxisPlacement.Left
+            ? 'left'
+            : placement === AxisPlacement.Right || groupIndex > 0
+              ? 'right'
+              : 'left';
+      return [unit, side];
+    })
+  );
+  return fields.map((field) => sideOf.get(unitOf(field)) ?? 'left');
+}
+
+/**
  * Build one y-axis per distinct field unit and map each series (field) to its
  * axis. Placement rules mirror core Grafana:
  * - `Auto`: the first unit renders on the left, additional units on the right.

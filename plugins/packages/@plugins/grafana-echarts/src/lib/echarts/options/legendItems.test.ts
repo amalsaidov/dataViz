@@ -97,6 +97,33 @@ describe('buildTimeSeriesLegendItems', () => {
     expect(items[0].color).toEqual(expect.any(String));
   });
 
+  it('puts a field of the right axis on y axis 2, so the legend shows "(right y-axis)", as core', () => {
+    const frame = toDataFrame({
+      fields: [
+        { name: 'time', type: FieldType.time, values: [1, 2] },
+        { name: 'a', type: FieldType.number, values: [1, 2] },
+        {
+          name: 'b',
+          type: FieldType.number,
+          values: [1, 2],
+          config: { unit: 'ms', custom: { axisPlacement: 'right' } },
+        },
+        { name: 'c', type: FieldType.number, values: [1, 2], config: { unit: 'bytes' } },
+        {
+          name: 'd',
+          type: FieldType.number,
+          values: [1, 2],
+          config: { unit: 's', custom: { axisPlacement: 'hidden' } },
+        },
+      ],
+    });
+
+    const items = buildTimeSeriesLegendItems([frame], theme, [], fieldConfig);
+
+    // `c` has a second unit: core puts its `auto` axis on the right.
+    expect(items.map((item) => item.yAxis)).toEqual([1, 2, 2, 1]);
+  });
+
   it('gives each item a stable, unique key', () => {
     const items = buildTimeSeriesLegendItems([wideFrame()], theme, [], fieldConfig);
 

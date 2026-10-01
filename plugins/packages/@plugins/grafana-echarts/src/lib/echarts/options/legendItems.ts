@@ -21,6 +21,7 @@ import { findCategoricalFrame, forEachTimeSeriesField } from 'lib/echarts/conver
 import { multiValueCartesianToEChartsOption } from 'lib/echarts/converters/multiValueCartesian';
 import { formatPieShare, getPieSliceTotal, resolvePieSlices } from 'lib/echarts/converters/pie';
 import { type PieSliceModel } from 'lib/echarts/converters/types';
+import { getFieldAxisSides } from 'lib/echarts/axes/yAxes';
 import { getFieldConfigFromField } from 'lib/grafana/fields/fieldConfig';
 import { getHiddenSeriesNames } from 'lib/grafana/fields/seriesConfig';
 import { getCartesianSeriesColor, getSeriesColor } from 'lib/echarts/style';
@@ -60,6 +61,10 @@ export function buildTimeSeriesLegendItems(
     refs.map((ref) => ref.label)
   );
 
+  // Item on the right axis: y axis 2, as core.
+  const sides = getFieldAxisSides(refs.map((ref) => ref.field));
+  const rightAxis = new Set(refs.filter((_, i) => sides[i] === 'right').map((ref) => ref.field));
+
   // `hideFrom.legend` drops the item; the series still draws (core parity).
   return refs
     .filter(({ field }) => !isHiddenFromLegend(field))
@@ -67,7 +72,7 @@ export function buildTimeSeriesLegendItems(
       label,
       fieldName: label,
       color: getCartesianSeriesColor(field, series, theme),
-      yAxis: 1,
+      yAxis: rightAxis.has(field) ? 2 : 1,
       // Kept in the legend when hidden from the viz so it can be toggled back.
       disabled: hidden.has(label),
       getItemKey: () => `${frameIndex}-${fieldIndex}`,
