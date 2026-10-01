@@ -5,6 +5,7 @@ import { type EChartsType } from 'lib/echarts/echarts';
 import { isAnnotationGesture } from 'lib/echarts/annotationGestures';
 import { ANNOTATION_MARKER_SERIES_ID } from 'lib/echarts/options/annotationMarkers';
 import { findHoveredPoint } from 'lib/echarts/tooltip/proximity';
+import { treemapDrillDownNodeId } from 'lib/echarts/treemapDrillDown';
 import { type EChartsTooltipTrigger, type TooltipModel, type TooltipSink } from 'lib/echarts/tooltip/types';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { TOOLTIP_MARKER_ATTR } from './constants';
@@ -290,6 +291,8 @@ export function useEChartsTooltip(
   // The box of the hovered annotation marker, also while pinned, so a click can re-pin onto it.
   const liveAnchorRef = useRef<TooltipAnchor | null>(null);
   const liveHitRef = useRef<TooltipTarget | null>(null);
+  // Whether the hovered mark is a treemap parent, whose click drills down instead of pinning.
+  const drillDownHoverRef = useRef(false);
 
   // The mark the cursor is on right now (`null` for none), written by the hover handlers
   // and read once the whole event has been dispatched — see `settleFocus`.
@@ -615,6 +618,7 @@ export function useEChartsTooltip(
      * mode, where `globalout` and `onMove` respectively own hiding instead.
      */
     const onMouseOut = (params?: ECElementEvent) => {
+      drillDownHoverRef.current = false;
       // Nothing is hovered *yet*; a move onto an adjacent mark reports its `mouseover`
       // in this same dispatch, and `settleFocus` reads the ref once both have run.
       hoveredRef.current = null;
@@ -674,6 +678,8 @@ export function useEChartsTooltip(
         dataIndex: params.dataIndex,
         dataType: params.dataType,
       };
+      // A click on a treemap parent drills down (`useTreemapDrillDown`) and does not pin.
+      drillDownHoverRef.current = treemapDrillDownNodeId(params) !== undefined;
       scheduleSettle();
       if (isAnnotationMarker(params)) {
         liveAnchorRef.current = markerAnchor(params, containerRef.current);
@@ -772,7 +778,7 @@ export function useEChartsTooltip(
      */
     const onChartClick = (params: ECElementEvent) => {
       // A ctrl/cmd click adds an annotation (`useAnnotationGestures`) and does not pin, as core.
-      if (isAnnotationGesture(params.event?.event)) {
+      if (isAnnotationGesture(params.event?.event) || treemapDrillDownNodeId(params) !== undefined) {
         return;
       }
       const cur = latestRef.current;
@@ -793,7 +799,7 @@ export function useEChartsTooltip(
     };
 
     const onZrClick = (event?: { event?: Pick<MouseEvent, 'ctrlKey' | 'metaKey'> }) => {
-      if (isAnnotationGesture(event?.event)) {
+      if (isAnnotationGesture(event?.event) || drillDownHoverRef.current) {
         return;
       }
       // Both clicks fire for a click on an element and the order is not

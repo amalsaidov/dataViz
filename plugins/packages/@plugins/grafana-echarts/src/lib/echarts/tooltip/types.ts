@@ -249,6 +249,8 @@ export interface TooltipModelOptions {
  * preserves unknown data props.
  */
 export interface HierarchyTreeItem {
+  /** Unique path id, so a treemap drill down finds the node (see `treemapDrillDownNodeId`). */
+  id?: string;
   name: string;
   value?: number;
   self?: number;

@@ -1,10 +1,14 @@
 import { DataFrameType, FieldColorModeId, FieldType, ThresholdsMode, toDataFrame } from '@grafana/data';
+import { type EChartsType } from 'echarts';
 import { GraphThresholdsStyleMode } from '@grafana/schema';
 import { render } from '@testing-library/react';
 import { cartesianTimeSeriesTypes } from 'editor/cartesian';
 import { type CartesianSingleValueSeriesType } from 'editor/types';
+import { getInstanceByDom } from 'lib/echarts/echarts';
+import { clickAt } from 'test/tooltipPointer';
+import { tileBox } from 'test/treemap';
 import { normalizeCanvasEvents, SERIES_ZLEVEL } from 'test/canvas';
-import { getCanvasEvents, getComponent, getSeriesCanvasEvents, height, width } from 'test/panel';
+import { getCanvasEvents, getComponent, getSeriesCanvasEvents, height, waitForFinished, width } from 'test/panel';
 
 // Integration test: render the real <Panel /> (React glue + ECharts init +
 // buildPanelChartOption) into a jest-canvas-mock canvas and snapshot the emitted
@@ -514,6 +518,34 @@ describe('Panel canvas renders', () => {
           )
         );
 
+        const { defaultEvents, seriesEvents } = await getSeriesCanvasEvents(container);
+
+        expect(normalizeCanvasEvents(seriesEvents)).toMatchCanvasSnapshot(defaultEvents, {
+          width,
+          height,
+        });
+      });
+
+      // #813: a click on a parent header drills down. The drill down is view-only.
+      it('renders a treemap drilled down to a parent node', async () => {
+        const { container } = render(
+          getComponent(
+            [nestedSetFrame],
+            'treemap',
+            { zLevel: { series: SERIES_ZLEVEL }, animation: { enabled: false } },
+            undefined,
+            undefined,
+            'hierarchy'
+          )
+        );
+
+        // A real click on the header strip of `render` (see treemap-drill-down.integration.test).
+        const chart = getInstanceByDom(
+          container.querySelector<HTMLElement>('[_echarts_instance_]')!
+        )! as unknown as EChartsType;
+        await waitForFinished(chart);
+        const header = tileBox(chart, 'render')!;
+        await clickAt(chart, header.x + header.width / 2, header.y + 5);
         const { defaultEvents, seriesEvents } = await getSeriesCanvasEvents(container);
 
         expect(normalizeCanvasEvents(seriesEvents)).toMatchCanvasSnapshot(defaultEvents, {

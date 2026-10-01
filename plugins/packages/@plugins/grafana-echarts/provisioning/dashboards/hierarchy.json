@@ -166,6 +166,7 @@
           }
         }
       ],
+      "description": "Click a parent header to drill down. Click the breadcrumb to go back. Click a leaf to pin the tooltip.",
       "title": "Treemap (flame-graph nested set)",
       "type": "grafana-echartshierarchy-panel"
     },
@@ -256,6 +257,7 @@
           "scenarioId": "flame_graph"
         }
       ],
+      "description": "Click a parent header to drill down. Click the breadcrumb to go back. Click a leaf to pin the tooltip.",
       "title": "Treemap (TestData flame graph)",
       "type": "grafana-echartshierarchy-panel"
     }

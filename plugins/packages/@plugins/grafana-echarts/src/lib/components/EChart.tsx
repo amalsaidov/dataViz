@@ -21,6 +21,7 @@ import { type PanelOptions } from 'types';
 import { type InteractedRelationsView } from 'lib/echarts/relations/options/view';
 import { AnnotationEditor } from './annotations/AnnotationEditor';
 import { type PlacedAnnotationDraft, useAnnotationGestures } from './hooks/useAnnotationGestures';
+import { useTreemapDrillDown } from './hooks/useTreemapDrillDown';
 import { useBrushTimeZoom } from './hooks/useBrushTimeZoom';
 import { useTimeAxisPan } from './hooks/useTimeAxisPan';
 import { useDoubleClickZoomOut } from './hooks/useDoubleClickZoomOut';
@@ -175,6 +176,7 @@ export const EChart: React.FC<Props> = ({
     [dismissTooltip]
   );
   const closeAnnotationEditor = useCallback(() => setAnnotationDraft(null), []);
+  useTreemapDrillDown(isPreview ? null : chart);
   const annotationGestureRef = useAnnotationGestures(
     isPreview ? null : chart,
     panelDOMRef,

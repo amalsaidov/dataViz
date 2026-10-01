@@ -85,9 +85,17 @@ export function makeHierarchyColorResolver(
  * `resolveColor` (see `makeHierarchyColorResolver`). A node with no resolved
  * color is left for ECharts to shade.
  */
-function toTreeData(nodes: HierarchyNode[], resolveColor: HierarchyColorResolver, depth = 0): HierarchyTreeItem[] {
+function toTreeData(
+  nodes: HierarchyNode[],
+  resolveColor: HierarchyColorResolver,
+  depth = 0,
+  parentPath: string[] = []
+): HierarchyTreeItem[] {
   return nodes.map((node, index) => {
+    const path = [...parentPath, node.name];
     const item: HierarchyTreeItem = {
+      // The path is unique where names repeat at different levels.
+      id: JSON.stringify(path),
       name: node.name,
       // ECharts sizes tiles/arcs by `value`; map Grafana nulls to undefined.
       value: node.value ?? undefined,
@@ -103,7 +111,7 @@ function toTreeData(nodes: HierarchyNode[], resolveColor: HierarchyColorResolver
       item.itemStyle = { color };
     }
     if (node.children && node.children.length > 0) {
-      item.children = toTreeData(node.children, resolveColor, depth + 1);
+      item.children = toTreeData(node.children, resolveColor, depth + 1, path);
     }
     return item;
   });
@@ -118,17 +126,30 @@ function toTreeData(nodes: HierarchyNode[], resolveColor: HierarchyColorResolver
 export function getTreemapSeries(data: HierarchyData, ctx: HierarchySeriesContext): TreemapSeriesOption {
   return {
     type: 'treemap',
-    // Off: keep the panel static like the other families (no click-to-zoom
-    // breadcrumb navigation). `nodeClick` must stay off for the tooltip too —
-    // ECharts' zoom-to-node consumes the click that pins the tooltip, so with it
-    // on a node's data links are unreachable.
     roam: false,
     leafDepth: 5,
+    // Off: ECharts' own `zoomToNode` also zooms on a leaf click, which must pin
+    // the tooltip. `useTreemapDrillDown` drills down on a parent click only.
     nodeClick: false,
-    // Inert as configured: ECharts only draws the breadcrumb trail for
-    // zoom-to-node navigation, which `nodeClick: false` above rules out. Kept so
-    // the sizing is already correct if the panel ever opts back into zooming.
-    breadcrumb: { show: ctx.options.legend.isVisible, width: ctx.options.legend.width },
+    // A border and a header strip make each parent node visible and clickable
+    // (as the ECharts "Disk Usage" example). A click on the header drills down.
+    // https://echarts.apache.org/en/option.html#series-treemap.upperLabel
+    // https://echarts.apache.org/en/option.html#series-treemap.itemStyle
+    upperLabel: { show: true, height: 20, color: ctx.theme.colors.text.primary },
+    itemStyle: { borderWidth: 1, gapWidth: 1, borderColor: ctx.theme.colors.background.primary },
+    // The first level is the hidden tree root: no header and no border.
+    // https://echarts.apache.org/en/option.html#series-treemap.levels
+    levels: [{ upperLabel: { show: false }, itemStyle: { borderWidth: 0 } }],
+    // The trail of the drill down. A click on an item zooms back out, so it is
+    // always shown.
+    // https://echarts.apache.org/en/option.html#series-treemap.breadcrumb
+    breadcrumb: {
+      show: true,
+      itemStyle: {
+        color: ctx.theme.colors.background.secondary,
+        textStyle: { color: ctx.theme.colors.text.primary },
+      },
+    },
     zlevel: ctx.options.zLevel?.series,
     data: toTreeData(data.roots, makeHierarchyColorResolver(ctx.theme, ctx.fieldConfig, ctx.valueField)),
     tooltip: seriesTooltip(buildHierarchyTooltipModel(ctx), ctx.tooltipSink),

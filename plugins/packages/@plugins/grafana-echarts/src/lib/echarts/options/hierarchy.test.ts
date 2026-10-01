@@ -19,7 +19,7 @@ const theme = createTheme();
 const noOverrides: FieldConfigSource = { defaults: {}, overrides: [] };
 
 // Minimal PanelOptions for the hierarchy series builders: they read
-// `legend.isVisible`/`legend.width` (treemap breadcrumb), `tooltip.mode`, and
+// `tooltip.mode` and
 // `zLevel.series`. Mirrors the option shapes built in test/panel.tsx.
 const panelOptions = (mode: TooltipDisplayMode): PanelOptions => ({
   legend: {
