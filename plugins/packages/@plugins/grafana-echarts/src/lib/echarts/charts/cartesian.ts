@@ -149,6 +149,9 @@ function buildTimeOption(
   const xTicks = getTimeXTicks(ctx.timeRange, ctx.timeZone, plotWidth);
   const xAxis = mergeAxisStyle<XAXisOption>(cartesianTimeDefaultOptions.xAxis, axisStyle, {
     ...getTimeAxisBounds(ctx.timeRange),
+    // The axis is the time range also for bars, as core: edge bars are half cut (#1086).
+    // https://echarts.apache.org/en/option.html#xAxis.containShape
+    containShape: false,
     ...xTicks,
     axisLabel: {
       ...xTicks.axisLabel,

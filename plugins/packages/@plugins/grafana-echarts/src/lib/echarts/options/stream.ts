@@ -74,7 +74,6 @@ export function getStreamTimeAxisBase(
     // lines up with sibling panels (as the cartesian x-axis does).
     ...getTimeAxisBounds(timeRange),
     ...axisStyle,
-    ...(xTicks.splitNumber != null ? { splitNumber: xTicks.splitNumber } : {}),
     // `show` is passed in rather than patched onto the returned axis: `axisLabel` is
     // a union across ECharts' axis types, so re-spreading it downstream widens
     // `formatter` back to the category signature and stops assigning.

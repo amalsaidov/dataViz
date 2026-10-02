@@ -1,5 +1,5 @@
 import { dateTimeFormat, getTimeZone, systemDateFormats, type TimeRange } from '@grafana/data';
-import { measureAxisLabelWidth } from 'lib/grafana/axisLabelWidth';
+import { measureTimeAxisLabelWidth } from 'lib/grafana/axisLabelWidth';
 
 // ECharts only exposes a global `useUTC` toggle and has no arbitrary IANA
 // timezone support, so its built-in time-axis labels always render in browser
@@ -97,5 +97,5 @@ export function getTimeAxisLabelFormatter(timeRange: TimeRange, timeZone: string
  */
 export function getTimeAxisLabelWidth(timeRange: TimeRange, timeZone: string, fontSize: number): number {
   const formatter = getTimeAxisLabelFormatter(timeRange, timeZone);
-  return measureAxisLabelWidth([formatter(timeRange.from.valueOf()), formatter(timeRange.to.valueOf())], fontSize);
+  return measureTimeAxisLabelWidth([formatter(timeRange.from.valueOf()), formatter(timeRange.to.valueOf())], fontSize);
 }
