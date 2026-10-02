@@ -6,11 +6,10 @@
 # before handing the file to the CLI (belt and braces).
 x_dataviz:
   crowdin_project_id: '36'
-  # Path SUFFIX only. The full path is ci/data/repo/<github.repository>/<this>.
-  # The repo segment is derived from github.repository by get-vault-secrets and
-  # is NOT configurable — see .github/workflows/i18n-crowdin-upload.yml.
-  vault_secret_path: grafana-frontend-crowdin-token
-  vault_secret_key: access_token
+
+# Everything else is derived: this package's Vault secret is
+# grafana-clock-panel-crowdin-token, from its plugin id. Optional overrides and
+# the Vault path format: .github/actions/README.md.
 
 # The following are pulled from env variables
 project_id_env: CROWDIN_PROJECT_ID

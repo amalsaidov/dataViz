@@ -1,0 +1,161 @@
+# Uploads each i18n package's en-US source strings to its Crowdin project, so
+# translators see new strings. Runs after en-US lands on main; i18n-verify.yml
+# is what guarantees it is up to date at that point.
+#
+# Packages are discovered at run time. Design notes: .github/actions/README.md.
+name: i18n Crowdin upload
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    # Superset of every detected package's files[0].source. The layout
+    # (src/locales/en-US/<namespace>.json) is a convention shared by all
+    # packages here, not something Crowdin enforces — a package that deviates
+    # would still be discovered but would not trigger this push.
+    paths:
+      - 'plugins/packages/@plugins/*/src/locales/en-US/*.json'
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false # never interrupt a partial upload
+
+jobs:
+  discover:
+    name: Discover i18n packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout only
+    outputs:
+      plugins: ${{ steps.narrow.outputs.plugins }}
+    steps:
+      # Sparse: all this job reads is a few files per package. The action
+      # below needs no checkout of its own — `$/` is resolved by the runner
+      # from this repo at the workflow's ref, not from the workspace.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: plugins/packages/@plugins
+
+      - id: find
+        uses: $/.github/actions/discover-i18n-packages
+
+      # Every detected plugin would otherwise upload on any plugin's en-US
+      # change, which with N projects means N uploads for one edit. Uploads
+      # are idempotent, so this is cost and Crowdin churn rather than a
+      # correctness bug — but it grows with every import, and a container
+      # package contributes several projects on its own.
+      #
+      # Uses the compare API rather than `git diff`, so the sparse shallow
+      # checkout above is enough and no extra history has to be fetched.
+      # Anything other than a normal push (manual dispatch, a new branch whose
+      # `before` is all zeroes, a force-push that rewrote the range) falls back
+      # to uploading everything, because the safe failure here is doing too
+      # much work, not skipping a package that did change.
+      - id: narrow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALL: ${{ steps.find.outputs.plugins }}
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT" != 'push' ] || [ -z "$BEFORE" ] || [ "$BEFORE" = '0000000000000000000000000000000000000000' ]; then
+            echo "$EVENT: uploading every detected plugin"
+            echo "plugins=$ALL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! changed="$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" \
+                --paginate --jq '.files[].filename' 2>/dev/null)"; then
+            echo "::warning::could not compare $BEFORE...$AFTER, uploading every detected plugin"
+            echo "plugins=$ALL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_json="$(jq -Rsc 'split("\n") | map(select(length > 0))' <<<"$changed")"
+
+          # Keep a plugin if any of its own en_paths changed. Two plugins in
+          # one package are independent here: editing only the app's strings
+          # must not re-upload the standalone panel's project.
+          plugins="$(jq -c --argjson changed "$changed_json" \
+            '[.[] | select(any(.en_paths | split(",")[]; IN($changed[])))]' \
+            <<<"$ALL")"
+
+          echo "Changed files: $changed_json"
+          echo "Uploading: $(jq -r 'if length == 0 then "(none)" else [.[].slug] | join(", ") end' <<<"$plugins")"
+          echo "plugins=$plugins" >> "$GITHUB_OUTPUT"
+
+  upload:
+    name: Upload ${{ matrix.slug }} sources to Crowdin
+    needs: discover
+    if: needs.discover.outputs.plugins != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout only
+      id-token: write # Vault auth via OIDC
+    strategy:
+      fail-fast: false # one package's Crowdin outage must not cancel another's
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.plugins) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Get Vault secrets
+        id: vault-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@2f1ddaf3ce1aa677356243d0dd584be33cfa35e3 # get-vault-secrets/v2.1.0
+        with:
+          # Resolves to ci/data/repo/${{ github.repository }}/<vault_path>.
+          # The repo segment is derived from github.repository and is NOT
+          # configurable, so a plugin's token must live under this repo's path
+          # even if the plugin came from its own repo with its own token.
+          repo_secrets: |
+            CROWDIN_TOKEN=${{ matrix.vault_path }}:${{ matrix.vault_key }}
+
+      # The composite hardcodes `config: 'crowdin.yml'` at the workspace root
+      # and exposes no config-path or working-directory input, so it cannot see
+      # a package-level config. Derive a root one pointing back at the package.
+      #
+      # base_path (not a rewritten `source:`) is what keeps this safe: with
+      # preserve_hierarchy: true, Crowdin computes remote paths relative to
+      # base_path, so they stay identical to today's. Rewriting `source:` to a
+      # repo-root path would relocate every file in the Crowdin project and
+      # orphan the existing translations.
+      - name: Materialize root crowdin.yml
+        env:
+          PKG_DIR: ${{ matrix.dir }}
+          PLUGIN_SOURCES: ${{ toJSON(matrix.sources) }}
+        run: |
+          set -euo pipefail
+          # Also filters files[] down to this plugin's sources. A package that
+          # publishes several plugins has one crowdin.yml but several Crowdin
+          # projects, and each job must send only its own project's files —
+          # otherwise every project ends up holding every plugin's strings.
+          #
+          # Emitted as JSON, which is valid YAML, so crowdin-cli reads it the
+          # same. $srcs/$base below are jq variables, not shell ones.
+          # shellcheck disable=SC2016
+          yq -o=json 'del(.x_dataviz)' "$PKG_DIR/crowdin.yml" \
+            | jq --argjson srcs "$PLUGIN_SOURCES" --arg base "$PKG_DIR" \
+                '.base_path = $base | .files = [.files[] | select(.source | IN($srcs[]))]' \
+            > crowdin.yml
+          cat crowdin.yml
+
+          jq -e '.files | length > 0' crowdin.yml >/dev/null \
+            || { echo "::error::no files[] entry matched this plugin's sources"; exit 1; }
+
+      - name: Upload to Crowdin
+        uses: grafana/grafana-github-actions/crowdin-upload@b1c422726cc4ff4adb0838ebca67586f24babb42 # main @ 2026-09-11
+        with:
+          # get-vault-secrets sets exportEnv: false, so secrets arrive as a JSON
+          # output rather than env vars. Reading env.CROWDIN_TOKEN here would
+          # silently pass an empty string.
+          crowdin_token: ${{ fromJSON(steps.vault-secrets.outputs.secrets).CROWDIN_TOKEN }}
+          crowdin_project_id: ${{ matrix.project_id }}

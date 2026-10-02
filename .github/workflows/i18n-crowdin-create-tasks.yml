@@ -1,0 +1,73 @@
+# Creates monthly translation tasks in Crowdin, so pending strings get assigned
+# to translators instead of sitting untranslated.
+#
+# Packages are discovered at run time. Design notes: .github/actions/README.md.
+name: i18n Crowdin create tasks
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 1 * *' # 1st of the month, 00:00 UTC
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    name: Discover i18n packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout only
+    outputs:
+      plugins: ${{ steps.find.outputs.plugins }}
+    steps:
+      # Sparse: all this job reads is three files per package. The action
+      # below needs no checkout of its own — `$/` is resolved by the runner
+      # from this repo at the workflow's ref, not from the workspace.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: plugins/packages/@plugins
+
+      - id: find
+        uses: $/.github/actions/discover-i18n-packages
+
+  create-tasks:
+    name: Create ${{ matrix.slug }} tasks in Crowdin
+    needs: discover
+    if: needs.discover.outputs.plugins != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Vault auth via OIDC
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.plugins) }}
+    steps:
+      # No checkout, and no crowdin.yml: the composite checks out
+      # grafana/grafana-github-actions into the workspace itself with no `path:`,
+      # which REPLACES the workspace. Anything checked out here would be
+      # discarded, and nothing after the composite can read this repo's tree —
+      # which is also why this runs as its own workflow rather than as another
+      # job in the upload/download ones.
+      - name: Get Vault secrets
+        id: vault-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@2f1ddaf3ce1aa677356243d0dd584be33cfa35e3 # get-vault-secrets/v2.1.0
+        with:
+          # Resolves to ci/data/repo/${{ github.repository }}/<vault_path>.
+          # The repo segment is derived from github.repository and is NOT
+          # configurable.
+          repo_secrets: |
+            CROWDIN_TOKEN=${{ matrix.vault_path }}:${{ matrix.vault_key }}
+
+      - name: Create tasks in Crowdin
+        uses: grafana/grafana-github-actions/crowdin-create-tasks@b1c422726cc4ff4adb0838ebca67586f24babb42 # main @ 2026-09-11
+        with:
+          # get-vault-secrets sets exportEnv: false, so secrets arrive as a JSON
+          # output rather than env vars.
+          crowdin_token: ${{ fromJSON(steps.vault-secrets.outputs.secrets).CROWDIN_TOKEN }}
+          crowdin_project_id: ${{ matrix.project_id }}

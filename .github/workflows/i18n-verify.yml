@@ -7,8 +7,7 @@
 # package's own `i18n-extract:ci` script, so it travels with the package if it
 # is ever ejected back out to a standalone repo.
 #
-# Packages are discovered at run time rather than named here, so a plugin that
-# gains i18n needs no change to this file. See the discover job for the rule.
+# Packages are discovered at run time. Design notes: .github/actions/README.md.
 name: i18n verify
 
 on:
@@ -42,53 +41,16 @@ jobs:
     outputs:
       packages: ${{ steps.find.outputs.packages }}
     steps:
+      # Sparse: all this job reads is three files per package. The action
+      # below needs no checkout of its own — `$/` is resolved by the runner
+      # from this repo at the workflow's ref, not from the workspace.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          sparse-checkout: plugins/packages/@plugins
 
-      # Detection rule: a package opts into i18n CI by having a crowdin.yml.
-      # (Depending on @grafana/i18n is NOT the marker — grafana-echarts imports
-      # it without having any extraction pipeline.)
-      #
-      # yq (4.53) and jq (1.7) are preinstalled on ubuntu-latest. Do not move
-      # this job to a self-hosted runner label without re-checking that.
       - id: find
-        env:
-          ROOT: plugins/packages/@plugins
-        run: |
-          set -euo pipefail
-          shopt -s nullglob # must precede the glob, or `set -u` sees the literal pattern
-          entries='[]'
-          for cfg in "$ROOT"/*/crowdin.yml; do
-            dir="$(dirname "$cfg")"
-            pkg="$(jq -r '.name' "$dir/package.json")"
-            meta="$(yq -o=json '.x_dataviz // {}' "$cfg")"
-            src="$(yq -r '.files[0].source' "$cfg")"
-
-            # Having a crowdin.yml and having a working extraction pipeline are
-            # two different facts. `pnpm --filter` exits 0 on a missing script,
-            # so assert here rather than fan out a job that passes vacuously.
-            jq -e '.scripts["i18n-extract:ci"]' "$dir/package.json" >/dev/null \
-              || { echo "::error file=$dir/package.json::has crowdin.yml but no i18n-extract:ci script"; exit 1; }
-
-            # dir and en_path are repo-root-relative: dir is used as Crowdin's
-            # base_path, and en_path is matched against `gh pr diff --name-only`
-            # output inside the crowdin-download composite.
-            entry="$(jq -nc \
-              --arg dir "$dir" --arg pkg "$pkg" --arg en "$dir/$src" \
-              --argjson meta "$meta" \
-              '{dir:$dir, pkg:$pkg, en_path:$en,
-                project_id: ($meta.crowdin_project_id // null | tostring),
-                vault_path:  $meta.vault_secret_path,
-                vault_key:  ($meta.vault_secret_key // "access_token")}')"
-
-            jq -e '.project_id != "null" and .vault_path != null' <<<"$entry" >/dev/null \
-              || { echo "::error file=$cfg::x_dataviz.crowdin_project_id and x_dataviz.vault_secret_path are required"; exit 1; }
-
-            entries="$(jq -c --argjson e "$entry" '. + [$e]' <<<"$entries")"
-          done
-          echo "Detected: $entries"
-          echo "packages=$entries" >> "$GITHUB_OUTPUT"
+        uses: $/.github/actions/discover-i18n-packages
 
   verify:
     name: Verify i18n markup has been committed (${{ matrix.pkg }})
@@ -125,5 +87,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
 
+      # matrix.pkg goes through env rather than being interpolated into the
+      # command. It comes from the package.json of the code under test, which on
+      # a pull_request is the contributor's, so `${{ }}` here would splice
+      # attacker-chosen text into this shell. Nothing is gained today — this job
+      # already runs that code via pnpm lifecycle scripts with a read-only token
+      # — but it would become exploitable the moment this workflow gains a
+      # secret or moves to pull_request_target.
       - name: Verify i18n extraction is up to date
-        run: pnpm --filter ${{ matrix.pkg }} run i18n-extract:ci
+        env:
+          PKG: ${{ matrix.pkg }}
+        run: pnpm --filter "$PKG" run i18n-extract:ci

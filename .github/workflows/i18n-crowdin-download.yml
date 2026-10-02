@@ -1,0 +1,123 @@
+# Pulls completed translations back from Crowdin once a week and opens a PR per
+# Crowdin project. This is the only thing that ever updates the non-en-US locale
+# files; they are Crowdin's output, not hand-edited.
+#
+# Uses the local .github/actions/crowdin-download so each plugin gets its own
+# branch. Design notes: .github/actions/README.md.
+name: i18n Crowdin download
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1' # Mondays, 00:00 UTC
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false # never interrupt a run that may be mid-commit
+
+jobs:
+  discover:
+    name: Discover i18n packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout only
+    outputs:
+      plugins: ${{ steps.find.outputs.plugins }}
+    steps:
+      # Sparse: all this job reads is three files per package. The action
+      # below needs no checkout of its own — `$/` is resolved by the runner
+      # from this repo at the workflow's ref, not from the workspace.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: plugins/packages/@plugins
+
+      - id: find
+        uses: $/.github/actions/discover-i18n-packages
+
+  download:
+    name: Download ${{ matrix.slug }} translations from Crowdin
+    needs: discover
+    if: needs.discover.outputs.plugins != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # repo writes go through the App token, not GITHUB_TOKEN
+      id-token: write # Vault auth via OIDC
+    strategy:
+      fail-fast: false # one package's Crowdin outage must not cancel another's
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.plugins) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The composite commits via the GitHub API rather than plain git, because
+      # the Signed Commits ruleset rejects unsigned commits on this repo.
+      - name: Get GitHub App token
+        id: get-github-app-token
+        uses: grafana/shared-workflows/actions/create-github-app-token@5bbb526b1728ca57fbe1750c4c27ab6ab06171c2 # create-github-app-token/v1.0.0
+        with:
+          github_app: grafana-pr-automation
+
+      - name: Get Vault secrets
+        id: vault-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@2f1ddaf3ce1aa677356243d0dd584be33cfa35e3 # get-vault-secrets/v2.1.0
+        with:
+          # Resolves to ci/data/repo/${{ github.repository }}/<vault_path>.
+          # The repo segment is derived from github.repository and is NOT
+          # configurable.
+          repo_secrets: |
+            CROWDIN_TOKEN=${{ matrix.vault_path }}:${{ matrix.vault_key }}
+
+      # See the equivalent step in i18n-crowdin-upload.yml for why this is
+      # needed and why it sets base_path rather than rewriting `source:`.
+      - name: Materialize root crowdin.yml
+        env:
+          PKG_DIR: ${{ matrix.dir }}
+          PLUGIN_SOURCES: ${{ toJSON(matrix.sources) }}
+        run: |
+          set -euo pipefail
+          # Also filters files[] down to this plugin's sources. A package that
+          # publishes several plugins has one crowdin.yml but several Crowdin
+          # projects, and each job must send only its own project's files —
+          # otherwise every project ends up holding every plugin's strings.
+          #
+          # Emitted as JSON, which is valid YAML, so crowdin-cli reads it the
+          # same. $srcs/$base below are jq variables, not shell ones.
+          # shellcheck disable=SC2016
+          yq -o=json 'del(.x_dataviz)' "$PKG_DIR/crowdin.yml" \
+            | jq --argjson srcs "$PLUGIN_SOURCES" --arg base "$PKG_DIR" \
+                '.base_path = $base | .files = [.files[] | select(.source | IN($srcs[]))]' \
+            > crowdin.yml
+          cat crowdin.yml
+
+          jq -e '.files | length > 0' crowdin.yml >/dev/null \
+            || { echo "::error::no files[] entry matched this plugin's sources"; exit 1; }
+
+      - name: Download from Crowdin
+        uses: $/.github/actions/crowdin-download
+        with:
+          # One branch per plugin id. Sharing a branch across packages loses
+          # translations — see the action's header.
+          localization_branch_name: i18n_crowdin_translations_${{ matrix.slug }}
+          pr_title: 'I18n: Download ${{ matrix.slug }} translations from Crowdin'
+          commit_message: New Crowdin translations for ${{ matrix.slug }} by GitHub Action
+          # get-vault-secrets sets exportEnv: false, so secrets arrive as a JSON
+          # output rather than env vars.
+          crowdin_token: ${{ fromJSON(steps.vault-secrets.outputs.secrets).CROWDIN_TOKEN }}
+          crowdin_project_id: ${{ matrix.project_id }}
+          # Per package, not repo-wide: an imported plugin can be owned by a
+          # different team, and its translation PRs have to reach that team's
+          # board. Defaults live in the discover action.
+          pr_labels: ${{ matrix.pr_labels }}
+          github_board_id: ${{ matrix.board_id }}
+          github_repo_token: ${{ steps.get-github-app-token.outputs.token }}
+          # Wired up but inert: the automerge gate this feeds also needs
+          # github_pr_approver_token, which is deliberately not supplied, so
+          # translation PRs get a human review. Automerge has never been on for
+          # clock-panel — upstream grafana/clock-panel passed neither of these.
+          # Supplying an approver token here is all it takes to enable it.
+          en_paths: ${{ matrix.en_paths }}
