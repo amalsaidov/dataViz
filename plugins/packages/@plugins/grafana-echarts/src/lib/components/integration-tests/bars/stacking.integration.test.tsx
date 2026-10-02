@@ -1,5 +1,5 @@
 import { StackingMode } from '@grafana/schema';
-import { barRects, categoryFrame, labelTexts, renderBars, timeFrame } from 'test/barCanvas';
+import { barRects, categoryFrame, labelTexts, renderBars, texts, timeFrame } from 'test/barCanvas';
 
 // Stacking (core Bar chart `stacking`): Off, Normal and 100%, the per-field
 // opt-out, the legacy `stackSeries` switch, and stacks from several time frames.
@@ -89,5 +89,23 @@ describe('bar stacking', () => {
     expect(linePaths).toHaveLength(1);
     // The bars still stack: one column per shared timestamp.
     expect(new Set(barRects(series).map((rect) => Math.round(rect.x))).size).toBe(3);
+  });
+
+  it('stacks a field with another unit on its own axis, as core', async () => {
+    // Two counts and a percent of the counts. Core keys each stack by its scale (the unit): the percent does
+    // not stack on the counts, so its axis ends near 100% and not at the total of the counts.
+    const percent = timeFrame('Percent', [0, 1, 2], [0.8, 0.6, 0.7]);
+    percent.fields[1].config = { unit: 'percentunit' };
+    const frames = [
+      timeFrame('A', [0, 1, 2], [1000, 2000, 1500]),
+      timeFrame('B', [0, 1, 2], [4000, 3000, 3500]),
+      percent,
+    ];
+    const { axis } = await renderBars(frames, { stacking: StackingMode.Normal, showValues: 'never' });
+    const percents = texts(axis)
+      .filter((text) => text.endsWith('%'))
+      .map((text) => Number.parseFloat(text));
+    expect(percents.length).toBeGreaterThan(0);
+    expect(Math.max(...percents)).toBeLessThanOrEqual(100);
   });
 });

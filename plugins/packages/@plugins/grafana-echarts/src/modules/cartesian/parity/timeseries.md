@@ -63,6 +63,10 @@ where another line of the stack breaks, where core connects it (#440). Dashboard
 [cartesian-stacked-lines.json](../../../../provisioning/dashboards/cartesian/cartesian-stacked-lines.json) (ECharts
 and core pairs). Tests: `stacked-lines.canvas.test.tsx`, `stacked-lines.integration.test.tsx`, `stackedLines.test.ts`.
 
+As in core `getStackingGroups`, a stack holds only fields with the same unit (the scale key). A field with another
+unit goes on its own y-axis and does not stack on the fields of the other unit. Tests:
+`stacking.integration.test.tsx`, `timeSeries.test.ts`.
+
 ## Standard (field-config) options
 
 Both core Time series and this module keep the full standard field-config set

@@ -45,14 +45,18 @@ export function resolveFieldStack(field: Field, panelStack = false): boolean {
 export const DEFAULT_STACK_GROUP = 'A';
 
 /**
- * The ECharts `stack` id of a stacked field: its draw style (bar or line) and its stack group, as the
- * stack key of core `getStackingGroups`. The default group keeps the id without a group.
+ * The ECharts `stack` id of a stacked field: its draw style (bar or line), its stack group and its unit, as the
+ * stack key of core `getStackingGroups`, where the unit is the scale key. Fields with different units go on
+ * different y-axes (`buildCartesianYAxes`), so they do not stack together. The default group keeps the id
+ * without a group, and a field with no unit keeps the id without a unit.
  * https://echarts.apache.org/en/option.html#series-bar.stack
  */
 export function getFieldStackId(field: Field, isBar: boolean): string {
   const base = isBar ? STACK_GROUP_ID : LINE_STACK_GROUP_ID;
-  const group = getFieldConfigFromField(field).custom?.stackGroup;
-  return typeof group !== 'string' || group === '' || group === DEFAULT_STACK_GROUP ? base : `${base}:${group}`;
+  const config = getFieldConfigFromField(field);
+  const group = config.custom?.stackGroup;
+  const id = typeof group !== 'string' || group === '' || group === DEFAULT_STACK_GROUP ? base : `${base}:${group}`;
+  return config.unit ? `${id}@${config.unit}` : id;
 }
 
 /**

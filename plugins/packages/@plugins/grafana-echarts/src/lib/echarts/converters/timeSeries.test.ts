@@ -282,6 +282,27 @@ describe('timeSeriesToEChartsOption', () => {
       ]);
     });
 
+    // A panel that stacks two counts and draws a percent on the right axis: core keys each stack by its scale
+    // (the unit), so the percent does not stack on the counts.
+    it('stacks the fields of each unit apart', () => {
+      const frame = toDataFrame({
+        fields: [
+          { name: 'time', type: FieldType.time, values: [1, 2] },
+          { name: 'new', type: FieldType.number, values: [1000, 2000] },
+          { name: 'recurrent', type: FieldType.number, values: [4000, 3000] },
+          { name: 'pct', type: FieldType.number, values: [0.8, 0.6], config: { unit: 'percentunit' } },
+        ],
+      });
+
+      const result = runSeries([frame], 'line', { stacking: 'normal' as PanelOptions['stacking'] });
+
+      expect(result.map((series) => (series as LineSeriesOption).stack)).toEqual([
+        'total-line',
+        'total-line',
+        'total-line@percentunit',
+      ]);
+    });
+
     it('takes the percent of each stack group from the total of that group', () => {
       const result = runSeries([groupFrame()], 'bar', { stacking: 'percent' as PanelOptions['stacking'] });
       const drawn = result.map((series) =>
