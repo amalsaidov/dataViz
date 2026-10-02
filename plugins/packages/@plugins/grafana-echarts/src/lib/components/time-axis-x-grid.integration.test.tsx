@@ -5,9 +5,17 @@ import { render } from '@testing-library/react';
 import { timeseriesAdapter } from 'standalone/importAdapters/timeseries';
 import { type BarCanvasEvent, drawnTexts, renderBars, timeFrame } from 'test/barCanvas';
 import { AXIS_ZLEVEL, SERIES_ZLEVEL } from 'test/canvas';
-import { getAxisCanvasEvents, getComponent } from 'test/panel';
+import { getAxisCanvasEvents, getCanvasEvents, getComponent } from 'test/panel';
 import type { PanelOptions } from 'types';
 
+import {
+  dailyFrame,
+  dailyRange,
+  GRID_RANGES,
+  gridBarsFrame,
+  gridRange,
+  gridRenderOptions,
+} from './timeAxisGridRangesFixture';
 import { multiWeekFrame, multiWeekRange } from './utcTimeAxisFixture';
 
 interface Line {
@@ -45,6 +53,19 @@ const readGrid = (grid: BarCanvasEvent[]) => {
       .filter(({ text }) => /^\d\d[:/]\d\d$/.test(text))
       .map(({ text, x }) => ({ text, x })),
   };
+};
+
+/** The gaps between the grid lines are one step, also at the plot edges if `edges` is set. */
+const expectEvenXGrid = (grid: BarCanvasEvent[], edges: boolean) => {
+  const { xs, left, right } = readGrid(grid);
+  const gaps = xs.slice(1).map((x, i) => x - xs[i]);
+  const step = gaps[0];
+  expect(gaps.length).toBeGreaterThan(1);
+  gaps.forEach((gap) => expect(Math.abs(gap - step)).toBeLessThanOrEqual(1));
+  if (edges) {
+    expect(xs[0] - left).toBeLessThanOrEqual(step + 1);
+    expect(right - xs[xs.length - 1]).toBeLessThanOrEqual(step + 1);
+  }
 };
 
 /** The claims of core on one grid, and the labels of main. */
@@ -108,4 +129,27 @@ describe('the x grid lines of a time axis', () => {
       expectCoreXGrid((await getAxisCanvasEvents(container)).defaultEvents as BarCanvasEvent[], MAIN_LABELS[timeZone]);
     }
   );
+
+  // #1067: ECharts starts its day steps again at each month, so the gaps were 7, 2 and 3 days.
+  it.each(['utc', 'America/New_York'])(
+    'are one step apart on a range of 3 months with daily bars in %s, as core',
+    async (timeZone) => {
+      const timeRange = dailyRange;
+      const { container } = render(
+        getComponent([dailyFrame], 'bar', gridRenderOptions, { timeRange }, { timeRange, timeZone })
+      );
+      expectEvenXGrid((await getCanvasEvents(container)).defaultEvents as BarCanvasEvent[], true);
+    }
+  );
+
+  // The ranges of `time-axis-x-grid.canvas.test.tsx`. The bars make the axis wider than the time range
+  // (ECharts `containShape`), so the edge gaps are not checked here.
+  it.each(Object.keys(GRID_RANGES))('are one step apart on the bars of a range of %s', async (name) => {
+    const span = GRID_RANGES[name];
+    const timeRange = gridRange(span);
+    const { container } = render(
+      getComponent([gridBarsFrame(span)], 'bar', gridRenderOptions, { timeRange }, { timeRange, timeZone: 'utc' })
+    );
+    expectEvenXGrid((await getCanvasEvents(container)).defaultEvents as BarCanvasEvent[], false);
+  });
 });

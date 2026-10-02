@@ -28,4 +28,15 @@ describe('getTimeXTicks', () => {
     const ticks = (r: TimeRange) => getTimeXTicks(r, 'utc', 1200).splitNumber!;
     expect(ticks(days)).toBeLessThanOrEqual(ticks(sixHours));
   });
+
+  it('puts the axis ticks one step apart over months, and keeps the ECharts ticks of a year (#1067)', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const values = getTimeXTicks(range(Date.UTC(2026, 6, 1), Date.UTC(2026, 9, 1)), 'utc', 1200).axisTick!.customValues;
+    const gaps = values.slice(1).map((value, i) => value - values[i]);
+    expect(new Set(gaps)).toEqual(new Set([7 * DAY]));
+    expect(values).toContain(Date.UTC(2026, 6, 1));
+    expect(getTimeXTicks(range(Date.UTC(2026, 0, 1), Date.UTC(2027, 0, 1)), 'utc', 1200)).not.toHaveProperty(
+      'axisTick'
+    );
+  });
 });
