@@ -14,8 +14,9 @@
 # `e2e.url`, default http://127.0.0.1:3000.
 #
 # With <base-sha>, both lists keep only packages with a file changed since
-# that commit, unless a shared file changed (see SHARED_*), in which case
-# nothing is filtered.
+# that commit, unless a shared file changed, in which case nothing is filtered.
+# Shared means any path under plugins/ but outside <root> (lockfile, .shared/,
+# turbo.json, ...), or one of ALWAYS_ALL below.
 #
 # Every error is reported (as a GitHub annotation) before exiting 1.
 set -euo pipefail
@@ -25,18 +26,14 @@ root="${1:?usage: discover.sh <root> [<base-sha>]}"
 base="${2:-}"
 default_e2e_url='http://127.0.0.1:3000'
 
-# A change to any of these can affect every package.
-SHARED_FILES=(
-	plugins/package.json
-	plugins/pnpm-lock.yaml
-	plugins/pnpm-workspace.yaml
+# Outside plugins/, a change to any of these can affect every package. Inside
+# plugins/ the rule is inverted (see the filter below): everything not under
+# <root> counts, so a new build-affecting file needs no entry here.
+ALWAYS_ALL=(
+	.github/actions/discover-plugins/
 	.github/workflows/plugin-ci.yml
 	.github/workflows/plugin-e2e.yml
 	.github/workflows/plugin-bundle-stats.yml
-)
-SHARED_PREFIXES=(
-	plugins/packages/@shared/
-	.github/actions/discover-plugins/
 )
 
 targets='[]'
@@ -131,12 +128,14 @@ done
 [ "$failed" -eq 0 ] || exit 1
 
 if [ -n "$base" ]; then
-	if changed="$(git diff --name-only "$base" HEAD 2>/dev/null)"; then
+	# --no-renames: a file moved between packages must list its old path too,
+	# or the package it left would look unchanged.
+	if changed="$(git diff --no-renames --name-only "$base" HEAD 2>/dev/null)"; then
 		changed_json="$(jq -Rsc 'split("\n") | map(select(length > 0))' <<<"$changed")"
-		shared_files="$(printf '%s\n' "${SHARED_FILES[@]}" | jq -Rsc 'split("\n") | map(select(length > 0))')"
-		shared_prefixes="$(printf '%s\n' "${SHARED_PREFIXES[@]}" | jq -Rsc 'split("\n") | map(select(length > 0))')"
-		if ! jq -e --argjson f "$shared_files" --argjson p "$shared_prefixes" \
-			'any(.[]; . as $c | ($f | index($c)) != null or any($p[]; . as $pre | $c | startswith($pre)))' \
+		always_all="$(printf '%s\n' "${ALWAYS_ALL[@]}" | jq -Rsc 'split("\n") | map(select(length > 0))')"
+		packages_prefix="${root%/}/"
+		if ! jq -e --argjson a "$always_all" --arg pk "$packages_prefix" \
+			'any(.[]; . as $c | (($c | startswith("plugins/")) and ($c | startswith($pk) | not)) or any($a[]; . as $x | $c == $x or ($x | endswith("/") and ($c | startswith($x)))))' \
 			<<<"$changed_json" >/dev/null; then
 			keep='map(select(.dir as $d | any($changed[]; startswith($d + "/"))))'
 			targets="$(jq -c --argjson changed "$changed_json" "$keep" <<<"$targets")"

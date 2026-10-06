@@ -48,10 +48,14 @@ New input `changed-only` (default `false`). When `true`, both outputs are filter
 directory changed, compared against `BASE` (PR: `github.event.pull_request.base.sha`; push:
 `github.event.before`). If any of these changed, nothing is filtered:
 
-- `plugins/package.json`, `plugins/pnpm-lock.yaml`, `plugins/pnpm-workspace.yaml`
-- `plugins/packages/@shared/**`
+- any path under `plugins/` that is outside the scanned plugin packages directory
+  (`plugins/packages/@plugins/`): shared packages, lockfile, workspace config, `.shared/`, `turbo.json`,
+  `biome.json`, `tsconfig.json`, `.npmrc`, and anything added later. This is an inverted allow-list on
+  purpose: a new build-affecting file is covered without remembering to list it.
 - `.github/actions/discover-plugins/**`
 - `.github/workflows/plugin-ci.yml`, `plugin-e2e.yml`, `plugin-bundle-stats.yml`
+
+The diff uses `--no-renames`, so a file moved between packages lists both its old and new paths.
 
 If `BASE` is unavailable (all-zero `before` on a new branch, `workflow_dispatch`), nothing is filtered.
 Callers using `changed-only` need `fetch-depth: 0` (or the base commit fetched).
