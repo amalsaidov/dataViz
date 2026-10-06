@@ -240,7 +240,7 @@ script can be tested; the workflow keeps only the `env:` wiring. zizmor audits Y
 scripts small. They sit under `.github/`, and the same reviewers apply.
 
 **Jobs that hold a PR write token run no PR code.** `plugin-ci.yml` and `plugin-bundle-stats.yml` each
-split into a read-only job that installs, builds and analyses (PR code, plus unpinned levitate from
+split into a read-only job that installs, builds and analyzes (PR code, plus unpinned levitate from
 npm), and a report job with `pull-requests: write` that checks out nothing from the PR and only turns
 the first job's artifact into a comment. Keep that split when adding comment-posting steps.
 

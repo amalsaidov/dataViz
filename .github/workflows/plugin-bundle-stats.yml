@@ -28,7 +28,7 @@ permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  # Superseded PR pushes are cancelled, but main is not: cancelling there would
+  # Superseded PR pushes are canceled, but main is not: canceling there would
   # leave the merged commit without a completed check.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
