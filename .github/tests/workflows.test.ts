@@ -23,24 +23,28 @@ const lines = (file: string): string[] => readFileSync(join(REPO, file), 'utf8')
 
 /** Every `run:` script as { line, text }, block scalars included. */
 function runScripts(file: string): { line: number; text: string }[] {
-	const ls = lines(file);
+	const fileLines = lines(file);
 	const scripts: { line: number; text: string }[] = [];
-	ls.forEach((l, i) => {
-		const m = l.match(/^(\s*)(?:- )?run:\s*(.*)$/);
-		if (!m) {
-			return;
+	for (const [index, line] of fileLines.entries()) {
+		const runKey = line.match(/^\s*(?:- )?run:\s*(.*)$/);
+		if (!runKey) {
+			continue;
 		}
-		const keyIndent = indent(l);
-		if (!/^[|>]/.test(m[2])) {
-			scripts.push({ line: i + 1, text: m[2] });
-			return;
+		const value = runKey[1];
+		if (!/^[|>]/.test(value)) {
+			scripts.push({ line: index + 1, text: value });
+			continue;
 		}
+		// A block scalar: every following line indented deeper than `run:` (or blank).
 		const body: string[] = [];
-		for (let j = i + 1; j < ls.length && (ls[j].trim() === '' || indent(ls[j]) > keyIndent); j++) {
-			body.push(ls[j]);
+		for (const next of fileLines.slice(index + 1)) {
+			if (next.trim() !== '' && indent(next) <= indent(line)) {
+				break;
+			}
+			body.push(next);
 		}
-		scripts.push({ line: i + 1, text: body.join('\n') });
-	});
+		scripts.push({ line: index + 1, text: body.join('\n') });
+	}
 	return scripts;
 }
 
@@ -70,8 +74,8 @@ describe('workflows and composite actions', () => {
 
 			test('no ${{ }} expressions inside run: scripts', () => {
 				const bad = runScripts(file)
-					.filter((s) => s.text.includes('${{'))
-					.map((s) => `line ${s.line}`);
+					.filter((script) => script.text.includes('${{'))
+					.map((script) => `line ${script.line}`);
 				assert.deepEqual(bad, [], 'pass values through env: instead');
 			});
 
@@ -82,8 +86,8 @@ describe('workflows and composite actions', () => {
 
 				test('every job declares its own permissions', () => {
 					const missing = jobs(file)
-						.filter((j) => !j.lines.some((l) => /^ {4}permissions:/.test(l)))
-						.map((j) => j.name);
+						.filter((job) => !job.lines.some((line) => /^ {4}permissions:/.test(line)))
+						.map((job) => job.name);
 					assert.deepEqual(missing, []);
 				});
 			}
@@ -93,44 +97,44 @@ describe('workflows and composite actions', () => {
 
 /** Each job under `jobs:` as { name, lines }, keyed by two-space indentation. */
 function jobs(file: string): { name: string; lines: string[] }[] {
-	const ls = lines(file);
-	const out: { name: string; lines: string[] }[] = [];
-	const start = ls.indexOf('jobs:');
-	for (const l of ls.slice(start + 1)) {
-		if (/^\S/.test(l)) {
-			break;
+	const fileLines = lines(file);
+	const found: { name: string; lines: string[] }[] = [];
+	const jobsAt = fileLines.indexOf('jobs:');
+	for (const line of fileLines.slice(jobsAt + 1)) {
+		if (/^\S/.test(line)) {
+			break; // next top-level key: the jobs block is over
 		}
-		const m = /^ {2}([\w-]+):\s*$/.exec(l);
-		if (m) {
-			out.push({ name: m[1], lines: [] });
-		} else if (out.length > 0) {
-			out[out.length - 1].lines.push(l);
+		const jobHeader = /^ {2}([\w-]+):\s*$/.exec(line);
+		if (jobHeader) {
+			found.push({ name: jobHeader[1], lines: [] });
+		} else if (found.length > 0) {
+			found[found.length - 1].lines.push(line);
 		}
 	}
-	return out;
+	return found;
 }
 
 /** Whether a job's permissions include `pull-requests: write`. */
 function canWriteToPr(job: { lines: string[] }): boolean {
-	return job.lines.some((l) => /^ {6}pull-requests:\s*write/.test(l));
+	return job.lines.some((line) => /^ {6}pull-requests:\s*write/.test(line));
 }
 
 /** A job's steps, each as the lines from its `- ` to the next one. */
 function steps(jobLines: string[]): string[][] {
-	const out: string[][] = [];
+	const found: string[][] = [];
 	let inSteps = false;
-	for (const l of jobLines) {
-		if (/^ {4}steps:/.test(l)) {
+	for (const line of jobLines) {
+		if (/^ {4}steps:/.test(line)) {
 			inSteps = true;
-		} else if (/^ {4}\S/.test(l)) {
+		} else if (/^ {4}\S/.test(line)) {
 			inSteps = false;
-		} else if (inSteps && /^ {6}- /.test(l)) {
-			out.push([l]);
-		} else if (inSteps && out.length > 0) {
-			out[out.length - 1].push(l);
+		} else if (inSteps && /^ {6}- /.test(line)) {
+			found.push([line]);
+		} else if (inSteps && found.length > 0) {
+			found[found.length - 1].push(line);
 		}
 	}
-	return out;
+	return found;
 }
 
 // Jobs that can write to the PR must not execute anything the PR controls:
@@ -143,7 +147,7 @@ describe('PR write tokens never run PR code', () => {
 	for (const file of workflows) {
 		for (const job of jobs(file).filter(canWriteToPr)) {
 			test(`${file}: ${job.name}`, () => {
-				assert.ok(!job.lines.some((l) => /^ {4}uses:/.test(l)), 'calls a reusable workflow');
+				assert.ok(!job.lines.some((line) => /^ {4}uses:/.test(line)), 'calls a reusable workflow');
 				for (const step of steps(job.lines)) {
 					const text = step.join('\n');
 					if (/uses: actions\/checkout@/.test(text)) {
@@ -159,10 +163,10 @@ describe('PR write tokens never run PR code', () => {
 	}
 
 	test('covers both comment-posting report jobs', () => {
-		const guarded = workflows.flatMap((f) =>
-			jobs(f)
+		const guarded = workflows.flatMap((workflow) =>
+			jobs(workflow)
 				.filter(canWriteToPr)
-				.map((j) => `${f}:${j.name}`)
+				.map((job) => `${workflow}:${job.name}`)
 		);
 		// Others (e.g. stale.yml's scheduled jobs) are guarded too; these two
 		// must be, or the job splitting above has stopped matching them.

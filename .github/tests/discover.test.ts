@@ -57,7 +57,7 @@ describe('discover-plugins/discover.sh', () => {
 			writeText(join(dir, 'src/modules/relations/plugin.json'), JSON.stringify({ id: 'relations-panel' }));
 			const { targets } = ok(discover(root));
 			assert.deepEqual(
-				targets.map((x) => [x.id, x.script]),
+				targets.map((target) => [target.id, target.script]),
 				[['relations-panel', 'build:relations']]
 			);
 		});
@@ -67,7 +67,7 @@ describe('discover-plugins/discover.sh', () => {
 			mkPkg(root, 'p', { id: 'p-panel', pluginCi: { e2e: { url: 'http://127.0.0.1:4000' } } });
 			const { targets } = ok(discover(root));
 			assert.deepEqual(
-				targets.map((x) => x.id),
+				targets.map((target) => target.id),
 				['p-panel']
 			);
 		});
@@ -113,12 +113,12 @@ describe('discover-plugins/discover.sh', () => {
 			test(name, (t) => {
 				const root = tempDir(t);
 				mkPkg(root, 'p', pkg);
-				const r = discover(root);
-				assert.equal(r.status, 1);
-				assert.equal(r.stdout, '', 'nothing on stdout when discovery fails');
-				const errs = errors(r.stderr);
-				assert.equal(errs.length, 1, r.stderr);
-				assert.ok(errs[0].includes(error), errs[0]);
+				const discovery = discover(root);
+				assert.equal(discovery.status, 1);
+				assert.equal(discovery.stdout, '', 'nothing on stdout when discovery fails');
+				const annotations = errors(discovery.stderr);
+				assert.equal(annotations.length, 1, discovery.stderr);
+				assert.ok(annotations[0].includes(error), annotations[0]);
 			});
 		}
 
@@ -126,18 +126,18 @@ describe('discover-plugins/discover.sh', () => {
 			const root = tempDir(t);
 			mkPkg(root, 'a', { id: 'same-panel' });
 			mkPkg(root, 'b', { id: 'same-panel' });
-			const r = discover(root);
-			assert.equal(r.status, 1);
-			assert.match(errors(r.stderr).join('\n'), /declared more than once/);
+			const discovery = discover(root);
+			assert.equal(discovery.status, 1);
+			assert.match(errors(discovery.stderr).join('\n'), /declared more than once/);
 		});
 
 		test('reports every error before exiting, not just the first', (t) => {
 			const root = tempDir(t);
 			mkPkg(root, 'a', {});
 			mkPkg(root, 'b', { id: 'x', playwright: true });
-			const r = discover(root);
-			assert.equal(r.status, 1);
-			assert.equal(errors(r.stderr).length, 2, r.stderr);
+			const discovery = discover(root);
+			assert.equal(discovery.status, 1);
+			assert.equal(errors(discovery.stderr).length, 2, discovery.stderr);
 		});
 	});
 
@@ -164,8 +164,11 @@ describe('discover-plugins/discover.sh', () => {
 
 		/** The target ids and e2e packages discovery selects for changes since `base`. */
 		function selected(cwd: string, root: string, base: string): { targets: string[]; e2e: string[] } {
-			const out = ok(discover(root, [base], cwd));
-			return { targets: out.targets.map((x) => x.id).sort(), e2e: out.e2e.map((x) => x.pkg).sort() };
+			const discovered = ok(discover(root, [base], cwd));
+			return {
+				targets: discovered.targets.map((target) => target.id).sort(),
+				e2e: discovered.e2e.map((suite) => suite.pkg).sort(),
+			};
 		}
 
 		test('a change inside one package selects only that package', (t) => {
@@ -209,10 +212,10 @@ describe('discover-plugins/discover.sh', () => {
 
 		test('an unusable base warns and selects everything', (t) => {
 			const { cwd, root } = repo(t);
-			const r = discover(root, ['0123456789abcdef0123456789abcdef01234567'], cwd);
-			assert.equal(r.status, 0, r.stderr);
-			assert.match(r.stderr, /::warning::cannot diff against/);
-			assert.equal(JSON.parse(r.stdout).targets.length, 2);
+			const discovery = discover(root, ['0123456789abcdef0123456789abcdef01234567'], cwd);
+			assert.equal(discovery.status, 0, discovery.stderr);
+			assert.match(discovery.stderr, /::warning::cannot diff against/);
+			assert.equal(JSON.parse(discovery.stdout).targets.length, 2);
 		});
 	});
 });

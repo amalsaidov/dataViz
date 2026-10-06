@@ -33,68 +33,69 @@ interface Target {
 /** Per package: where it lives, its id, and ids particular scripts build instead. */
 type FakeIds = Record<string, { dir: string; id: string; built?: Record<string, string> }>;
 
-function setup(t: TestContext, targets: Target[], fakeIds: FakeIds) {
-	const ws = tempDir(t);
-	const bin = join(ws, 'bin');
-	writeText(join(bin, 'pnpm'), FAKE_PNPM, { executable: true });
-	const log = join(ws, 'pnpm.log');
-	writeText(log, '');
-	const r = bash(SCRIPT, [], {
-		cwd: ws,
+function runBuildTargets(t: TestContext, targets: Target[], fakeIds: FakeIds) {
+	const workspace = tempDir(t);
+	const fakeBin = join(workspace, 'bin');
+	writeText(join(fakeBin, 'pnpm'), FAKE_PNPM, { executable: true });
+	const pnpmLog = join(workspace, 'pnpm.log');
+	writeText(pnpmLog, '');
+	const script = bash(SCRIPT, [], {
+		cwd: workspace,
 		env: {
-			PATH: `${bin}:${process.env.PATH}`,
+			PATH: `${fakeBin}:${process.env.PATH}`,
 			TARGETS: JSON.stringify(targets),
-			GITHUB_WORKSPACE: ws,
-			FAKE_LOG: log,
+			GITHUB_WORKSPACE: workspace,
+			FAKE_LOG: pnpmLog,
 			FAKE_IDS: JSON.stringify(fakeIds),
 		},
 	});
-	return { ...r, calls: readFileSync(log, 'utf8').trim().split('\n').filter(Boolean) };
+	const pnpmCalls = readFileSync(pnpmLog, 'utf8').trim().split('\n').filter(Boolean);
+	return { ...script, pnpmCalls };
 }
 
 const clock: Target = { dir: 'p/clock', pkg: '@t/clock', id: 'clock-panel', script: 'build' };
 const relations: Target = { dir: 'p/echarts', pkg: '@t/echarts', id: 'relations-panel', script: 'build:relations' };
-const ids: FakeIds = {
+const packageIds: FakeIds = {
 	'@t/clock': { dir: 'p/clock', id: 'clock-panel' },
 	'@t/echarts': { dir: 'p/echarts', id: 'relations-panel', built: { build: 'echarts-app' } },
 };
 
 describe('scripts/build-targets.sh', () => {
 	test('builds every target in order, deps first, inside log groups', (t) => {
-		const r = setup(t, [clock, relations], ids);
-		assert.equal(r.status, 0, r.stderr);
-		assert.deepEqual(r.calls, [
+		const build = runBuildTargets(t, [clock, relations], packageIds);
+		assert.equal(build.status, 0, build.stderr);
+		assert.deepEqual(build.pnpmCalls, [
 			'pnpm turbo run build --filter @t/clock^...',
 			'pnpm --filter @t/clock run build',
 			'pnpm turbo run build --filter @t/echarts^...',
 			'pnpm --filter @t/echarts run build:relations',
 		]);
-		assert.match(r.stdout, /::group::@t\/clock → clock-panel/);
-		assert.match(r.stdout, /::group::@t\/echarts → relations-panel/);
+		assert.match(build.stdout, /::group::@t\/clock → clock-panel/);
+		assert.match(build.stdout, /::group::@t\/echarts → relations-panel/);
 	});
 
 	test('fails when the build put a different plugin in dist/', (t) => {
-		const r = setup(t, [{ ...relations, script: 'build' }], ids);
-		assert.equal(r.status, 1);
-		assert.match(r.stdout, /::error file=p\/echarts\/dist\/plugin.json::.*built 'echarts-app', expected 'relations-panel'/);
+		const build = runBuildTargets(t, [{ ...relations, script: 'build' }], packageIds);
+		assert.equal(build.status, 1);
+		assert.match(build.stdout, /::error file=p\/echarts\/dist\/plugin.json::.*built 'echarts-app', expected 'relations-panel'/);
 	});
 
 	test('fails with an annotation when the build wrote no dist/plugin.json', (t) => {
-		const r = setup(t, [{ ...clock, script: 'nodist' }], ids);
-		assert.equal(r.status, 1);
-		assert.match(r.stdout, /::error file=p\/clock\/package.json::.*wrote no dist\/plugin.json/);
+		const build = runBuildTargets(t, [{ ...clock, script: 'nodist' }], packageIds);
+		assert.equal(build.status, 1);
+		assert.match(build.stdout, /::error file=p\/clock\/package.json::.*wrote no dist\/plugin.json/);
 	});
 
 	test('stops at the first failing build', (t) => {
-		const r = setup(t, [{ ...clock, script: 'fail' }, relations], ids);
-		assert.notEqual(r.status, 0);
-		assert.ok(!r.calls.some((c) => c.includes('@t/echarts')), 'later targets are not built');
+		const build = runBuildTargets(t, [{ ...clock, script: 'fail' }, relations], packageIds);
+		assert.notEqual(build.status, 0);
+		assert.ok(!build.pnpmCalls.some((call) => call.includes('@t/echarts')), 'later targets are not built');
 	});
 
 	test('fails rather than passing green when there are no targets', (t) => {
-		const r = setup(t, [], ids);
-		assert.equal(r.status, 1);
-		assert.equal(errors(r.stdout).length, 1);
-		assert.deepEqual(r.calls, []);
+		const build = runBuildTargets(t, [], packageIds);
+		assert.equal(build.status, 1);
+		assert.equal(errors(build.stdout).length, 1);
+		assert.deepEqual(build.pnpmCalls, []);
 	});
 });

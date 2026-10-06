@@ -10,14 +10,14 @@ const SCRIPT = join(SCRIPTS, 'levitate-comment.sh');
 const ENV = { ID: 'clock-panel', MODULE: './plugins/x/src/module.ts', RUN_URL: 'https://example.test/runs/1' };
 
 function comment(t: TestContext, reportPath: string): string {
-	const out = join(tempDir(t), 'comment.md');
-	const r = bash(SCRIPT, [reportPath, out], { env: ENV });
-	assert.equal(r.status, 0, r.stderr);
-	return readFileSync(out, 'utf8');
+	const commentPath = join(tempDir(t), 'comment.md');
+	const script = bash(SCRIPT, [reportPath, commentPath], { env: ENV });
+	assert.equal(script.status, 0, script.stderr);
+	return readFileSync(commentPath, 'utf8');
 }
 
 function fences(body: string): number {
-	return body.split('\n').filter((l) => l.startsWith('```')).length;
+	return body.split('\n').filter((line) => line.startsWith('```')).length;
 }
 
 describe('scripts/levitate-comment.sh', () => {

@@ -6,16 +6,16 @@ import { join } from 'node:path';
 import { describe, test, type TestContext } from 'node:test';
 import { ACTION_RUN, bash, readOutputs, tempDir, writeText } from './helpers.ts';
 
-function run(t: TestContext, env: Record<string, string>): { args: string[]; e2e: string } {
-	const dir = tempDir(t);
+function runEntryPoint(t: TestContext, env: Record<string, string>): { args: string[]; e2e: string } {
+	const stubDir = tempDir(t);
 	// Echoes its arguments back as `targets`, so the test can see what was passed.
-	writeText(join(dir, 'discover.sh'), `jq -nc '{targets: $ARGS.positional, e2e: []}' --args "$@"\n`);
-	const output = join(dir, 'output');
+	writeText(join(stubDir, 'discover.sh'), `jq -nc '{targets: $ARGS.positional, e2e: []}' --args "$@"\n`);
+	const output = join(stubDir, 'output');
 	writeText(output, '');
-	const r = bash(ACTION_RUN, [], {
-		env: { ROOT: 'plugins/packages/@plugins', CHANGED_ONLY: 'false', PR_BASE: '', PUSH_BEFORE: '', ACTION_PATH: dir, GITHUB_OUTPUT: output, ...env },
+	const entryPoint = bash(ACTION_RUN, [], {
+		env: { ROOT: 'plugins/packages/@plugins', CHANGED_ONLY: 'false', PR_BASE: '', PUSH_BEFORE: '', ACTION_PATH: stubDir, GITHUB_OUTPUT: output, ...env },
 	});
-	assert.equal(r.status, 0, r.stderr);
+	assert.equal(entryPoint.status, 0, entryPoint.stderr);
 	const outputs = readOutputs(output);
 	return { args: JSON.parse(outputs.targets), e2e: outputs.e2e };
 }
@@ -34,12 +34,12 @@ describe('discover-plugins/run.sh', () => {
 
 		for (const { name, env, args } of cases) {
 			test(name, (t) => {
-				assert.deepEqual(run(t, env).args, args);
+				assert.deepEqual(runEntryPoint(t, env).args, args);
 			});
 		}
 	});
 
 	test('writes targets and e2e as compact single-line outputs', (t) => {
-		assert.equal(run(t, {}).e2e, '[]');
+		assert.equal(runEntryPoint(t, {}).e2e, '[]');
 	});
 });

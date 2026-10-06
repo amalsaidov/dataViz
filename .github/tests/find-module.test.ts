@@ -6,15 +6,15 @@ import { SCRIPTS, bash, readOutputs, tempDir, writeText } from './helpers.ts';
 
 const SCRIPT = join(SCRIPTS, 'find-module.sh');
 
-function find(t: TestContext, files: string[], pluginJson = 'src/plugin.json') {
+function findModule(t: TestContext, files: string[], pluginJson = 'src/plugin.json') {
 	const cwd = tempDir(t);
-	for (const f of files) {
-		writeText(join(cwd, 'pkg', f), '');
+	for (const file of files) {
+		writeText(join(cwd, 'pkg', file), '');
 	}
 	const output = join(cwd, 'output');
 	writeText(output, '');
-	const r = bash(SCRIPT, [], { cwd, env: { DIR: 'pkg', PLUGIN_JSON: pluginJson, GITHUB_OUTPUT: output } });
-	return { ...r, path: readOutputs(output).path };
+	const script = bash(SCRIPT, [], { cwd, env: { DIR: 'pkg', PLUGIN_JSON: pluginJson, GITHUB_OUTPUT: output } });
+	return { ...script, path: readOutputs(output).path };
 }
 
 describe('scripts/find-module.sh', () => {
@@ -42,16 +42,16 @@ describe('scripts/find-module.sh', () => {
 
 	for (const { name, files, pluginJson, path } of found) {
 		test(name, (t) => {
-			const r = find(t, files, pluginJson);
-			assert.equal(r.status, 0, r.stderr);
-			assert.equal(r.path, path);
+			const lookup = findModule(t, files, pluginJson);
+			assert.equal(lookup.status, 0, lookup.stderr);
+			assert.equal(lookup.path, path);
 		});
 	}
 
 	test('fails with an annotation when there is no module', (t) => {
-		const r = find(t, ['src/plugin.json']);
-		assert.equal(r.status, 1);
-		assert.match(r.stdout, /^::error file=pkg\/src\/plugin.json::no module.ts or module.tsx/m);
-		assert.equal(r.path, undefined);
+		const lookup = findModule(t, ['src/plugin.json']);
+		assert.equal(lookup.status, 1);
+		assert.match(lookup.stdout, /^::error file=pkg\/src\/plugin.json::no module.ts or module.tsx/m);
+		assert.equal(lookup.path, undefined);
 	});
 });

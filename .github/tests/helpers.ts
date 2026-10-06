@@ -27,14 +27,14 @@ export function bash(
 	args: string[] = [],
 	{ env = {}, cwd = REPO }: { env?: Record<string, string | undefined>; cwd?: string } = {}
 ): RunResult {
-	const r = spawnSync('bash', [script, ...args], {
+	const child = spawnSync('bash', [script, ...args], {
 		cwd,
 		encoding: 'utf8',
 		// A clean env, so values from the developer's shell (or a real
 		// GITHUB_OUTPUT) can't leak into a test.
 		env: { PATH: process.env.PATH, HOME: process.env.HOME, ...env },
 	});
-	return { status: r.status, stdout: r.stdout, stderr: r.stderr };
+	return { status: child.status, stdout: child.stdout, stderr: child.stderr };
 }
 
 /** Creates a temp dir and registers its removal with the test context. */
@@ -94,19 +94,19 @@ export function mkPkg(
 
 /** Parses a $GITHUB_OUTPUT file of single-line `key=value` entries. */
 export function readOutputs(path: string): Record<string, string> {
-	const out: Record<string, string> = {};
+	const outputs: Record<string, string> = {};
 	for (const line of readFileSync(path, 'utf8').split('\n')) {
-		const i = line.indexOf('=');
-		if (i > 0) {
-			out[line.slice(0, i)] = line.slice(i + 1);
+		const equals = line.indexOf('=');
+		if (equals > 0) {
+			outputs[line.slice(0, equals)] = line.slice(equals + 1);
 		}
 	}
-	return out;
+	return outputs;
 }
 
 /** Runs git in `cwd`, throwing on failure. */
 export function git(cwd: string, ...args: string[]): string {
-	const r = spawnSync('git', args, {
+	const child = spawnSync('git', args, {
 		cwd,
 		encoding: 'utf8',
 		env: {
@@ -120,13 +120,13 @@ export function git(cwd: string, ...args: string[]): string {
 			GIT_CONFIG_GLOBAL: '/dev/null',
 		},
 	});
-	if (r.status !== 0) {
-		throw new Error(`git ${args.join(' ')} failed: ${r.stderr}`);
+	if (child.status !== 0) {
+		throw new Error(`git ${args.join(' ')} failed: ${child.stderr}`);
 	}
-	return r.stdout.trim();
+	return child.stdout.trim();
 }
 
 /** Lines of stderr that are GitHub `::error` annotations. */
 export function errors(stderr: string): string[] {
-	return stderr.split('\n').filter((l) => l.startsWith('::error'));
+	return stderr.split('\n').filter((line) => line.startsWith('::error'));
 }
