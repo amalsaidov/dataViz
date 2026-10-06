@@ -1,7 +1,7 @@
 {
   "targets": [
     {
-      "id": "grafana-relations-panelx",
+      "id": "grafana-relations-panel",
       "script": "build:relations",
       "pluginJson": "src/modules/relations/plugin.json"
     }
