@@ -47,19 +47,8 @@ jobs:
         with:
           persist-credentials: false
 
-      # package_json_file is relative to the workspace root — action inputs are
-      # not affected by defaults.run.working-directory.
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
-        with:
-          package_json_file: plugins/package.json
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version-file: plugins/.nvmrc
-          cache: 'pnpm'
-          cache-dependency-path: plugins/pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Set up workspace
+        uses: $/.github/actions/setup-workspace
 
       - name: Build
         env:
@@ -131,18 +120,8 @@ jobs:
           path: ${{ inputs.dir }}/dist
           name: ${{ needs.build.outputs.artifact }}
 
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
-        with:
-          package_json_file: plugins/package.json
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version-file: plugins/.nvmrc
-          cache: 'pnpm'
-          cache-dependency-path: plugins/pnpm-lock.yaml
-
-      - name: Install dev dependencies
-        working-directory: plugins
-        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Set up workspace
+        uses: $/.github/actions/setup-workspace
 
       - name: Start Grafana
         env:
@@ -157,8 +136,28 @@ jobs:
         with:
           url: ${{ inputs.url }}/login
 
+      # Installing Chromium took ~4 minutes per leg against ~12s of tests, so the
+      # browser download is cached per Playwright version (packages pin
+      # different ones). The OS packages it needs aren't cacheable this way,
+      # so a cache hit still runs install-deps.
+      - name: Read Playwright version
+        id: playwright
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
       - name: Install Playwright Browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install chromium --with-deps
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
 
       - name: Run Playwright tests
         id: run-tests

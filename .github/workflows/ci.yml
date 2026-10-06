@@ -30,21 +30,8 @@ jobs:
         with:
           persist-credentials: false
 
-      # pnpm action uses the packageManager field in plugins/package.json to
-      # understand which version to install. package_json_file is relative
-      # to the workspace root, not affected by defaults.run.working-directory.
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
-        with:
-          package_json_file: plugins/package.json
-      - name: Setup Node.js environment
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version-file: plugins/.nvmrc
-          cache: 'pnpm'
-          cache-dependency-path: plugins/pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Set up workspace
+        uses: $/.github/actions/setup-workspace
 
       - name: Format
         run: pnpm format

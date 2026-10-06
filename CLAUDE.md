@@ -217,6 +217,9 @@ and pin as `uses: <owner>/<repo>@<sha> # <tag>`. Don't use `git/refs/tags/<tag> 
 for an **annotated** tag that returns the tag *object's* SHA, not the commit, and zizmor flags it as an
 impostor commit (this is how `pnpm/action-setup@f520ece…` got pinned; its `v6` commit is `0977fd9…`).
 
+Workflows set up pnpm, Node and `pnpm install` through `.github/actions/setup-workspace`, so the
+`pnpm/action-setup` and `actions/setup-node` pins live in one place (i18n workflows aside).
+
 ### Testing CI changes locally
 
 Iterate on CI logic locally, and push only to confirm what needs GitHub itself (PR comments, artifacts,
