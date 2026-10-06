@@ -8,7 +8,7 @@ A template for building Grafana **frontend** plugins (panel and app plugins) in 
 
 - **Monorepo Architecture** - Multiple plugins and shared packages in one repository
 - **Full Build Control** - Ejected webpack and build configurations, no hidden abstractions
-- **Modern Toolchain** - Turborepo, pnpm workspaces, SWC, TypeScript, Biome.js
+- **Modern Toolchain** - Turborepo, pnpm workspaces, SWC, TypeScript, Biome.js (imported plugins keep their own ESLint + Prettier)
 - **Panel Example** - Ready-to-copy `PanelPlugin` template (app plugins are supported too)
 - **Type Safety** - Strict TypeScript with composite builds and project references
 - **Fast Development** - Docker Compose setup with hot reload
@@ -75,8 +75,9 @@ Default host ports for every Docker stack in the repo. Commands run from the dir
 ## Repository Structure
 
 ```
-dataViz/
-└── plugins/                          # Main workspace directory
+dataViz/                              # git root
+├── .github/                          # CI: workflows, actions, scripts, local tests
+└── plugins/                          # pnpm workspace root (run commands from here)
     ├── .shared/                      # Shared build configurations
     │   ├── tsconfig.base.json       # Base TypeScript config
     │   ├── tsconfig.json            # Shared packages config
@@ -85,7 +86,9 @@ dataViz/
     │   ├── @shared/                 # Shared libraries
     │   │   └── core/                # Core utilities package
     │   └── @plugins/                # Grafana plugins
-    │       └── grafana-workspace-panel/  # Example panel plugin
+    │       ├── grafana-workspace-panel/  # Example panel plugin (template)
+    │       ├── grafana-clock-panel/      # Clock panel, imported with its own toolchain
+    │       └── grafana-echarts/          # ECharts app plugin; also publishes grafana-relations-panel
     ├── provisioning/                # Grafana provisioning
     ├── docker-compose.yaml          # Plugin build/watch stack
     ├── docker-compose.grafana.yaml  # Grafana instance stack
@@ -163,7 +166,7 @@ pnpm check          # format + test:ci + lint + type-check
 
 ### Development Tools
 - **SWC** - Fast TypeScript/JSX compiler
-- **Biome.js** - Fast linting and formatting
+- **Biome.js** - Fast linting and formatting for packages on this repo's toolchain. `grafana-clock-panel` and `grafana-echarts` were imported with their own ESLint + Prettier setup and still use it
 - **Jest** - Unit testing (via `@swc/jest`)
 - **Docker Compose** - Local development environment
 
