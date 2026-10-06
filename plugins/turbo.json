@@ -1,28 +1,23 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [".shared/**", "biome.json"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
     "build:dev": {},
-    "test": {
-      "inputs": ["src/**/*.tsx", "src/**/*.ts"]
-    },
-    "test:ci": {
-      "inputs": ["src/**/*.tsx", "src/**/*.ts"]
-    },
+    "test": {},
+    "test:ci": {},
     "clean": {},
     "format": {},
     "format:fix": {},
     "build-types": {
       "dependsOn": ["^build-types"],
-      "inputs": ["src/**/*.tsx", "src/**/*.ts"],
       "outputs": []
     },
     "type-check": {
-      "dependsOn": ["build-types"],
-      "inputs": ["src/**/*.tsx", "src/**/*.ts"]
+      "dependsOn": ["build-types"]
     },
     "lint": {},
     "lint:fix": {},

@@ -33,6 +33,20 @@ jobs:
       - name: Set up workspace
         uses: $/.github/actions/setup-workspace
 
+      # Replays format/lint/type-check/test results for packages whose inputs
+      # didn't change. Correct only while turbo.json's task inputs cover every
+      # file a task reads, so leave them at turbo's default (all files in the
+      # package) plus globalDependencies, not narrowed to src/. Keyed per
+      # commit and restored from the newest entry for the same lockfile; a PR's
+      # entries are scoped to its branch, so they never feed main.
+      - name: Cache turbo results
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: plugins/.turbo/cache
+          key: turbo-${{ runner.os }}-${{ hashFiles('plugins/pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ hashFiles('plugins/pnpm-lock.yaml') }}-
+
       - name: Format
         run: pnpm format
       - name: Lint
