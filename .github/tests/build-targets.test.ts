@@ -92,6 +92,32 @@ describe('scripts/build-targets.sh', () => {
 		assert.ok(!build.pnpmCalls.some((call) => call.includes('@t/echarts')), 'later targets are not built');
 	});
 
+	test('build-target.sh passes extra arguments to the script and skips the id check without ID', (t) => {
+		const workspace = tempDir(t);
+		const fakeBin = join(workspace, 'bin');
+		writeText(join(fakeBin, 'pnpm'), FAKE_PNPM, { executable: true });
+		const pnpmLog = join(workspace, 'pnpm.log');
+		writeText(pnpmLog, '');
+		const singleBuild = bash(join(SCRIPTS, 'build-target.sh'), ['--profile', '--json', 'stats.json'], {
+			cwd: workspace,
+			env: {
+				PATH: `${fakeBin}:${process.env.PATH}`,
+				PKG: '@t/echarts',
+				SCRIPT: 'build',
+				DIR: 'p/echarts',
+				GITHUB_WORKSPACE: workspace,
+				FAKE_LOG: pnpmLog,
+				FAKE_IDS: JSON.stringify(packageIds),
+			},
+		});
+		// No ID, so echarts' `build` producing the app (not relations) is fine.
+		assert.equal(singleBuild.status, 0, singleBuild.stdout + singleBuild.stderr);
+		assert.deepEqual(readFileSync(pnpmLog, 'utf8').trim().split('\n'), [
+			'pnpm turbo run build --filter @t/echarts^...',
+			'pnpm --filter @t/echarts run build --profile --json stats.json',
+		]);
+	});
+
 	test('fails rather than passing green when there are no targets', (t) => {
 		const build = runBuildTargets(t, [], packageIds);
 		assert.equal(build.status, 1);

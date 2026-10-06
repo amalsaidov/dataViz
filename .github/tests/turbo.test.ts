@@ -11,6 +11,7 @@ import { REPO } from './helpers.ts';
 interface Task {
 	cache?: boolean;
 	inputs?: string[];
+	dependsOn?: string[];
 }
 const turbo: { globalDependencies?: string[]; tasks: Record<string, Task> } = JSON.parse(
 	readFileSync(join(REPO, 'plugins/turbo.json'), 'utf8')
@@ -22,6 +23,16 @@ describe('plugins/turbo.json', () => {
 			.filter(([_name, task]) => task.cache !== false && task.inputs !== undefined && !task.inputs.includes('$TURBO_DEFAULT$'))
 			.map(([name, task]) => `${name}: ${JSON.stringify(task.inputs)}`);
 		assert.deepEqual(narrowed, [], 'add "$TURBO_DEFAULT$" to inputs, or drop them');
+	});
+
+	// Jest resolves workspace packages (e.g. @shared/core) to their source, so a
+	// test's hash must include its dependencies' files. `^transit` does that
+	// without running anything: transit has no script in any package.
+	test('test tasks are invalidated by changes in workspace dependencies', () => {
+		for (const name of ['test', 'test:ci']) {
+			assert.ok(turbo.tasks[name]?.dependsOn?.includes('^transit'), `${name} must dependsOn "^transit"`);
+		}
+		assert.deepEqual(turbo.tasks.transit?.dependsOn, ['^transit']);
 	});
 
 	test('shared build and lint config invalidates every package', () => {

@@ -15,6 +15,8 @@ on:
     paths:
       - 'plugins/**'
       - '.github/actions/discover-plugins/**'
+      - '.github/actions/setup-workspace/**'
+      - '.github/scripts/**'
       - '.github/workflows/plugin-bundle-stats.yml'
   push:
     branches:
@@ -22,6 +24,8 @@ on:
     paths:
       - 'plugins/**'
       - '.github/actions/discover-plugins/**'
+      - '.github/actions/setup-workspace/**'
+      - '.github/scripts/**'
       - '.github/workflows/plugin-bundle-stats.yml'
 
 permissions: {}
@@ -70,6 +74,8 @@ jobs:
     env:
       PKG: ${{ matrix.target.pkg }}
       SCRIPT: ${{ matrix.target.script }}
+      DIR: ${{ matrix.target.dir }}
+      ID: ${{ matrix.target.id }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -78,19 +84,16 @@ jobs:
       - name: Set up workspace
         uses: $/.github/actions/setup-workspace
 
-      - name: Build workspace dependencies
-        working-directory: plugins
-        run: pnpm turbo run build --filter "$PKG^..."
-
+      # The stats file is written in the package directory.
       - name: Build main branch stats
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        working-directory: ${{ matrix.target.dir }}
-        run: pnpm run "$SCRIPT" --profile --json stats.json
+        working-directory: plugins
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/build-target.sh" --profile --json stats.json
 
       - name: Build PR stats
         if: github.event_name == 'pull_request'
-        working-directory: ${{ matrix.target.dir }}
-        run: pnpm run "$SCRIPT" --profile --json pr-stats.json
+        working-directory: plugins
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/build-target.sh" --profile --json pr-stats.json
 
       # Namespaced per plugin id: `report` looks up the latest artifact by name
       # repo-wide, so a generic name would collide across plugins.
@@ -160,7 +163,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          MAIN_STATS_RUN_ID=$(gh api "/repos/${REPO}/actions/artifacts?name=${MAIN_STATS_ARTIFACT}" --jq ".artifacts | map(select(.name == \"${MAIN_STATS_ARTIFACT}\")) | sort_by(.created_at) | reverse | .[0].workflow_run.id")
+          MAIN_STATS_RUN_ID=$(gh api "/repos/${REPO}/actions/artifacts?name=${MAIN_STATS_ARTIFACT}" --jq ".artifacts | map(select(.name == \"${MAIN_STATS_ARTIFACT}\" and (.expired | not))) | sort_by(.created_at) | reverse | .[0].workflow_run.id")
           echo "run-id=${MAIN_STATS_RUN_ID}" >> "$GITHUB_OUTPUT"
 
       - name: Download main branch stats artifact

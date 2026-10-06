@@ -31,6 +31,8 @@ default_e2e_url='http://127.0.0.1:3000'
 # <root> counts, so a new build-affecting file needs no entry here.
 ALWAYS_ALL=(
 	.github/actions/discover-plugins/
+	.github/actions/setup-workspace/
+	.github/scripts/
 	.github/workflows/plugin-ci.yml
 	.github/workflows/plugin-e2e.yml
 	.github/workflows/plugin-bundle-stats.yml
@@ -51,7 +53,14 @@ for pkg_json in "$root"/*/package.json; do
 	manifest="$dir/plugin-ci.json"
 	config='{}'
 	if [ -f "$manifest" ]; then
-		config="$(jq -c '.' "$manifest")"
+		if ! config="$(jq -c '.' "$manifest" 2>/dev/null)"; then
+			error "$manifest" "is not valid JSON"
+			continue
+		fi
+		if [ "$(jq -r 'type' <<<"$config")" != object ]; then
+			error "$manifest" "must be a JSON object, like {\"targets\": [...]}"
+			continue
+		fi
 	fi
 
 	if jq -e 'has("targets")' <<<"$config" >/dev/null; then

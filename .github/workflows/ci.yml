@@ -47,14 +47,16 @@ jobs:
           restore-keys: |
             turbo-${{ runner.os }}-${{ hashFiles('plugins/pnpm-lock.yaml') }}-
 
+      # --summarize records which cache entries each run used, for the prune
+      # step at the end of the job.
       - name: Format
-        run: pnpm format
+        run: pnpm format --summarize
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint --summarize
       - name: Type check
-        run: pnpm type-check
+        run: pnpm type-check --summarize
       - name: Unit tests
-        run: pnpm test:ci
+        run: pnpm test:ci --summarize
       # Builds what each package publishes, per its plugin-ci.json (or the
       # implicit src/plugin.json + `build` target), rather than every
       # package's `build` script. Sequential: targets of one package share
@@ -66,3 +68,8 @@ jobs:
         env:
           TARGETS: ${{ steps.targets.outputs.targets }}
         run: bash "$GITHUB_WORKSPACE/.github/scripts/build-targets.sh"
+
+      # Keeps only this run's entries, so the cache saved at the end of the job
+      # stays one run's size instead of growing with every commit.
+      - name: Prune turbo cache
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/prune-turbo-cache.sh" .turbo/cache .turbo/runs

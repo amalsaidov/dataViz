@@ -22,8 +22,8 @@ any workflow changes.
 - **Bundle size:** a PR comment per plugin with the size change against main.
 
 `plugin-ci.yml` and `plugin-bundle-stats.yml` only run for packages the change touches. A change anywhere
-else under `plugins/` (the lockfile, `.shared/`, workspace config) or to these workflows runs everything for
-every package. That rule is inverted on purpose: a new shared file is covered without anyone having to list
+else under `plugins/` (the lockfile, `.shared/`, workspace config), or to these workflows, their scripts in
+`.github/scripts/` or `setup-workspace`, runs everything for every package. That rule is inverted on purpose: a new shared file is covered without anyone having to list
 it.
 
 ## `plugin-ci.json`
@@ -54,7 +54,9 @@ the relations panel rather than its app, and its e2e Grafana listens on 3020.
   `dist/plugin.json`.
 - **Compatibility** doesn't fail. levitate flags any type change in an export the plugin uses, and most of
   those don't break anything at run time. A hit shows as a warning plus a PR comment with the details; the
-  e2e jobs show whether it really breaks. The comment disappears once a later push is clean.
+  e2e jobs show whether it really breaks. The comment disappears once a later push is clean. If levitate
+  doesn't finish (an npm outage, a crash), that's a separate "did not finish" warning and comment, never a
+  clean pass.
 
 ## Design rules
 
@@ -68,7 +70,9 @@ the relations panel rather than its app, and its e2e Grafana listens on 3020.
 - **turbo's cache is shared between CI runs**, so unchanged packages replay their results instead of
   rerunning (about 3 minutes saved per run). That's only correct while every task hashes every file it
   reads. Don't narrow `inputs` in `plugins/turbo.json`: limiting tests to `src/**` would let a
-  `jest.config.js` change replay a stale pass. A test checks this too.
+  `jest.config.js` change replay a stale pass. Tests also depend on `^transit`, a task with no script whose
+  hash covers each workspace dependency's files, because Jest reads `@shared/core` from source. CI prunes
+  the cache to the entries the run used before saving it. Tests in `.github/tests/` check these rules.
 - **Playwright's browser download is cached** per Playwright version.
 
 ## Changing CI

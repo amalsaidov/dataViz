@@ -44,6 +44,36 @@ describe('scripts/levitate-comment.sh', () => {
 		assert.match(comment(t, report), /\(no itemized incompatibilities; see the full report\)/);
 	});
 
+	test('says levitate did not finish when the verdict is unknown', (t) => {
+		const report = join(tempDir(t), 'report.txt');
+		writeText(report, 'npm error code ETIMEDOUT\n');
+		const commentPath = join(tempDir(t), 'comment.md');
+		const script = bash(SCRIPT, [report, commentPath], { env: { ...ENV, VERDICT: 'unknown' } });
+		assert.equal(script.status, 0, script.stderr);
+		const body = readFileSync(commentPath, 'utf8');
+		assert.match(body, /levitate did not finish checking `\.\/plugins\/x\/src\/module\.ts`/);
+		assert.doesNotMatch(body, /may be incompatible/);
+	});
+
+	test('lists at most 50 incompatibilities and says how many more there are', (t) => {
+		const report = join(tempDir(t), 'report.txt');
+		const items = Array.from({ length: 80 }, (_, index) => `${index + 1}) Changed \`thing${index}\` used in \`src/file${index}.ts:1\``);
+		writeText(report, `Comparing @grafana/data@12.0.0 to @grafana/data@13.0.0\n${items.join('\n')}\n`);
+		const summary = comment(t, report).split('<details>')[0];
+		const listed = summary.split('\n').filter((line) => /^\d+\) Changed/.test(line));
+		assert.equal(listed.length, 50);
+		assert.match(summary, /… 30 more in the full report/);
+	});
+
+	test('keeps the whole comment under the limit when the list is long too', (t) => {
+		const report = join(tempDir(t), 'report.txt');
+		const longLine = `1) Changed \`config\` used in \`${'a/'.repeat(400)}module.ts:1\``;
+		writeText(report, `${Array.from({ length: 50 }, () => longLine).join('\n')}\n${'x'.repeat(100_000)}`);
+		const body = comment(t, report);
+		assert.ok(body.length < 65_536, `comment is ${body.length} chars`);
+		assert.equal(fences(body) % 2, 0);
+	});
+
 	test('truncates a huge report and still closes the fence', (t) => {
 		const report = join(tempDir(t), 'report.txt');
 		writeText(report, 'x'.repeat(100_000)); // no trailing newline, cut mid-line

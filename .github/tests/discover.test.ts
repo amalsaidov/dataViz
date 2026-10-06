@@ -122,7 +122,24 @@ describe('discover-plugins/discover.sh', () => {
 			});
 		}
 
-		test('rejects the same plugin id in two packages', (t) => {
+		test('rejects a plugin-ci.json that is not valid JSON, with an annotation on it', (t) => {
+		const root = tempDir(t);
+		const dir = mkPkg(root, 'p', { id: 'p-panel' });
+		writeText(join(dir, 'plugin-ci.json'), '{ "targets": [], }');
+		const discovery = discover(root);
+		assert.equal(discovery.status, 1);
+		assert.deepEqual(errors(discovery.stderr), [`::error file=${join(dir, 'plugin-ci.json')}::is not valid JSON`]);
+	});
+
+	test('rejects a plugin-ci.json that is not an object', (t) => {
+		const root = tempDir(t);
+		mkPkg(root, 'p', { id: 'p-panel', pluginCi: [] });
+		const discovery = discover(root);
+		assert.equal(discovery.status, 1);
+		assert.match(errors(discovery.stderr).join('\n'), /must be a JSON object/);
+	});
+
+	test('rejects the same plugin id in two packages', (t) => {
 			const root = tempDir(t);
 			mkPkg(root, 'a', { id: 'same-panel' });
 			mkPkg(root, 'b', { id: 'same-panel' });
@@ -188,6 +205,8 @@ describe('discover-plugins/discover.sh', () => {
 			'plugins/.shared/webpack-shared.mjs',
 			'plugins/turbo.json',
 			'.github/actions/discover-plugins/discover.sh',
+			'.github/actions/setup-workspace/action.yaml',
+			'.github/scripts/build-target.sh',
 			'.github/workflows/plugin-ci.yml',
 		]) {
 			test(`${path} selects every package`, (t) => {

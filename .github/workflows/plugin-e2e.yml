@@ -50,12 +50,14 @@ jobs:
       - name: Set up workspace
         uses: $/.github/actions/setup-workspace
 
+      # The package's `build` (what its docker-compose.yaml mounts), not a
+      # build target, so there is no plugin id to check here.
       - name: Build
         env:
           PKG: ${{ inputs.pkg }}
-        run: |
-          pnpm turbo run build --filter "$PKG^..."
-          pnpm --filter "$PKG" run build
+          SCRIPT: build
+          DIR: ${{ inputs.dir }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/build-target.sh"
 
       - name: Get plugin metadata
         id: metadata

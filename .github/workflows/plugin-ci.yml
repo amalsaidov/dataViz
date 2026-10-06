@@ -10,6 +10,8 @@ on:
     paths:
       - 'plugins/**'
       - '.github/actions/discover-plugins/**'
+      - '.github/actions/setup-workspace/**'
+      - '.github/scripts/**'
       - '.github/workflows/plugin-ci.yml'
       - '.github/workflows/plugin-e2e.yml'
   push:
@@ -18,6 +20,8 @@ on:
     paths:
       - 'plugins/**'
       - '.github/actions/discover-plugins/**'
+      - '.github/actions/setup-workspace/**'
+      - '.github/scripts/**'
       - '.github/workflows/plugin-ci.yml'
       - '.github/workflows/plugin-e2e.yml'
 
@@ -77,9 +81,9 @@ jobs:
         env:
           PKG: ${{ matrix.target.pkg }}
           SCRIPT: ${{ matrix.target.script }}
-        run: |
-          pnpm turbo run build --filter "$PKG^..."
-          pnpm --filter "$PKG" run "$SCRIPT"
+          DIR: ${{ matrix.target.dir }}
+          ID: ${{ matrix.target.id }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/build-target.sh"
 
       - name: Find module
         id: module
@@ -104,32 +108,46 @@ jobs:
           comment-pr: 'no'
           fail-if-incompatible: 'yes'
 
+      # The step's own outcome can't be trusted as "compatible": the action
+      # swallows levitate failures, so a crash also reports success. Read the
+      # report it leaves in .levitate_output instead.
+      - name: Read levitate verdict
+        id: verdict
+        if: steps.compat.outcome == 'failure' || steps.compat.outcome == 'success'
+        run: echo "verdict=$(bash .github/scripts/levitate-verdict.sh .levitate_output)" >> "$GITHUB_OUTPUT"
+
       - name: Warn on possible incompatibility
-        if: steps.compat.outcome == 'failure'
+        if: steps.verdict.outputs.verdict == 'incompatible'
         env:
           ID: ${{ matrix.target.id }}
           MODULE: ${{ steps.module.outputs.path }}
         run: echo "::warning title=Grafana API compatibility ($ID)::$MODULE may be incompatible with the latest @grafana/* packages; see the levitate output in the Compatibility check step"
 
-      # Hands compatibility-report either the comment body or a `clean` marker.
-      # The action leaves levitate's console report in .levitate_output.
-      - name: Write compatibility report
-        if: steps.compat.outcome == 'failure' || steps.compat.outcome == 'success'
+      - name: Warn when levitate did not finish
+        if: steps.verdict.outputs.verdict == 'unknown'
         env:
-          OUTCOME: ${{ steps.compat.outcome }}
+          ID: ${{ matrix.target.id }}
+          MODULE: ${{ steps.module.outputs.path }}
+        run: echo "::warning title=Grafana API compatibility ($ID)::levitate did not finish checking $MODULE, so compatibility is unknown; see the Compatibility check step"
+
+      # Hands compatibility-report either a comment body or a `clean` marker.
+      - name: Write compatibility report
+        if: steps.verdict.outputs.verdict != ''
+        env:
+          VERDICT: ${{ steps.verdict.outputs.verdict }}
           ID: ${{ matrix.target.id }}
           MODULE: ${{ steps.module.outputs.path }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           mkdir -p levitate-report
-          if [ "$OUTCOME" = failure ]; then
-            bash .github/scripts/levitate-comment.sh .levitate_output levitate-report/comment.md
-          else
+          if [ "$VERDICT" = compatible ]; then
             touch levitate-report/clean
+          else
+            bash .github/scripts/levitate-comment.sh .levitate_output levitate-report/comment.md
           fi
 
       - name: Upload compatibility report
-        if: steps.compat.outcome == 'failure' || steps.compat.outcome == 'success'
+        if: steps.verdict.outputs.verdict != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: levitate-${{ matrix.target.id }}

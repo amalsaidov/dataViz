@@ -7,8 +7,15 @@
       "outputs": ["dist/**"]
     },
     "build:dev": {},
-    "test": {},
-    "test:ci": {},
+    "transit": {
+      "dependsOn": ["^transit"]
+    },
+    "test": {
+      "dependsOn": ["^transit"]
+    },
+    "test:ci": {
+      "dependsOn": ["^transit"]
+    },
     "clean": {},
     "format": {},
     "format:fix": {},
