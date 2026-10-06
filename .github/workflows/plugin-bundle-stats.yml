@@ -28,7 +28,9 @@ permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Superseded PR pushes are cancelled, but main is not: cancelling there would
+  # leave the merged commit without a completed check.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   THRESHOLD: '5'
@@ -73,6 +75,7 @@ jobs:
       PACKAGE_DIR: ${{ matrix.target.dir }}
       PKG: ${{ matrix.target.pkg }}
       SCRIPT: ${{ matrix.target.script }}
+      TARGET_ID: ${{ matrix.target.id }}
       # Namespaced per plugin id: the action looks up the latest artifact by
       # name repo-wide, so a generic name would collide across plugins.
       MAIN_STATS_ARTIFACT: ${{ matrix.target.id }}-main-branch-stats
@@ -143,14 +146,15 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ steps.main-stats-info.outputs.run-id }}
 
+      # The last argument keys the PR comment; per target, so two targets of one package don't overwrite each other.
       - name: Generate stats report and comment on PR
         if: github.event_name == 'pull_request' && steps.main-stats-info.outputs.run-id != ''
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const script = require(`${process.env.GITHUB_WORKSPACE}/.plugin-actions/bundle-size/index.js`);
-            const { THRESHOLD, PACKAGE_DIR } = process.env;
-            await script({ github, context, core }, THRESHOLD, `${PACKAGE_DIR}/stats.json`, `${PACKAGE_DIR}/pr-stats.json`, PACKAGE_DIR);
+            const { THRESHOLD, PACKAGE_DIR, TARGET_ID } = process.env;
+            await script({ github, context, core }, THRESHOLD, `${PACKAGE_DIR}/stats.json`, `${PACKAGE_DIR}/pr-stats.json`, `${PACKAGE_DIR} (${TARGET_ID})`);
 
       - name: Warn if main stats artifact could not be found
         if: github.event_name == 'pull_request' && steps.main-stats-info.outputs.run-id == ''

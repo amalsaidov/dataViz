@@ -20,7 +20,7 @@ These three references are not links into the old repository, so the README link
 
 ## Workflows not moved
 
-The package's nested `.github/` was removed. `echarts-ci.yml` and `echarts-bundle-stats.yml` at the repo root replace the CI, e2e, compatibility and bundle-size workflows. Two workflows have no replacement:
+The package's nested `.github/` was removed. `plugin-ci.yml` (with `plugin-e2e.yml`) and `plugin-bundle-stats.yml` at the repo root replace the CI, e2e, compatibility and bundle-size workflows. Two workflows have no replacement:
 
 - **`release.yml`**: signs and validates the standalone Relations archive on a `v*` tag. Before you move it, decide:
   - a tag name that is specific to the plugin, because other plugins in this repository also use tags
