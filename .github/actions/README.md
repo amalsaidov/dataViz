@@ -70,9 +70,13 @@ two plugins, the relations panel and the app, and its e2e Grafana listens on 302
   (and levitate comes unpinned from npm), so those jobs get a read-only token. A separate job holding
   `pull-requests: write` turns their output into the comment, without checking out the PR or running any
   package code. `.github/tests/workflows.test.ts` enforces this. Keep the split when adding a comment.
-- **Runs on main are never canceled.** Push runs only check packages changed since the previous commit,
-  so canceling one could leave a plugin without its main-branch e2e run or bundle baseline. Only superseded
-  PR runs are canceled.
+- **Runs on main are never canceled or dropped.** Push runs only check packages changed since the previous
+  commit, so losing one could leave a plugin without its main-branch e2e run or bundle baseline. GitHub
+  drops a *pending* run when a newer one queues in the same concurrency group, even without
+  `cancel-in-progress`, so each push to main gets a group of its own. Only superseded PR runs are canceled.
+- **Bundle baselines come only from main in this repository.** A PR runs its own copy of
+  `plugin-bundle-stats.yml` and could upload an artifact with the baseline's name, and a fork's branch can
+  be called main, so the report checks both the branch and the repository of the run that uploaded it.
 - **turbo's cache is shared between CI runs**, so unchanged packages replay their results instead of
   rerunning (about 3 minutes saved per run). That's only correct while every task hashes every file it
   reads. Don't narrow `inputs` in `plugins/turbo.json`: limiting tests to `src/**` would let a
