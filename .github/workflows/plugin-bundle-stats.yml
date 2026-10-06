@@ -159,8 +159,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
+        # The newest unexpired baseline uploaded by a run on main in this
+        # repository. Any run can upload an artifact with this name (a PR runs
+        # its own copy of this workflow), and a fork's branch can be named
+        # main, so both the branch and the repository are checked.
         run: |
-          MAIN_STATS_RUN_ID=$(gh api "/repos/${REPO}/actions/artifacts?name=${MAIN_STATS_ARTIFACT}" --jq ".artifacts | map(select(.name == \"${MAIN_STATS_ARTIFACT}\" and (.expired | not))) | sort_by(.created_at) | reverse | .[0].workflow_run.id")
+          MAIN_STATS_RUN_ID="$(gh api "/repos/${REPO}/actions/artifacts?name=${MAIN_STATS_ARTIFACT}" | jq -r --arg name "$MAIN_STATS_ARTIFACT" '
+            .artifacts
+            | map(select(
+                .name == $name
+                and (.expired | not)
+                and .workflow_run.head_branch == "main"
+                and .workflow_run.head_repository_id == .workflow_run.repository_id
+              ))
+            | sort_by(.created_at)
+            | last
+            | .workflow_run.id // ""
+          ')"
           echo "run-id=${MAIN_STATS_RUN_ID}" >> "$GITHUB_OUTPUT"
 
       - name: Download main branch stats artifact

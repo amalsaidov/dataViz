@@ -126,10 +126,12 @@ find `plugins/pnpm-lock.yaml`. Only a real publish run will confirm.
       content, so it is not a stub), but swap it for proper docs when they
       exist. The TODO cannot live in `plugin.json` — the schema sets
       `additionalProperties: false`. See `plugin-metadata.md`.
-- [ ] Four stock workflows at the repo root (`bundle-stats.yml`, `cp-update.yml`,
-      `is-compatible.yml`, `release.yml`) are untracked and carry 8 zizmor
-      findings (unpinned actions). Invisible to CI while untracked; they will
-      fail the moment they are committed.
+- [ ] Two stock workflows at the repo root (`cp-update.yml`, `release.yml`)
+      are untracked and carry zizmor findings (unpinned actions). Invisible to
+      CI while untracked; they will fail the moment they are committed. Both
+      assume a plugin at the repo root, so neither works here as-is. (The other
+      two stock files, `bundle-stats.yml` and `is-compatible.yml`, were deleted:
+      `plugin-bundle-stats.yml` and `plugin-ci.yml` cover them.)
 - [ ] Decide whether to eject clock-panel's `.config/` scaffolding onto
       `.shared/`. The archive decision unblocked this — see `CLAUDE.md` for
       what `.config/` still drives.

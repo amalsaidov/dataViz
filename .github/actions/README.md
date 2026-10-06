@@ -59,7 +59,8 @@ two plugins, the relations panel and the app, and its e2e Grafana listens on 302
   `dist/plugin.json`.
 - **Compatibility** doesn't fail. levitate flags any type change in an export the plugin uses, and most of
   those don't break anything at run time. A hit shows as a warning plus a PR comment with the details; the
-  e2e jobs show whether it really breaks. The comment disappears once a later push is clean. If levitate
+  e2e jobs show whether it really breaks. A later clean run for that plugin removes the comment; if a later
+  push takes the package out of the PR's changes, that plugin isn't checked again and its comment stays. If levitate
   doesn't finish (an npm outage, a crash), that's a separate "did not finish" warning and comment, never a
   clean pass.
 

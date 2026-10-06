@@ -140,6 +140,16 @@ describe('discover-plugins/discover.sh', () => {
 		assert.deepEqual(errors(discovery.stderr), [`::error file=${join(dir, 'plugin-ci.json')}::is not valid JSON`]);
 	});
 
+	test('escapes PR-controlled text in annotations, so it cannot start another workflow command', (t) => {
+		const root = tempDir(t);
+		mkPkg(root, 'p', { id: 'x', pluginCi: { targets: [{ id: 'bad\n::warning::injected 100%', script: 'build', pluginJson: 'src/plugin.json' }] } });
+		const discovery = discover(root);
+		assert.equal(discovery.status, 1);
+		const commandLines = discovery.stderr.split('\n').filter((line) => line.startsWith('::'));
+		assert.equal(commandLines.length, 1, discovery.stderr);
+		assert.match(commandLines[0], /^::error file=.*::target id 'bad%0A::warning::injected 100%25' must match/);
+	});
+
 	test('rejects a targets entry that is not an object, with an annotation', (t) => {
 		const root = tempDir(t);
 		mkPkg(root, 'p', { id: 'p-panel', pluginCi: { targets: ['grafana-p-panel'] } });
