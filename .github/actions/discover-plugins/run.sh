@@ -17,9 +17,11 @@ if [ "$CHANGED_ONLY" = true ]; then
 	fi
 fi
 
-args=("$ROOT")
-[ -z "$base" ] || args+=("$base")
-result="$(bash "$ACTION_PATH/discover.sh" "${args[@]}")"
+if [ -n "$base" ]; then
+	result="$(bash "$ACTION_PATH/discover.sh" "$ROOT" "$base")"
+else
+	result="$(bash "$ACTION_PATH/discover.sh" "$ROOT")"
+fi
 jq . <<<"$result"
 {
 	echo "targets=$(jq -c '.targets' <<<"$result")"

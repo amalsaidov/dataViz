@@ -50,7 +50,9 @@ for pkg_json in "$root"/*/package.json; do
 	pkg="$(jq -r '.name' "$pkg_json")"
 	manifest="$dir/plugin-ci.json"
 	config='{}'
-	[ ! -f "$manifest" ] || config="$(jq -c '.' "$manifest")"
+	if [ -f "$manifest" ]; then
+		config="$(jq -c '.' "$manifest")"
+	fi
 
 	if jq -e 'has("targets")' <<<"$config" >/dev/null; then
 		declared="$(jq -c '.targets' <<<"$config")"
@@ -108,7 +110,9 @@ for pkg_json in "$root"/*/package.json; do
 
 	has_script="$(jq -r '(.scripts // {}) | has("e2e")' "$pkg_json")"
 	has_config=false
-	[ ! -f "$dir/playwright.config.ts" ] || has_config=true
+	if [ -f "$dir/playwright.config.ts" ]; then
+		has_config=true
+	fi
 	if [ "$has_script" = true ] && [ "$has_config" = true ]; then
 		url="$(jq -r --arg d "$default_e2e_url" '.e2e.url // $d' <<<"$config")"
 		range="$(jq -r '.dependencies.grafanaDependency // ""' "$dir/src/plugin.json" 2>/dev/null || true)"
@@ -127,19 +131,48 @@ done
 
 [ "$failed" -eq 0 ] || exit 1
 
+# True if a changed path can affect every package, not only the one it is in.
+affects_every_package() {
+	local path="$1" shared
+	case "$path" in
+	"$packages_prefix"*) return 1 ;; # inside a single plugin package
+	plugins/*) return 0 ;;           # anything else under plugins/
+	esac
+	for shared in "${ALWAYS_ALL[@]}"; do
+		# Entries ending in / match everything below them.
+		if [ "$path" = "$shared" ] || [[ "$shared" == */ && "$path" == "$shared"* ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
 if [ -n "$base" ]; then
+	packages_prefix="${root%/}/"
 	# --no-renames: a file moved between packages must list its old path too,
 	# or the package it left would look unchanged.
 	if changed="$(git diff --no-renames --name-only "$base" HEAD 2>/dev/null)"; then
-		changed_json="$(jq -Rsc 'split("\n") | map(select(length > 0))' <<<"$changed")"
-		always_all="$(printf '%s\n' "${ALWAYS_ALL[@]}" | jq -Rsc 'split("\n") | map(select(length > 0))')"
-		packages_prefix="${root%/}/"
-		if ! jq -e --argjson a "$always_all" --arg pk "$packages_prefix" \
-			'any(.[]; . as $c | (($c | startswith("plugins/")) and ($c | startswith($pk) | not)) or any($a[]; . as $x | $c == $x or ($x | endswith("/") and ($c | startswith($x)))))' \
-			<<<"$changed_json" >/dev/null; then
-			keep='map(select(.dir as $d | any($changed[]; startswith($d + "/"))))'
-			targets="$(jq -c --argjson changed "$changed_json" "$keep" <<<"$targets")"
-			e2e="$(jq -c --argjson changed "$changed_json" "$keep" <<<"$e2e")"
+		filter=true
+		changed_dirs='[]'
+		while IFS= read -r path; do
+			if [ -z "$path" ]; then
+				continue
+			fi
+			if affects_every_package "$path"; then
+				filter=false
+				break
+			fi
+			if [[ "$path" == "$packages_prefix"* ]]; then
+				# plugins/packages/@plugins/<name>/... -> plugins/packages/@plugins/<name>
+				rest="${path#"$packages_prefix"}"
+				changed_dirs="$(jq -c --arg d "$packages_prefix${rest%%/*}" '. + [$d]' <<<"$changed_dirs")"
+			fi
+		done <<<"$changed"
+
+		if [ "$filter" = true ]; then
+			keep='map(select(.dir | IN($dirs[])))'
+			targets="$(jq -c --argjson dirs "$changed_dirs" "$keep" <<<"$targets")"
+			e2e="$(jq -c --argjson dirs "$changed_dirs" "$keep" <<<"$e2e")"
 		fi
 	else
 		echo "::warning::cannot diff against $base, so every package is selected" >&2

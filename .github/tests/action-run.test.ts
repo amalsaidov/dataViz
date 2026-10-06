@@ -8,11 +8,8 @@ import { ACTION_RUN, bash, readOutputs, tempDir, writeText } from './helpers.ts'
 
 function run(t: TestContext, env: Record<string, string>): { args: string[]; e2e: string } {
 	const dir = tempDir(t);
-	writeText(
-		join(dir, 'discover.sh'),
-		// Prints {"targets":[<args>],"e2e":[]} so the test can see what was passed.
-		'printf \'{"targets":%s,"e2e":[]}\\n\' "$(printf \'%s\\n\' "$@" | jq -Rsc \'split("\\n") | map(select(length > 0))\')"\n'
-	);
+	// Echoes its arguments back as `targets`, so the test can see what was passed.
+	writeText(join(dir, 'discover.sh'), `jq -nc '{targets: $ARGS.positional, e2e: []}' --args "$@"\n`);
 	const output = join(dir, 'output');
 	writeText(output, '');
 	const r = bash(ACTION_RUN, [], {

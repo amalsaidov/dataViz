@@ -119,7 +119,7 @@ describe('discover-plugins/discover.sh', () => {
 				assert.equal(r.stdout, '', 'nothing on stdout when discovery fails');
 				const errs = errors(r.stderr);
 				assert.equal(errs.length, 1, r.stderr);
-				assert.match(errs[0], new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+				assert.ok(errs[0].includes(expected), errs[0]);
 			});
 		}
 

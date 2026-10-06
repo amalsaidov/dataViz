@@ -44,31 +44,6 @@ function runScripts(file: string): { line: number; text: string }[] {
 	return scripts;
 }
 
-/** Jobs under `jobs:` that do not declare their own `permissions:`. */
-function jobsWithoutPermissions(file: string): string[] {
-	const ls = lines(file);
-	const start = ls.indexOf('jobs:');
-	assert.ok(start >= 0, 'no jobs: block');
-	let job: string | undefined;
-	const missing: string[] = [];
-	let has = false;
-	for (const l of [...ls.slice(start + 1), 'end:']) {
-		if (/^\S/.test(l) || /^ {2}[\w-]+:\s*$/.test(l)) {
-			if (job && !has) {
-				missing.push(job);
-			}
-			job = /^ {2}([\w-]+):/.exec(l)?.[1];
-			has = false;
-			if (/^\S/.test(l)) {
-				break;
-			}
-		} else if (/^ {4}permissions:/.test(l)) {
-			has = true;
-		}
-	}
-	return missing;
-}
-
 // One group per file: the checks for every workflow and composite action,
 // plus the permission checks that only apply to workflows.
 describe('workflows and composite actions', () => {
@@ -101,7 +76,10 @@ describe('workflows and composite actions', () => {
 				});
 
 				test('every job declares its own permissions', () => {
-					assert.deepEqual(jobsWithoutPermissions(file), []);
+					const missing = jobs(file)
+						.filter((j) => !j.lines.some((l) => /^ {4}permissions:/.test(l)))
+						.map((j) => j.name);
+					assert.deepEqual(missing, []);
 				});
 			}
 		});
