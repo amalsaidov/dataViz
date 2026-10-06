@@ -7,26 +7,17 @@
 # and the repo root has no package.json (the pnpm workspace is plugins/). So
 # this reproduces the action's steps with pnpm scoped to the workspace, and
 # calls the action's own report script, checked out at the same pinned commit.
+#
+# No `paths:` filter, for the same reason as plugin-ci.yml: discover-plugins
+# decides which packages a change affects.
 name: Plugin bundle stats
 
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - 'plugins/**'
-      - '.github/actions/discover-plugins/**'
-      - '.github/actions/setup-workspace/**'
-      - '.github/scripts/**'
-      - '.github/workflows/plugin-bundle-stats.yml'
   push:
     branches:
       - main
-    paths:
-      - 'plugins/**'
-      - '.github/actions/discover-plugins/**'
-      - '.github/actions/setup-workspace/**'
-      - '.github/scripts/**'
-      - '.github/workflows/plugin-bundle-stats.yml'
 
 permissions: {}
 
@@ -57,6 +48,9 @@ jobs:
         uses: $/.github/actions/discover-plugins
         with:
           changed-only: 'true'
+          # What only this workflow runs; a change to it re-runs it for every package.
+          shared-paths: |
+            .github/workflows/plugin-bundle-stats.yml
 
   compare:
     name: bundle size (${{ matrix.target.id }})
@@ -84,16 +78,15 @@ jobs:
       - name: Set up workspace
         uses: $/.github/actions/setup-workspace
 
-      # The stats file is written in the package directory.
-      - name: Build main branch stats
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      # main's stats become the baseline (stats.json); a PR's are compared
+      # against it (pr-stats.json). Either way the file is written in the
+      # package directory.
+      - name: Build stats
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
         working-directory: plugins
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/build-target.sh" --profile --json stats.json
-
-      - name: Build PR stats
-        if: github.event_name == 'pull_request'
-        working-directory: plugins
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/build-target.sh" --profile --json pr-stats.json
+        env:
+          STATS_FILE: ${{ github.event_name == 'pull_request' && 'pr-stats.json' || 'stats.json' }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/build-target.sh" --profile --json "$STATS_FILE"
 
       # Namespaced per plugin id: `report` looks up the latest artifact by name
       # repo-wide, so a generic name would collide across plugins.

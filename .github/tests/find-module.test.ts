@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { describe, test, type TestContext } from 'node:test';
-import { SCRIPTS, bash, readOutputs, tempDir, writeText } from './helpers.ts';
+import { SCRIPTS, bash, outputFile, readOutputs, tempDir, writeText } from './helpers.ts';
 
 const SCRIPT = join(SCRIPTS, 'find-module.sh');
 
@@ -11,8 +11,7 @@ function findModule(t: TestContext, files: string[], pluginJson = 'src/plugin.js
 	for (const file of files) {
 		writeText(join(cwd, 'pkg', file), '');
 	}
-	const output = join(cwd, 'output');
-	writeText(output, '');
+	const output = outputFile(t);
 	const script = bash(SCRIPT, [], { cwd, env: { DIR: 'pkg', PLUGIN_JSON: pluginJson, GITHUB_OUTPUT: output } });
 	return { ...script, path: readOutputs(output).path };
 }

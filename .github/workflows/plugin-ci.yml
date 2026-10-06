@@ -3,27 +3,17 @@
 # every package with an e2e suite. Both lists come from discover-plugins
 # (see plugin-ci.json in CLAUDE.md), limited to packages this change touches.
 # Design notes: .github/actions/README.md.
+#
+# No `paths:` filter: discover-plugins decides what a change affects, and a
+# second copy of that rule here would drift from it. A change that touches no
+# package runs only the discover job.
 name: Plugin CI
 
 on:
   pull_request:
-    paths:
-      - 'plugins/**'
-      - '.github/actions/discover-plugins/**'
-      - '.github/actions/setup-workspace/**'
-      - '.github/scripts/**'
-      - '.github/workflows/plugin-ci.yml'
-      - '.github/workflows/plugin-e2e.yml'
   push:
     branches:
       - main
-    paths:
-      - 'plugins/**'
-      - '.github/actions/discover-plugins/**'
-      - '.github/actions/setup-workspace/**'
-      - '.github/scripts/**'
-      - '.github/workflows/plugin-ci.yml'
-      - '.github/workflows/plugin-e2e.yml'
 
 permissions: {}
 
@@ -53,6 +43,14 @@ jobs:
         uses: $/.github/actions/discover-plugins
         with:
           changed-only: 'true'
+          # What only this workflow runs; a change to these re-runs it for every package.
+          shared-paths: |
+            .github/workflows/plugin-ci.yml
+            .github/workflows/plugin-e2e.yml
+            .github/scripts/find-module.sh
+            .github/scripts/levitate-report.sh
+            .github/scripts/levitate-verdict.sh
+            .github/scripts/levitate-comment.sh
 
   compatibility:
     name: compatibility (${{ matrix.target.id }})
@@ -111,43 +109,18 @@ jobs:
       # The step's own outcome can't be trusted as "compatible": the action
       # swallows levitate failures, so a crash also reports success. Read the
       # report it leaves in .levitate_output instead.
-      - name: Read levitate verdict
-        id: verdict
-        if: steps.compat.outcome == 'failure' || steps.compat.outcome == 'success'
-        run: echo "verdict=$(bash .github/scripts/levitate-verdict.sh .levitate_output)" >> "$GITHUB_OUTPUT"
-
-      - name: Warn on possible incompatibility
-        if: steps.verdict.outputs.verdict == 'incompatible'
-        env:
-          ID: ${{ matrix.target.id }}
-          MODULE: ${{ steps.module.outputs.path }}
-        run: echo "::warning title=Grafana API compatibility ($ID)::$MODULE may be incompatible with the latest @grafana/* packages; see the levitate output in the Compatibility check step"
-
-      - name: Warn when levitate did not finish
-        if: steps.verdict.outputs.verdict == 'unknown'
-        env:
-          ID: ${{ matrix.target.id }}
-          MODULE: ${{ steps.module.outputs.path }}
-        run: echo "::warning title=Grafana API compatibility ($ID)::levitate did not finish checking $MODULE, so compatibility is unknown; see the Compatibility check step"
-
-      # Hands compatibility-report either a comment body or a `clean` marker.
+      # Hands compatibility-report either a comment body or a `clean` marker,
+      # judged from levitate's own report: the action swallows levitate
+      # failures, so the step outcome can't tell "compatible" from "never ran".
+      # Runs after a failed check too, since that step is continue-on-error.
       - name: Write compatibility report
-        if: steps.verdict.outputs.verdict != ''
         env:
-          VERDICT: ${{ steps.verdict.outputs.verdict }}
           ID: ${{ matrix.target.id }}
           MODULE: ${{ steps.module.outputs.path }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          mkdir -p levitate-report
-          if [ "$VERDICT" = compatible ]; then
-            touch levitate-report/clean
-          else
-            bash .github/scripts/levitate-comment.sh .levitate_output levitate-report/comment.md
-          fi
+        run: bash .github/scripts/levitate-report.sh .levitate_output levitate-report
 
       - name: Upload compatibility report
-        if: steps.verdict.outputs.verdict != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: levitate-${{ matrix.target.id }}

@@ -19,8 +19,8 @@ interface E2e {
 	grafana_dependency: string;
 }
 
-function discover(root: string, args: string[] = [], cwd?: string): RunResult {
-	return bash(DISCOVER, [root, ...args], cwd ? { cwd } : {});
+function discover(root: string, args: string[] = [], cwd?: string, env: Record<string, string> = {}): RunResult {
+	return bash(DISCOVER, [root, ...args], cwd ? { cwd, env } : { env });
 }
 
 function ok(result: RunResult): { targets: Target[]; e2e: E2e[] } {
@@ -189,8 +189,8 @@ describe('discover-plugins/discover.sh', () => {
 		}
 
 		/** The target ids and e2e packages discovery selects for changes since `base`. */
-		function selected(cwd: string, root: string, base: string): { targets: string[]; e2e: string[] } {
-			const discovered = ok(discover(root, [base], cwd));
+		function selected(cwd: string, root: string, base: string, sharedPaths = ''): { targets: string[]; e2e: string[] } {
+			const discovered = ok(discover(root, [base], cwd, { SHARED_PATHS: sharedPaths }));
 			return {
 				targets: discovered.targets.map((target) => target.id).sort(),
 				e2e: discovered.e2e.map((suite) => suite.pkg).sort(),
@@ -216,7 +216,6 @@ describe('discover-plugins/discover.sh', () => {
 			'.github/actions/discover-plugins/discover.sh',
 			'.github/actions/setup-workspace/action.yaml',
 			'.github/scripts/build-target.sh',
-			'.github/workflows/plugin-ci.yml',
 		]) {
 			test(`${path} selects every package`, (t) => {
 				const { cwd, root, base } = repo(t);
@@ -224,6 +223,14 @@ describe('discover-plugins/discover.sh', () => {
 				assert.deepEqual(selected(cwd, root, base).targets, ['clock-panel', 'echarts-app']);
 			});
 		}
+
+		test('a file listed in SHARED_PATHS selects every package; without it, nothing', (t) => {
+			const { cwd, root, base } = repo(t);
+			change(cwd, '.github/workflows/plugin-ci.yml');
+			const sharedPaths = '.github/workflows/plugin-ci.yml\n.github/scripts/find-module.sh\n';
+			assert.deepEqual(selected(cwd, root, base, sharedPaths).targets, ['clock-panel', 'echarts-app']);
+			assert.deepEqual(selected(cwd, root, base).targets, []);
+		});
 
 		test('a file moved out of a package selects the package it left', (t) => {
 			// Without --no-renames, git reports only the new path and clock is missed.
@@ -242,6 +249,13 @@ describe('discover-plugins/discover.sh', () => {
 			const { cwd, root, base } = repo(t);
 			change(cwd, `${root}/clock/src/img/ü.svg`);
 			assert.deepEqual(selected(cwd, root, base), { targets: ['clock-panel'], e2e: ['@t/clock'] });
+		});
+
+		test('an empty base filters nothing', (t) => {
+			const { cwd, root } = repo(t);
+			const discovery = discover(root, [''], cwd);
+			assert.equal(discovery.status, 0, discovery.stderr);
+			assert.equal(JSON.parse(discovery.stdout).targets.length, 2);
 		});
 
 		test('an unusable base warns and selects everything', (t) => {

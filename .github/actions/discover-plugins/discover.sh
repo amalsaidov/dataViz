@@ -16,7 +16,11 @@
 # With <base-sha>, both lists keep only packages with a file changed since
 # that commit, unless a shared file changed, in which case nothing is filtered.
 # Shared means any path under plugins/ but outside <root> (lockfile, .shared/,
-# turbo.json, ...), or one of ALWAYS_ALL below.
+# turbo.json, ...), or one of shared_paths below.
+#
+# Env: SHARED_PATHS (optional, one per line): files only the calling workflow
+# runs, such as the workflow itself and its scripts, so a change to them
+# re-runs that workflow for every package and leaves other workflows alone.
 #
 # Every error is reported (as a GitHub annotation) before exiting 1.
 set -euo pipefail
@@ -24,19 +28,18 @@ shopt -s nullglob # must precede the glob, or `set -u` sees the literal pattern
 
 root="${1:?usage: discover.sh <root> [<base-sha>]}"
 base="${2:-}"
+packages_prefix="${root%/}/"
 default_e2e_url='http://127.0.0.1:3000'
 
-# Outside plugins/, a change to any of these can affect every package. Inside
-# plugins/ the rule is inverted (see the filter below): everything not under
-# <root> counts, so a new build-affecting file needs no entry here.
-ALWAYS_ALL=(
-	.github/actions/discover-plugins/
-	.github/actions/setup-workspace/
-	.github/scripts/
-	.github/workflows/plugin-ci.yml
-	.github/workflows/plugin-e2e.yml
-	.github/workflows/plugin-bundle-stats.yml
-)
+# Outside plugins/, a change to any of these can affect every package: what
+# every caller runs, plus the caller's own SHARED_PATHS. Inside plugins/ the
+# rule is inverted (see affects_every_package): everything not under <root>
+# counts, so a new build-affecting file there needs no entry. Entries ending
+# in / match everything below them.
+shared_paths=".github/actions/discover-plugins/
+.github/actions/setup-workspace/
+.github/scripts/build-target.sh
+${SHARED_PATHS:-}"
 
 targets='[]'
 e2e='[]'
@@ -151,17 +154,18 @@ affects_every_package() {
 	"$packages_prefix"*) return 1 ;; # inside a single plugin package
 	plugins/*) return 0 ;;           # anything else under plugins/
 	esac
-	for shared in "${ALWAYS_ALL[@]}"; do
-		# Entries ending in / match everything below them.
+	while IFS= read -r shared; do
+		if [ -z "$shared" ]; then
+			continue
+		fi
 		if [ "$path" = "$shared" ] || [[ "$shared" == */ && "$path" == "$shared"* ]]; then
 			return 0
 		fi
-	done
+	done <<<"$shared_paths"
 	return 1
 }
 
 if [ -n "$base" ]; then
-	packages_prefix="${root%/}/"
 	# --no-renames: a file moved between packages must list its old path too,
 	# or the package it left would look unchanged. core.quotePath=false: git
 	# otherwise wraps non-ASCII paths in quotes, so they would match nothing.

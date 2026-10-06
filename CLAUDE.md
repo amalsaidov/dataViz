@@ -172,29 +172,14 @@ Differences worth knowing:
 
 ## Per-package CI config (`plugin-ci.json`)
 
-Root `ci.yml` builds what each package **publishes**, not every package's `build` script. The list
-comes from `.github/actions/discover-plugins`, which reads an optional
-`plugin-ci.json` at each `packages/@plugins/<pkg>/` root:
+CI finds plugin packages on its own; an optional `plugin-ci.json` at a package root only overrides the
+defaults (which plugins it publishes, the e2e Grafana URL). What it can contain, what CI runs per package
+and how to read a failure are in the "Plugin CI" section of `.github/actions/README.md`. Two rules to keep
+in mind when editing one:
 
-```json
-{ "targets": [{ "id": "grafana-relations-panel", "script": "build:relations", "pluginJson": "src/modules/relations/plugin.json" }] }
-```
-
-- **No file** means one implicit target: `src/plugin.json`'s id, built by `build`. Most packages need nothing.
-- **Only listed targets are built.** A package that lists targets loses its implicit one. To keep
-  building the default too, list it explicitly.
-- Discovery fails CI if `script` isn't in `package.json`, if `pluginJson`'s id differs from `id`, or if an id is
-  duplicated. After each build, CI also checks that `dist/plugin.json` has the target's id.
-- Targets build one at a time because a package's targets share `dist/`.
-- `e2e.url` (default `http://127.0.0.1:3000`) is where the package's own `docker-compose.yaml` serves
-  Grafana. A package gets e2e CI when it has both an `e2e` script and a `playwright.config.ts`. Having only
-  one of them is a discovery error.
-- The levitate `compatibility (<id>)` jobs in `plugin-ci.yml` are **non-blocking**: a possible
-  incompatibility leaves the job green, adds a `Grafana API compatibility (<id>)` warning annotation, and
-  posts levitate's report as a PR comment keyed per plugin id (deleted again once a later run is clean).
-  levitate flags any type change in a used export, so most hits are type-only (the e2e jobs show whether
-  it actually breaks). "Compatible" is read from levitate's own report (`.github/scripts/levitate-verdict.sh`),
-  not the step outcome, because the action reports success even when levitate crashes.
+- **Listing `targets` replaces the default** (`src/plugin.json` built by `build`). List the default too to
+  keep building it.
+- A package's targets build one at a time, because they all write `dist/`.
 
 ## GitHub Actions workflows
 

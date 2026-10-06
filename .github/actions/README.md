@@ -5,8 +5,8 @@ How every plugin package gets built, checked and tested, and why it is built the
 | workflow | runs on | does |
 |---|---|---|
 | `ci.yml` | every PR and push to main | Format, lint, type-check and unit tests for all packages, then builds each plugin the packages publish |
-| `plugin-ci.yml` | PRs and pushes touching `plugins/` | Grafana API compatibility (levitate) per plugin, and Playwright e2e per package |
-| `plugin-bundle-stats.yml` | PRs and pushes touching `plugins/` | Bundle size per plugin, compared against main |
+| `plugin-ci.yml` | every PR and push to main | Grafana API compatibility (levitate) per plugin, and Playwright e2e per package |
+| `plugin-bundle-stats.yml` | every PR and push to main | Bundle size per plugin, compared against main |
 
 None of them names a plugin. Each asks `discover-plugins` what exists, so a new package gets CI without
 any workflow changes.
@@ -21,9 +21,13 @@ any workflow changes.
   nightly run that never blocks. Only for packages with both an `e2e` script and a `playwright.config.ts`.
 - **Bundle size:** a PR comment per plugin with the size change against main.
 
-`plugin-ci.yml` and `plugin-bundle-stats.yml` only run for packages the change touches. A change anywhere
-else under `plugins/` (the lockfile, `.shared/`, workspace config), or to these workflows, their scripts in
-`.github/scripts/` or `setup-workspace`, runs everything for every package. That rule is inverted on purpose: a new shared file is covered without anyone having to list
+`plugin-ci.yml` and `plugin-bundle-stats.yml` only run their jobs for packages the change touches; a
+change that touches none runs only the discover job. A change anywhere else under `plugins/` (the
+lockfile, `.shared/`, workspace config), or to `discover-plugins`, `setup-workspace` or `build-target.sh`,
+runs everything for every package. Each workflow also passes `discover-plugins` its own `shared-paths`:
+the workflow file and the scripts only it runs. Editing `plugin-bundle-stats.yml` re-runs bundle stats
+for every package, but not e2e. The workflows have no `paths:` filters, so this is the only copy of the
+rule. That rule is inverted on purpose: a new shared file is covered without anyone having to list
 it.
 
 ## `plugin-ci.json`

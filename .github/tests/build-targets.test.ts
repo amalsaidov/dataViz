@@ -33,24 +33,29 @@ interface Target {
 /** Per package: where it lives, its id, and ids particular scripts build instead. */
 type FakeIds = Record<string, { dir: string; id: string; built?: Record<string, string> }>;
 
-function runBuildTargets(t: TestContext, targets: Target[], fakeIds: FakeIds) {
+/** Runs a build script with the fake pnpm first on PATH; returns its result and the pnpm calls it made. */
+function runWithFakePnpm(t: TestContext, scriptPath: string, args: string[], env: Record<string, string>, fakeIds: FakeIds) {
 	const workspace = tempDir(t);
 	const fakeBin = join(workspace, 'bin');
 	writeText(join(fakeBin, 'pnpm'), FAKE_PNPM, { executable: true });
 	const pnpmLog = join(workspace, 'pnpm.log');
 	writeText(pnpmLog, '');
-	const script = bash(SCRIPT, [], {
+	const script = bash(scriptPath, args, {
 		cwd: workspace,
 		env: {
 			PATH: `${fakeBin}:${process.env.PATH}`,
-			TARGETS: JSON.stringify(targets),
 			GITHUB_WORKSPACE: workspace,
 			FAKE_LOG: pnpmLog,
 			FAKE_IDS: JSON.stringify(fakeIds),
+			...env,
 		},
 	});
 	const pnpmCalls = readFileSync(pnpmLog, 'utf8').trim().split('\n').filter(Boolean);
 	return { ...script, pnpmCalls };
+}
+
+function runBuildTargets(t: TestContext, targets: Target[], fakeIds: FakeIds) {
+	return runWithFakePnpm(t, SCRIPT, [], { TARGETS: JSON.stringify(targets) }, fakeIds);
 }
 
 const clock: Target = { dir: 'p/clock', pkg: '@t/clock', id: 'clock-panel', script: 'build' };
@@ -93,26 +98,16 @@ describe('scripts/build-targets.sh', () => {
 	});
 
 	test('build-target.sh passes extra arguments to the script and skips the id check without ID', (t) => {
-		const workspace = tempDir(t);
-		const fakeBin = join(workspace, 'bin');
-		writeText(join(fakeBin, 'pnpm'), FAKE_PNPM, { executable: true });
-		const pnpmLog = join(workspace, 'pnpm.log');
-		writeText(pnpmLog, '');
-		const singleBuild = bash(join(SCRIPTS, 'build-target.sh'), ['--profile', '--json', 'stats.json'], {
-			cwd: workspace,
-			env: {
-				PATH: `${fakeBin}:${process.env.PATH}`,
-				PKG: '@t/echarts',
-				SCRIPT: 'build',
-				DIR: 'p/echarts',
-				GITHUB_WORKSPACE: workspace,
-				FAKE_LOG: pnpmLog,
-				FAKE_IDS: JSON.stringify(packageIds),
-			},
-		});
+		const singleBuild = runWithFakePnpm(
+			t,
+			join(SCRIPTS, 'build-target.sh'),
+			['--profile', '--json', 'stats.json'],
+			{ PKG: '@t/echarts', SCRIPT: 'build', DIR: 'p/echarts' },
+			packageIds
+		);
 		// No ID, so echarts' `build` producing the app (not relations) is fine.
 		assert.equal(singleBuild.status, 0, singleBuild.stdout + singleBuild.stderr);
-		assert.deepEqual(readFileSync(pnpmLog, 'utf8').trim().split('\n'), [
+		assert.deepEqual(singleBuild.pnpmCalls, [
 			'pnpm turbo run build --filter @t/echarts^... --summarize',
 			'pnpm --filter @t/echarts run build --profile --json stats.json',
 		]);

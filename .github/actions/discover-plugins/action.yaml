@@ -13,6 +13,15 @@ inputs:
       (fetch-depth: 0). Without a usable base, nothing is filtered.
     required: false
     default: 'false'
+  shared-paths:
+    description: |
+      With changed-only, files only the calling workflow runs (one per line;
+      a trailing / matches a directory), such as the workflow itself and the
+      scripts it calls. A change to one of them selects every package. What
+      every caller runs (this action, setup-workspace, build-target.sh) is
+      always included.
+    required: false
+    default: ''
 
 outputs:
   targets:
@@ -37,6 +46,7 @@ runs:
       env:
         ROOT: ${{ inputs.root }}
         CHANGED_ONLY: ${{ inputs.changed-only }}
+        SHARED_PATHS: ${{ inputs.shared-paths }}
         PR_BASE: ${{ github.event.pull_request.base.sha }}
         PUSH_BEFORE: ${{ github.event.before }}
         ACTION_PATH: ${{ github.action_path }}

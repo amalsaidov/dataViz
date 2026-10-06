@@ -92,6 +92,13 @@ export function mkPkg(
 	return dir;
 }
 
+/** Creates an empty file to pass as $GITHUB_OUTPUT; read it back with readOutputs. */
+export function outputFile(t: TestContext): string {
+	const path = join(tempDir(t), 'github-output');
+	writeText(path, '');
+	return path;
+}
+
 /** Parses a $GITHUB_OUTPUT file of single-line `key=value` entries. */
 export function readOutputs(path: string): Record<string, string> {
 	const outputs: Record<string, string> = {};

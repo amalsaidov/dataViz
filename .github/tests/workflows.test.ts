@@ -162,16 +162,13 @@ describe('PR write tokens never run PR code', () => {
 		}
 	}
 
-	test('covers both comment-posting report jobs', () => {
-		const guarded = workflows.flatMap((workflow) =>
-			jobs(workflow)
-				.filter(canWriteToPr)
-				.map((job) => `${workflow}:${job.name}`)
-		);
-		// Others (e.g. stale.yml's scheduled jobs) are guarded too; these two
-		// must be, or the job splitting above has stopped matching them.
-		for (const job of ['.github/workflows/plugin-bundle-stats.yml:report', '.github/workflows/plugin-ci.yml:compatibility-report']) {
-			assert.ok(guarded.includes(job), `${job} is not guarded`);
-		}
-	});
+	// The checks above only see jobs that jobs() and canWriteToPr() find. If
+	// the line-based parsing ever misses one, that job would go unchecked, so
+	// compare against every `pull-requests: write` line in the raw file.
+	for (const file of workflows) {
+		test(`${file}: every job with pull-requests: write is checked`, () => {
+			const grants = lines(file).filter((line) => /^\s+pull-requests:\s*write/.test(line)).length;
+			assert.equal(jobs(file).filter(canWriteToPr).length, grants);
+		});
+	}
 });

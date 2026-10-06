@@ -5,7 +5,8 @@
 #
 # Env: ROOT, CHANGED_ONLY ('true' to filter), PR_BASE
 # (github.event.pull_request.base.sha), PUSH_BEFORE (github.event.before),
-# ACTION_PATH (directory holding discover.sh), GITHUB_OUTPUT.
+# ACTION_PATH (directory holding discover.sh), GITHUB_OUTPUT. SHARED_PATHS is
+# read by discover.sh itself.
 set -euo pipefail
 
 base=''
@@ -17,11 +18,8 @@ if [ "$CHANGED_ONLY" = true ]; then
 	fi
 fi
 
-if [ -n "$base" ]; then
-	result="$(bash "$ACTION_PATH/discover.sh" "$ROOT" "$base")"
-else
-	result="$(bash "$ACTION_PATH/discover.sh" "$ROOT")"
-fi
+# An empty base is the same as none: discover.sh then filters nothing.
+result="$(bash "$ACTION_PATH/discover.sh" "$ROOT" "$base")"
 jq . <<<"$result"
 {
 	echo "targets=$(jq -c '.targets' <<<"$result")"
