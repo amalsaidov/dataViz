@@ -116,12 +116,14 @@ Differences worth knowing:
 - **`lefthook` was dropped** (config + dep + `prepare` script). A nested hook manager installs hooks
   into the repo-root `.git`, so it would have gated commits for the whole monorepo on one package's
   checks.
-- **Its nested `.github/` was removed; CI lives at root** as `echarts-ci.yml` (Playwright e2e matrix +
-  levitate is-compatible) and `echarts-bundle-stats.yml`, both `paths:`-scoped to the package. The
+- **Its nested `.github/` was removed; CI lives at root** in the generic `plugin-ci.yml` (levitate
+  is-compatible per build target, Playwright e2e matrix via `plugin-e2e.yml`) and `plugin-bundle-stats.yml`,
+  which run for every package. echarts only differs through its `plugin-ci.json`. The
   `grafana-enterprise@nightly` e2e job is `continue-on-error` (non-blocking); don't make it required. The
   bundle-stats workflow does **not** `uses:` `grafana/plugin-actions/bundle-size` — that action runs
   `pnpm install` at the repo root, which has no `package.json` — so it inlines the action's steps and
-  calls its `index.js` report script from a pinned checkout. Bump both pins together. The upstream
+  calls its `index.js` report script from a pinned checkout. Bump both pins together. Its bundle-stats
+  baseline is the relations bundle (the build target), not the app. The upstream
   `release.yml` (tag-triggered sign + validate of the standalone Relations build) and `cp-update.yml`
   (create-plugin update, which only works on a repo-root plugin) were not ported.
 - **It keeps its own `.nvmrc` and `packageManager`**, both synced to the workspace root. Same reason as
@@ -129,15 +131,15 @@ Differences worth knowing:
   `<plugin-directory>/.nvmrc` for the Node version (falling back to its own default if absent).
 - **Its standalone dev/e2e stack (`pnpm run server` inside the package) defaults to port 3020**, not
   upstream's 3001, so it can run alongside the monorepo stack (`pnpm run server` from `plugins/`, on
-  3001). `playwright.config.ts`, `docker-compose.yaml`, `echarts-ci.yml` and the `parity.md` live links
+  3001). `playwright.config.ts`, `docker-compose.yaml`, `plugin-ci.json` (`e2e.url`) and the `parity.md` live links
   all assume 3020 — change them together. Its LGTM stack stays on 3010, standalone Relations on 4001.
 - **Two `plugin.json`s ship on their own:** `src/plugin.json` (the app) and
   `src/modules/relations/plugin.json` (`build:relations` publishes it standalone as
   `grafana-relations-panel`). Both use the reserved link names from `plugin-metadata.md`. The other
   `src/modules/*/plugin.json` ship only inside the app.
 - **Root CI builds `grafana-relations-panel`, not the app.** Its `plugin-ci.json` lists only the
-  relations target (`build:relations`). `build` itself is still the app build, used by the dev stack,
-  `echarts-ci.yml` e2e and bundle stats. Adding another standalone module needs a `build:<module>` script
+  relations target (`build:relations`). `build` itself is still the app build, used by the dev stack and
+  the root CI e2e and bundle-stats workflows. Adding another standalone module needs a `build:<module>` script
   **and** webpack support (`--env standalone=<module>` currently accepts only `relations`), plus a target
   entry. To build the app in root CI too, add `{ "id": "grafana-echarts-app", "script": "build", "pluginJson": "src/plugin.json" }`.
 - **It is not yet in i18n CI, and when it opts in it gets ONE Crowdin project, not one per published
