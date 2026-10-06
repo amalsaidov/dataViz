@@ -82,6 +82,19 @@ describe('scripts/levitate-comment.sh', () => {
 		assert.equal(fences(body) % 2, 0);
 	});
 
+	test('stays under the limit even when the header lines alone would not fit', (t) => {
+		const report = join(tempDir(t), 'report.txt');
+		// 500 long "Comparing" lines: far more summary than the comment can hold.
+		const lines: string[] = [];
+		for (let number = 1; number <= 500; number++) {
+			lines.push(`Comparing @grafana/${'package'.repeat(30)}${number}@1.0.0 to @grafana/package${number}@2.0.0`);
+		}
+		writeText(report, `${lines.join('\n')}\n`);
+		const body = comment(t, report);
+		assert.ok(body.length < 65_536, `comment is ${body.length} chars`);
+		assert.equal(fences(body) % 2, 0);
+	});
+
 	test('truncates a huge report and still closes the fence', (t) => {
 		const report = join(tempDir(t), 'report.txt');
 		writeText(report, 'x'.repeat(100_000)); // no trailing newline, cut mid-line

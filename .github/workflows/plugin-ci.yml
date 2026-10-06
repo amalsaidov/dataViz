@@ -44,7 +44,7 @@ jobs:
       e2e: ${{ steps.find.outputs.e2e }}
     steps:
       # Full history: changed-only diffs against the PR base / previous commit.
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -69,7 +69,7 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.discover.outputs.targets) }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 

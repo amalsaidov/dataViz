@@ -35,8 +35,8 @@ describe('plugins/turbo.json', () => {
 		assert.deepEqual(turbo.tasks.transit?.dependsOn, ['^transit']);
 	});
 
-	test('shared build and lint config invalidates every package', () => {
-		for (const dep of ['.shared/**', 'biome.json']) {
+	test('shared build and lint config, and the Node version, invalidate every package', () => {
+		for (const dep of ['.shared/**', 'biome.json', '.nvmrc']) {
 			assert.ok(turbo.globalDependencies?.includes(dep), `globalDependencies is missing ${dep}`);
 		}
 	});

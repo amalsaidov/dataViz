@@ -65,9 +65,9 @@ describe('scripts/build-targets.sh', () => {
 		const build = runBuildTargets(t, [clock, relations], packageIds);
 		assert.equal(build.status, 0, build.stderr);
 		assert.deepEqual(build.pnpmCalls, [
-			'pnpm turbo run build --filter @t/clock^...',
+			'pnpm turbo run build --filter @t/clock^... --summarize',
 			'pnpm --filter @t/clock run build',
-			'pnpm turbo run build --filter @t/echarts^...',
+			'pnpm turbo run build --filter @t/echarts^... --summarize',
 			'pnpm --filter @t/echarts run build:relations',
 		]);
 		assert.match(build.stdout, /::group::@t\/clock → clock-panel/);
@@ -113,7 +113,7 @@ describe('scripts/build-targets.sh', () => {
 		// No ID, so echarts' `build` producing the app (not relations) is fine.
 		assert.equal(singleBuild.status, 0, singleBuild.stdout + singleBuild.stderr);
 		assert.deepEqual(readFileSync(pnpmLog, 'utf8').trim().split('\n'), [
-			'pnpm turbo run build --filter @t/echarts^...',
+			'pnpm turbo run build --filter @t/echarts^... --summarize',
 			'pnpm --filter @t/echarts run build --profile --json stats.json',
 		]);
 	});

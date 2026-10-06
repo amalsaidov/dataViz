@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [".shared/**", "biome.json"],
+  "globalDependencies": [".shared/**", "biome.json", ".nvmrc"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

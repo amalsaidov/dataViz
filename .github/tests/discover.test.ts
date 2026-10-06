@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, test, type TestContext } from 'node:test';
-import { DISCOVER, type PkgOptions, type RunResult, bash, errors, git, mkPkg, tempDir, writeText } from './helpers.ts';
+import { DISCOVER, type PkgOptions, type RunResult, bash, errors, git, mkPkg, tempDir, writeJson, writeText } from './helpers.ts';
 
 interface Target {
 	dir: string;
@@ -122,7 +122,16 @@ describe('discover-plugins/discover.sh', () => {
 			});
 		}
 
-		test('rejects a plugin-ci.json that is not valid JSON, with an annotation on it', (t) => {
+		test('rejects a package.json without a name, which pnpm --filter cannot select', (t) => {
+		const root = tempDir(t);
+		const dir = mkPkg(root, 'p', { id: 'p-panel' });
+		writeJson(join(dir, 'package.json'), { scripts: { build: 'x' } });
+		const discovery = discover(root);
+		assert.equal(discovery.status, 1);
+		assert.match(errors(discovery.stderr).join('\n'), /has no name/);
+	});
+
+	test('rejects a plugin-ci.json that is not valid JSON, with an annotation on it', (t) => {
 		const root = tempDir(t);
 		const dir = mkPkg(root, 'p', { id: 'p-panel' });
 		writeText(join(dir, 'plugin-ci.json'), '{ "targets": [], }');
@@ -227,6 +236,12 @@ describe('discover-plugins/discover.sh', () => {
 			git(cwd, 'add', '-A');
 			git(cwd, 'commit', '-qm', 'move');
 			assert.deepEqual(selected(cwd, root, before).targets, ['clock-panel', 'echarts-app']);
+		});
+
+		test('a change to a file with a non-ASCII name selects its package', (t) => {
+			const { cwd, root, base } = repo(t);
+			change(cwd, `${root}/clock/src/img/ü.svg`);
+			assert.deepEqual(selected(cwd, root, base), { targets: ['clock-panel'], e2e: ['@t/clock'] });
 		});
 
 		test('an unusable base warns and selects everything', (t) => {

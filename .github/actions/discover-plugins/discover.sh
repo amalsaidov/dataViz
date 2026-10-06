@@ -49,7 +49,11 @@ error() {
 
 for pkg_json in "$root"/*/package.json; do
 	dir="$(dirname "$pkg_json")"
-	pkg="$(jq -r '.name' "$pkg_json")"
+	pkg="$(jq -r '.name // ""' "$pkg_json")"
+	if [ -z "$pkg" ]; then
+		error "$pkg_json" "has no name, so pnpm --filter cannot select it"
+		continue
+	fi
 	manifest="$dir/plugin-ci.json"
 	config='{}'
 	if [ -f "$manifest" ]; then
@@ -159,8 +163,9 @@ affects_every_package() {
 if [ -n "$base" ]; then
 	packages_prefix="${root%/}/"
 	# --no-renames: a file moved between packages must list its old path too,
-	# or the package it left would look unchanged.
-	if changed="$(git diff --no-renames --name-only "$base" HEAD 2>/dev/null)"; then
+	# or the package it left would look unchanged. core.quotePath=false: git
+	# otherwise wraps non-ASCII paths in quotes, so they would match nothing.
+	if changed="$(git -c core.quotePath=false diff --no-renames --name-only "$base" HEAD 2>/dev/null)"; then
 		filter=true
 		changed_dirs='[]'
 		while IFS= read -r path; do

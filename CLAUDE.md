@@ -122,8 +122,8 @@ Differences worth knowing:
   `grafana-enterprise@nightly` e2e job is `continue-on-error` (non-blocking); don't make it required. The
   bundle-stats workflow does **not** `uses:` `grafana/plugin-actions/bundle-size` — that action runs
   `pnpm install` at the repo root, which has no `package.json` — so it inlines the action's steps and
-  calls its `index.js` report script from a pinned checkout. Bump both pins together. Its bundle-stats
-  baseline is the relations bundle (the build target), not the app. The upstream
+  calls its `index.js` report script from a pinned checkout. Bump both pins together. It reports the
+  relations panel and the app separately, one comment each. The upstream
   `release.yml` (tag-triggered sign + validate of the standalone Relations build) and `cp-update.yml`
   (create-plugin update, which only works on a repo-root plugin) were not ported.
 - **It keeps its own `.nvmrc` and `packageManager`**, both synced to the workspace root. Same reason as
@@ -137,11 +137,11 @@ Differences worth knowing:
   `src/modules/relations/plugin.json` (`build:relations` publishes it standalone as
   `grafana-relations-panel`). Both use the reserved link names from `plugin-metadata.md`. The other
   `src/modules/*/plugin.json` ship only inside the app.
-- **CI builds `grafana-relations-panel`, not the app.** Its `plugin-ci.json` lists only the
-  relations target (`build:relations`), so root CI, compatibility and bundle stats all use it. `build` itself
-  is still the app build, used by the dev stack and `plugin-e2e.yml` (e2e tests the app). Adding another standalone module needs a `build:<module>` script
-  **and** webpack support (`--env standalone=<module>` currently accepts only `relations`), plus a target
-  entry. To build the app in root CI too, add `{ "id": "grafana-echarts-app", "script": "build", "pluginJson": "src/plugin.json" }`.
+- **CI builds two plugins from it.** Its `plugin-ci.json` lists `grafana-relations-panel` (`build:relations`)
+  and the app, `grafana-echarts-app` (`build`), so root CI, compatibility and bundle stats cover both. The
+  two build one after another because both write `dist/`. e2e tests the app, built by `build`. Adding another
+  standalone module needs a `build:<module>` script **and** webpack support (`--env standalone=<module>`
+  currently accepts only `relations`), plus a target entry.
 - **It is not yet in i18n CI, and when it opts in it gets ONE Crowdin project, not one per published
   plugin.** A package opts in by having a `crowdin.yml`; echarts has none, no locales, and no
   `i18n-extract:ci` script, so `.github/actions/discover-i18n-packages` ignores it. It does already

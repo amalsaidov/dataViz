@@ -10,8 +10,9 @@
 set -euo pipefail
 
 # `^...` builds the package's workspace dependencies but not the package
-# itself; exits 0 when it has none.
-pnpm turbo run build --filter "$PKG^..."
+# itself; exits 0 when it has none. --summarize keeps these cache entries
+# when root CI prunes the turbo cache.
+pnpm turbo run build --filter "$PKG^..." --summarize
 pnpm --filter "$PKG" run "$SCRIPT" "$@"
 
 if [ -z "${ID:-}" ]; then

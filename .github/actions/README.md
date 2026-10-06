@@ -29,12 +29,13 @@ it.
 ## `plugin-ci.json`
 
 Optional, at a package root. Only needed when the defaults don't fit. echarts is the example: it publishes
-the relations panel rather than its app, and its e2e Grafana listens on 3020.
+two plugins, the relations panel and the app, and its e2e Grafana listens on 3020.
 
 ```json
 {
   "targets": [
-    { "id": "grafana-relations-panel", "script": "build:relations", "pluginJson": "src/modules/relations/plugin.json" }
+    { "id": "grafana-relations-panel", "script": "build:relations", "pluginJson": "src/modules/relations/plugin.json" },
+    { "id": "grafana-echarts-app", "script": "build", "pluginJson": "src/plugin.json" }
   ],
   "e2e": { "url": "http://127.0.0.1:3020" }
 }
