@@ -21,10 +21,13 @@ on:
 
 permissions: {}
 
+# PR runs share a group per PR, so a newer push cancels the superseded run.
+# Runs on main get a group per commit, so none waits behind another: GitHub
+# drops a *pending* run when a newer one queues, even without
+# cancel-in-progress, and each main run only checks packages changed since the
+# previous commit, so a dropped run's changes would never be checked.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # Superseded PR pushes are canceled, but main is not: canceling there would
-  # leave the merged commit without a completed check.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -116,8 +119,9 @@ jobs:
   report:
     name: bundle size report (${{ matrix.target.id }})
     needs: [discover, compare]
-    # always(): one target's failed build must not drop the other targets' reports.
-    if: always() && github.event_name == 'pull_request' && needs.discover.result == 'success' && needs.discover.outputs.targets != '[]'
+    # !cancelled(): one target's failed build must not drop the other targets'
+    # reports, but a run superseded by a newer push posts nothing.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.discover.result == 'success' && needs.discover.outputs.targets != '[]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read # grafana/plugin-actions for the report script

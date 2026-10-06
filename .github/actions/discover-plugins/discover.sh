@@ -27,8 +27,10 @@ set -euo pipefail
 shopt -s nullglob # must precede the glob, or `set -u` sees the literal pattern
 
 root="${1:?usage: discover.sh <root> [<base-sha>]}"
+# Without a trailing slash, so package dirs ("$root/<name>") match changed paths.
+root="${root%/}"
 base="${2:-}"
-packages_prefix="${root%/}/"
+packages_prefix="$root/"
 default_e2e_url='http://127.0.0.1:3000'
 
 # Outside plugins/, a change to any of these can affect every package: what
@@ -92,6 +94,10 @@ for pkg_json in "$root"/*/package.json; do
 	# tabs, which would shift fields when one is empty.
 	count="$(jq 'length' <<<"$declared")"
 	for ((i = 0; i < count; i++)); do
+		if [ "$(jq -r ".[$i] | type" <<<"$declared")" != object ]; then
+			error "$source_file" "targets[$i] must be an object with id, script and pluginJson"
+			continue
+		fi
 		id="$(jq -r ".[$i].id // \"\"" <<<"$declared")"
 		script="$(jq -r ".[$i].script // \"\"" <<<"$declared")"
 		plugin_json="$(jq -r ".[$i].pluginJson // \"\"" <<<"$declared")"

@@ -150,8 +150,11 @@ describe('PR write tokens never run PR code', () => {
 				assert.ok(!job.lines.some((line) => /^ {4}uses:/.test(line)), 'calls a reusable workflow');
 				for (const step of steps(job.lines)) {
 					const text = step.join('\n');
+					// A local action (`$/` or `./`) is code from the PR's own checkout.
+					assert.doesNotMatch(text, /uses: (\$|\.)\//, `runs a local action from the PR:\n${text}`);
 					if (/uses: actions\/checkout@/.test(text)) {
 						assert.match(text, /^\s+repository:/m, `checks out this repo:\n${text}`);
+						assert.doesNotMatch(text, /repository:.*github\.event\.pull_request/, `checks out the PR's repository:\n${text}`);
 					}
 					// Everything after `run:`, whether inline or a block.
 					const runAt = text.indexOf('run:');

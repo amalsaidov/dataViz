@@ -98,8 +98,16 @@ the root config as scoped `packageRules`
 (`matchFileNames: ["plugins/packages/@plugins/<name>/**"]`) rather than
 keeping the nested file.
 
-To *revive* a nested workflow, copy it to the repo root, add a `paths:` filter
-scoping it to the package, and swap `npm ci` for pnpm
+Don't revive a nested CI, e2e, levitate (is-compatible) or bundle-size
+workflow: the generic root workflows (`ci.yml`, `plugin-ci.yml`,
+`plugin-e2e.yml`, `plugin-bundle-stats.yml`) already run those for every
+package they discover. An imported package gets them by matching the
+conventions (a `build` script, and for e2e an `e2e` script plus
+`playwright.config.ts`), or by adding a `plugin-ci.json` where it doesn't, as
+echarts does. See the "Plugin CI" section of `.github/actions/README.md`.
+
+To revive any other nested workflow, copy it to the repo root, add a `paths:`
+filter scoping it to the package, and swap `npm ci` for pnpm
 (`pnpm install --frozen-lockfile` + `pnpm --filter <pkg> run <script>`). Keep
 the real logic in the package's own `package.json` script so only thin
 plumbing lives at root — that also minimizes what has to be rebuilt if the

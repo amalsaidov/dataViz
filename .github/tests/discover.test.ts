@@ -140,6 +140,14 @@ describe('discover-plugins/discover.sh', () => {
 		assert.deepEqual(errors(discovery.stderr), [`::error file=${join(dir, 'plugin-ci.json')}::is not valid JSON`]);
 	});
 
+	test('rejects a targets entry that is not an object, with an annotation', (t) => {
+		const root = tempDir(t);
+		mkPkg(root, 'p', { id: 'p-panel', pluginCi: { targets: ['grafana-p-panel'] } });
+		const discovery = discover(root);
+		assert.equal(discovery.status, 1);
+		assert.match(errors(discovery.stderr).join('\n'), /targets\[0\] must be an object/);
+	});
+
 	test('rejects a plugin-ci.json that is not an object', (t) => {
 		const root = tempDir(t);
 		mkPkg(root, 'p', { id: 'p-panel', pluginCi: [] });
@@ -249,6 +257,12 @@ describe('discover-plugins/discover.sh', () => {
 			const { cwd, root, base } = repo(t);
 			change(cwd, `${root}/clock/src/img/ü.svg`);
 			assert.deepEqual(selected(cwd, root, base), { targets: ['clock-panel'], e2e: ['@t/clock'] });
+		});
+
+		test('a root given with a trailing slash still selects the changed package', (t) => {
+			const { cwd, root, base } = repo(t);
+			change(cwd, `${root}/clock/src/module.ts`);
+			assert.deepEqual(selected(cwd, `${root}/`, base), { targets: ['clock-panel'], e2e: ['@t/clock'] });
 		});
 
 		test('an empty base filters nothing', (t) => {

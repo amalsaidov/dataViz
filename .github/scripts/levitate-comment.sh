@@ -64,18 +64,19 @@ elif [ "$item_count" -gt "$max_items" ]; then
 … $((item_count - max_items)) more in the full report"
 fi
 
+# Tilde fences, not backticks: levitate wraps each type diff in its own
+# \`\`\`diff block, and a backtick line would close a backtick fence early.
 summary="### Grafana API compatibility: \`$ID\`
 
 $intro [Full run]($RUN_URL)
 
-\`\`\`text
+~~~text
 $items
-\`\`\`
+~~~
 "
 
 # The folded report gets what the summary leaves (${#summary} is the
-# summary's length), minus room for the details wrapper. iconv -c drops a
-# multibyte character that head -c cut in half.
+# summary's length), minus room for the details wrapper.
 report_budget=$((max_comment_bytes - ${#summary} - 200))
 # Never negative: GNU `head -c -N` prints all but the last N bytes.
 if [ "$report_budget" -lt 0 ]; then
@@ -85,11 +86,13 @@ fi
 	printf '%s\n' "$summary"
 	echo '<details><summary>Full levitate report</summary>'
 	echo
-	echo '```text'
+	echo '~~~text'
+	# iconv -c drops a multibyte character that head -c cut in half, but then
+	# exits 1, which pipefail would turn into a failed job; the output is fine.
+	head -c "$report_budget" "$report" | { iconv -f UTF-8 -t UTF-8 -c || true; }
 	# The trailing echo ends a report truncated mid-line, so the fence closes.
-	head -c "$report_budget" "$report" | iconv -f UTF-8 -t UTF-8 -c
 	echo
-	echo '```'
+	echo '~~~'
 	echo
 	echo '</details>'
 } >"$out"

@@ -16,8 +16,9 @@ function comment(t: TestContext, reportPath: string): string {
 	return readFileSync(commentPath, 'utf8');
 }
 
+/** Lines that open or close one of the comment's own (tilde) code blocks. */
 function fences(body: string): number {
-	return body.split('\n').filter((line) => line.startsWith('```')).length;
+	return body.split('\n').filter((line) => line.startsWith('~~~')).length;
 }
 
 describe('scripts/levitate-comment.sh', () => {
@@ -95,12 +96,49 @@ describe('scripts/levitate-comment.sh', () => {
 		assert.equal(fences(body) % 2, 0);
 	});
 
+	test('keeps the ```diff blocks from levitate inside the folded report', (t) => {
+		// levitate --markdown wraps each type diff in a ```diff block; those
+		// backtick lines must not end the comment's code block early.
+		const report = join(tempDir(t), 'report.txt');
+		writeText(
+			report,
+			[
+				'Comparing @grafana/data@12.0.0 to @grafana/data@13.0.0',
+				'1) Changed `PanelProps` used in `src/module.ts:3`',
+				'```diff',
+				'- width: number',
+				'+ width?: number',
+				'```',
+				'is not fully compatible',
+				'',
+			].join('\n')
+		);
+		const body = comment(t, report);
+		const details = body.slice(body.indexOf('<details>'));
+		const opening = details.indexOf('~~~text');
+		const closing = details.lastIndexOf('~~~');
+		assert.ok(opening < details.indexOf('```diff') && details.indexOf('```diff') < closing, 'the diff stays inside the code block');
+		assert.ok(closing < details.indexOf('</details>'), 'the code block closes before </details>');
+	});
+
+	test('does not fail when the cut lands inside a multibyte character', (t) => {
+		// iconv -c drops the cut character but exits 1; that must not fail the
+		// script. The report is all 4-byte emoji after a 0-3 byte prefix, so at
+		// least three of these four runs cut through the middle of one.
+		for (const prefix of ['', 'a', 'ab', 'abc']) {
+			const report = join(tempDir(t), 'report.txt');
+			writeText(report, `${prefix}${'🔍'.repeat(20_000)}`);
+			const body = comment(t, report);
+			assert.match(body, /~~~\n\n<\/details>\n$/, `prefix '${prefix}'`);
+		}
+	});
+
 	test('truncates a huge report and still closes the fence', (t) => {
 		const report = join(tempDir(t), 'report.txt');
 		writeText(report, 'x'.repeat(100_000)); // no trailing newline, cut mid-line
 		const body = comment(t, report);
 		assert.ok(body.length < 65_536, `comment is ${body.length} chars`);
 		assert.equal(fences(body) % 2, 0);
-		assert.match(body, /x\n```\n\n<\/details>\n$/);
+		assert.match(body, /x\n~~~\n\n<\/details>\n$/);
 	});
 });
