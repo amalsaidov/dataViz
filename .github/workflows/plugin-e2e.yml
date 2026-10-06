@@ -5,8 +5,8 @@
 # one workflow.
 #
 # The package's own docker-compose.yaml serves Grafana (not the monorepo dev
-# stack in plugins/): it mounts only this package's dist/, built by its
-# `build` script.
+# stack in plugins/), with this package's dist/ (built by its `build` script)
+# as the plugin.
 name: Plugin e2e
 
 on:
@@ -168,7 +168,7 @@ jobs:
 
       - name: Docker logs
         if: ${{ always() && steps.run-tests.outcome == 'failure' }}
-        run: docker compose logs > grafana-server.log 2>&1
+        run: docker compose logs
 
       - name: Stop grafana docker
         if: ${{ always() }}

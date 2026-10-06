@@ -23,7 +23,7 @@
   - `grafana/plugin-actions/e2e-version@3ef49643a84470fd25bafeb96701fa0be3be6746 # e2e-version/v3.0.2`
   - `grafana/plugin-actions/wait-for-grafana@4205a0824a13b71fdb9b9b49f28f5f72b754f81f # wait-for-grafana/v1.0.5`
   - bundle-size report script checkout: `repository: grafana/plugin-actions`, `ref: a66a1c96cdbb176f9cccf10cf23593e250db7cce # bundle-size/v1.1.0`
-- Local composite actions are referenced as `$/.github/actions/<name>`, the form already used and working in `i18n-verify.yml` and `ci.yml`. The local reusable workflow is referenced as `./.github/workflows/plugin-e2e.yml`.
+- Local composite actions are referenced as `$/.github/actions/<name>`, the form already used and working in `i18n-verify.yml` and `ci.yml`. The local reusable workflow is referenced as `$/.github/workflows/plugin-e2e.yml` (zizmor `self-repository`).
 - No `${{ }}` inside `run:` scripts. Pass values through `env:`. `${{ }}` in `with:`, `name:`, `if:`, `working-directory:`, `strategy:` is fine.
 - `zizmor .github/workflows/` must report nothing new.
 - Every job declares minimal `permissions:`. Workflows set `permissions: {}` at the top level.
@@ -402,7 +402,7 @@ git commit -m "refactor(CI): rename build-targets.json to plugin-ci.json and add
 
 **Interfaces:**
 - Consumes: `$/.github/actions/discover-plugins` with `changed-only: 'true'` → outputs `targets` `[{dir,pkg,id,script,plugin_json}]` and `e2e` `[{dir,pkg,url,grafana_dependency}]` (Task 5).
-- Produces: reusable workflow `./.github/workflows/plugin-e2e.yml` with string inputs `dir`, `pkg`, `url`, `grafana-dependency`.
+- Produces: reusable workflow `$/.github/workflows/plugin-e2e.yml` with string inputs `dir`, `pkg`, `url`, `grafana-dependency`.
 
 - [ ] **Step 1: Write `plugin-e2e.yml`**
 
@@ -709,7 +709,7 @@ jobs:
       fail-fast: false
       matrix:
         package: ${{ fromJSON(needs.discover.outputs.e2e) }}
-    uses: ./.github/workflows/plugin-e2e.yml
+    uses: $/.github/workflows/plugin-e2e.yml
     with:
       dir: ${{ matrix.package.dir }}
       pkg: ${{ matrix.package.pkg }}

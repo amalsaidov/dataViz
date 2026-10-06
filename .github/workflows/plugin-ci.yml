@@ -120,7 +120,7 @@ jobs:
       fail-fast: false
       matrix:
         package: ${{ fromJSON(needs.discover.outputs.e2e) }}
-    uses: ./.github/workflows/plugin-e2e.yml
+    uses: $/.github/workflows/plugin-e2e.yml
     with:
       dir: ${{ matrix.package.dir }}
       pkg: ${{ matrix.package.pkg }}
