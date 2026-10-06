@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { test, type TestContext } from 'node:test';
+import { describe, test, type TestContext } from 'node:test';
 import { SCRIPTS, bash, errors, tempDir, writeText } from './helpers.ts';
 
 const SCRIPT = join(SCRIPTS, 'build-targets.sh');
@@ -59,40 +59,42 @@ const ids: FakeIds = {
 	'@t/echarts': { dir: 'p/echarts', id: 'relations-panel', built: { build: 'echarts-app' } },
 };
 
-test('builds every target in order, deps first, inside log groups', (t) => {
-	const r = setup(t, [clock, relations], ids);
-	assert.equal(r.status, 0, r.stderr);
-	assert.deepEqual(r.calls, [
-		'pnpm turbo run build --filter @t/clock^...',
-		'pnpm --filter @t/clock run build',
-		'pnpm turbo run build --filter @t/echarts^...',
-		'pnpm --filter @t/echarts run build:relations',
-	]);
-	assert.match(r.stdout, /::group::@t\/clock → clock-panel/);
-	assert.match(r.stdout, /::group::@t\/echarts → relations-panel/);
-});
+describe('scripts/build-targets.sh', () => {
+	test('builds every target in order, deps first, inside log groups', (t) => {
+		const r = setup(t, [clock, relations], ids);
+		assert.equal(r.status, 0, r.stderr);
+		assert.deepEqual(r.calls, [
+			'pnpm turbo run build --filter @t/clock^...',
+			'pnpm --filter @t/clock run build',
+			'pnpm turbo run build --filter @t/echarts^...',
+			'pnpm --filter @t/echarts run build:relations',
+		]);
+		assert.match(r.stdout, /::group::@t\/clock → clock-panel/);
+		assert.match(r.stdout, /::group::@t\/echarts → relations-panel/);
+	});
 
-test('fails when the build put a different plugin in dist/', (t) => {
-	const r = setup(t, [{ ...relations, script: 'build' }], ids);
-	assert.equal(r.status, 1);
-	assert.match(r.stdout, /::error file=p\/echarts\/dist\/plugin.json::.*built 'echarts-app', expected 'relations-panel'/);
-});
+	test('fails when the build put a different plugin in dist/', (t) => {
+		const r = setup(t, [{ ...relations, script: 'build' }], ids);
+		assert.equal(r.status, 1);
+		assert.match(r.stdout, /::error file=p\/echarts\/dist\/plugin.json::.*built 'echarts-app', expected 'relations-panel'/);
+	});
 
-test('fails with an annotation when the build wrote no dist/plugin.json', (t) => {
-	const r = setup(t, [{ ...clock, script: 'nodist' }], ids);
-	assert.equal(r.status, 1);
-	assert.match(r.stdout, /::error file=p\/clock\/package.json::.*wrote no dist\/plugin.json/);
-});
+	test('fails with an annotation when the build wrote no dist/plugin.json', (t) => {
+		const r = setup(t, [{ ...clock, script: 'nodist' }], ids);
+		assert.equal(r.status, 1);
+		assert.match(r.stdout, /::error file=p\/clock\/package.json::.*wrote no dist\/plugin.json/);
+	});
 
-test('stops at the first failing build', (t) => {
-	const r = setup(t, [{ ...clock, script: 'fail' }, relations], ids);
-	assert.notEqual(r.status, 0);
-	assert.ok(!r.calls.some((c) => c.includes('@t/echarts')), 'later targets are not built');
-});
+	test('stops at the first failing build', (t) => {
+		const r = setup(t, [{ ...clock, script: 'fail' }, relations], ids);
+		assert.notEqual(r.status, 0);
+		assert.ok(!r.calls.some((c) => c.includes('@t/echarts')), 'later targets are not built');
+	});
 
-test('fails rather than passing green when there are no targets', (t) => {
-	const r = setup(t, [], ids);
-	assert.equal(r.status, 1);
-	assert.equal(errors(r.stdout).length, 1);
-	assert.deepEqual(r.calls, []);
+	test('fails rather than passing green when there are no targets', (t) => {
+		const r = setup(t, [], ids);
+		assert.equal(r.status, 1);
+		assert.equal(errors(r.stdout).length, 1);
+		assert.deepEqual(r.calls, []);
+	});
 });

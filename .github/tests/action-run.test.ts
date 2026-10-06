@@ -23,24 +23,26 @@ function run(t: TestContext, env: Record<string, string>): { args: string[]; e2e
 	return { args: JSON.parse(outputs.targets), e2e: outputs.e2e };
 }
 
-describe('base selection', () => {
-	const ROOT = 'plugins/packages/@plugins';
-	// [case, env, expected discover.sh arguments]
-	const cases: [string, Record<string, string>, string[]][] = [
-		['changed-only off passes no base', { PR_BASE: 'abc123' }, [ROOT]],
-		['pull_request uses the PR base', { CHANGED_ONLY: 'true', PR_BASE: 'abc123', PUSH_BEFORE: 'def456' }, [ROOT, 'abc123']],
-		['push uses the previous commit', { CHANGED_ONLY: 'true', PUSH_BEFORE: 'def456' }, [ROOT, 'def456']],
-		['a branch-creating push (all-zero before) passes no base', { CHANGED_ONLY: 'true', PUSH_BEFORE: '0'.repeat(40) }, [ROOT]],
-		['no event base (workflow_dispatch) passes no base', { CHANGED_ONLY: 'true' }, [ROOT]],
-	];
+describe('discover-plugins/run.sh', () => {
+	describe('base selection', () => {
+		const ROOT = 'plugins/packages/@plugins';
+		// [case, env, expected discover.sh arguments]
+		const cases: [string, Record<string, string>, string[]][] = [
+			['changed-only off passes no base', { PR_BASE: 'abc123' }, [ROOT]],
+			['pull_request uses the PR base', { CHANGED_ONLY: 'true', PR_BASE: 'abc123', PUSH_BEFORE: 'def456' }, [ROOT, 'abc123']],
+			['push uses the previous commit', { CHANGED_ONLY: 'true', PUSH_BEFORE: 'def456' }, [ROOT, 'def456']],
+			['a branch-creating push (all-zero before) passes no base', { CHANGED_ONLY: 'true', PUSH_BEFORE: '0'.repeat(40) }, [ROOT]],
+			['no event base (workflow_dispatch) passes no base', { CHANGED_ONLY: 'true' }, [ROOT]],
+		];
 
-	for (const [name, env, expected] of cases) {
-		test(name, (t) => {
-			assert.deepEqual(run(t, env).args, expected);
-		});
-	}
-});
+		for (const [name, env, expected] of cases) {
+			test(name, (t) => {
+				assert.deepEqual(run(t, env).args, expected);
+			});
+		}
+	});
 
-test('writes both lists as compact single-line outputs', (t) => {
-	assert.equal(run(t, {}).e2e, '[]');
+	test('writes targets and e2e as compact single-line outputs', (t) => {
+		assert.equal(run(t, {}).e2e, '[]');
+	});
 });

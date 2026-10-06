@@ -45,13 +45,13 @@ function runScripts(file: string): { line: number; text: string }[] {
 }
 
 describe('workflows', () => {
-	test('there are workflows to check', () => {
+	test('finds tracked workflows to check', () => {
 		assert.ok(workflows.length > 0);
 	});
 
 	for (const file of workflows) {
 		describe(file, () => {
-			test('top-level permissions: {}', () => {
+			test('defaults the token to no permissions (top-level permissions: {})', () => {
 				assert.ok(lines(file).includes('permissions: {}'), 'workflow must default the token to no permissions');
 			});
 
@@ -164,7 +164,7 @@ describe('PR write tokens never run PR code', () => {
 		}
 	}
 
-	test('the guard sees the report jobs', () => {
+	test('covers both comment-posting report jobs', () => {
 		const guarded = workflows.flatMap((f) =>
 			jobs(f)
 				.filter((j) => j.lines.some((l) => /^ {6}pull-requests:\s*write/.test(l)))
