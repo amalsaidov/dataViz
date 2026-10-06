@@ -137,9 +137,9 @@ Differences worth knowing:
   `src/modules/relations/plugin.json` (`build:relations` publishes it standalone as
   `grafana-relations-panel`). Both use the reserved link names from `plugin-metadata.md`. The other
   `src/modules/*/plugin.json` ship only inside the app.
-- **Root CI builds `grafana-relations-panel`, not the app.** Its `plugin-ci.json` lists only the
-  relations target (`build:relations`). `build` itself is still the app build, used by the dev stack and
-  the root CI e2e and bundle-stats workflows. Adding another standalone module needs a `build:<module>` script
+- **CI builds `grafana-relations-panel`, not the app.** Its `plugin-ci.json` lists only the
+  relations target (`build:relations`), so root CI, compatibility and bundle stats all use it. `build` itself
+  is still the app build, used by the dev stack and `plugin-e2e.yml` (e2e tests the app). Adding another standalone module needs a `build:<module>` script
   **and** webpack support (`--env standalone=<module>` currently accepts only `relations`), plus a target
   entry. To build the app in root CI too, add `{ "id": "grafana-echarts-app", "script": "build", "pluginJson": "src/plugin.json" }`.
 - **It is not yet in i18n CI, and when it opts in it gets ONE Crowdin project, not one per published
