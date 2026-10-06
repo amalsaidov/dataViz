@@ -54,5 +54,35 @@ jobs:
         run: pnpm type-check
       - name: Unit tests
         run: pnpm test:ci
+      # Builds what each package publishes, per its build-targets.json (or the
+      # implicit src/plugin.json + `build` target), rather than every
+      # package's `build` script. Sequential: targets of one package share
+      # dist/, so they cannot build concurrently.
+      - name: Discover build targets
+        id: targets
+        uses: $/.github/actions/discover-build-targets
       - name: Build
-        run: pnpm build
+        env:
+          TARGETS: ${{ steps.targets.outputs.targets }}
+        run: |
+          set -euo pipefail
+          count="$(jq 'length' <<<"$TARGETS")"
+          for ((i = 0; i < count; i++)); do
+            dir="$(jq -r ".[$i].dir" <<<"$TARGETS")"
+            pkg="$(jq -r ".[$i].pkg" <<<"$TARGETS")"
+            id="$(jq -r ".[$i].id" <<<"$TARGETS")"
+            script="$(jq -r ".[$i].script" <<<"$TARGETS")"
+
+            echo "::group::$pkg → $id"
+            # `^...` builds the package's workspace dependencies but not the
+            # package itself; exits 0 when it has none.
+            pnpm turbo run build --filter "$pkg^..."
+            pnpm --filter "$pkg" run "$script"
+            built="$(jq -r '.id // ""' "$GITHUB_WORKSPACE/$dir/dist/plugin.json")"
+            echo "::endgroup::"
+
+            if [ "$built" != "$id" ]; then
+              echo "::error file=$dir/dist/plugin.json::$pkg script '$script' built '$built', expected '$id'"
+              exit 1
+            fi
+          done
