@@ -136,10 +136,11 @@ jobs:
         with:
           url: ${{ inputs.url }}/login
 
-      # Installing Chromium took ~4 minutes per leg against ~12s of tests, so the
-      # browser download is cached per Playwright version (packages pin
-      # different ones). The OS packages it needs aren't cacheable this way,
-      # so a cache hit still runs install-deps.
+      # The Chromium download is cached per Playwright version (packages pin
+      # different ones). Uncached it usually takes ~30s but swings to several
+      # minutes with runner and network availability; the cache removes that
+      # download. The OS packages it needs aren't cacheable this way, so a
+      # cache hit still runs install-deps.
       - name: Read Playwright version
         id: playwright
         run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
