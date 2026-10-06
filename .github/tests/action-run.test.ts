@@ -24,28 +24,21 @@ function run(t: TestContext, env: Record<string, string>): { args: string[]; e2e
 }
 
 describe('base selection', () => {
-	test('changed-only off passes no base', (t) => {
-		assert.deepEqual(run(t, { PR_BASE: 'abc123' }).args, ['plugins/packages/@plugins']);
-	});
+	const ROOT = 'plugins/packages/@plugins';
+	// [case, env, expected discover.sh arguments]
+	const cases: [string, Record<string, string>, string[]][] = [
+		['changed-only off passes no base', { PR_BASE: 'abc123' }, [ROOT]],
+		['pull_request uses the PR base', { CHANGED_ONLY: 'true', PR_BASE: 'abc123', PUSH_BEFORE: 'def456' }, [ROOT, 'abc123']],
+		['push uses the previous commit', { CHANGED_ONLY: 'true', PUSH_BEFORE: 'def456' }, [ROOT, 'def456']],
+		['a branch-creating push (all-zero before) passes no base', { CHANGED_ONLY: 'true', PUSH_BEFORE: '0'.repeat(40) }, [ROOT]],
+		['no event base (workflow_dispatch) passes no base', { CHANGED_ONLY: 'true' }, [ROOT]],
+	];
 
-	test('pull_request uses the PR base', (t) => {
-		assert.deepEqual(run(t, { CHANGED_ONLY: 'true', PR_BASE: 'abc123', PUSH_BEFORE: 'def456' }).args, [
-			'plugins/packages/@plugins',
-			'abc123',
-		]);
-	});
-
-	test('push uses the previous commit', (t) => {
-		assert.deepEqual(run(t, { CHANGED_ONLY: 'true', PUSH_BEFORE: 'def456' }).args, ['plugins/packages/@plugins', 'def456']);
-	});
-
-	test('a branch-creating push (all-zero before) passes no base', (t) => {
-		assert.deepEqual(run(t, { CHANGED_ONLY: 'true', PUSH_BEFORE: '0'.repeat(40) }).args, ['plugins/packages/@plugins']);
-	});
-
-	test('no event base (workflow_dispatch) passes no base', (t) => {
-		assert.deepEqual(run(t, { CHANGED_ONLY: 'true' }).args, ['plugins/packages/@plugins']);
-	});
+	for (const [name, env, expected] of cases) {
+		test(name, (t) => {
+			assert.deepEqual(run(t, env).args, expected);
+		});
+	}
 });
 
 test('writes both lists as compact single-line outputs', (t) => {

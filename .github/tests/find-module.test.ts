@@ -17,20 +17,25 @@ function find(t: TestContext, files: string[], pluginJson = 'src/plugin.json') {
 	return { ...r, path: readOutputs(output).path };
 }
 
-test('finds module.ts next to plugin.json', (t) => {
-	const r = find(t, ['src/plugin.json', 'src/module.ts']);
-	assert.equal(r.status, 0, r.stderr);
-	assert.equal(r.path, './pkg/src/module.ts');
-});
+// [case, files in the package, target pluginJson, expected path output]
+const found: [string, string[], string, string][] = [
+	['finds module.ts next to plugin.json', ['src/plugin.json', 'src/module.ts'], 'src/plugin.json', './pkg/src/module.ts'],
+	[
+		'finds module.tsx for a nested target',
+		['src/modules/relations/plugin.json', 'src/modules/relations/module.tsx'],
+		'src/modules/relations/plugin.json',
+		'./pkg/src/modules/relations/module.tsx',
+	],
+	['prefers module.ts when both exist', ['src/module.ts', 'src/module.tsx'], 'src/plugin.json', './pkg/src/module.ts'],
+];
 
-test('finds module.tsx for a nested target', (t) => {
-	const r = find(t, ['src/modules/relations/plugin.json', 'src/modules/relations/module.tsx'], 'src/modules/relations/plugin.json');
-	assert.equal(r.path, './pkg/src/modules/relations/module.tsx');
-});
-
-test('prefers module.ts when both exist', (t) => {
-	assert.equal(find(t, ['src/module.ts', 'src/module.tsx']).path, './pkg/src/module.ts');
-});
+for (const [name, files, pluginJson, expected] of found) {
+	test(name, (t) => {
+		const r = find(t, files, pluginJson);
+		assert.equal(r.status, 0, r.stderr);
+		assert.equal(r.path, expected);
+	});
+}
 
 test('fails with an annotation when there is no module', (t) => {
 	const r = find(t, ['src/plugin.json']);
