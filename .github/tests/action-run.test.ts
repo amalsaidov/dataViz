@@ -3,10 +3,10 @@
 // cover only the entry point's own logic.
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { describe, test } from 'node:test';
-import { ACTION_RUN, bash, readOutputs, tempDir, writeText } from './helpers.mjs';
+import { describe, test, type TestContext } from 'node:test';
+import { ACTION_RUN, bash, readOutputs, tempDir, writeText } from './helpers.ts';
 
-function run(t, env) {
+function run(t: TestContext, env: Record<string, string>): { args: string[]; e2e: string } {
 	const dir = tempDir(t);
 	writeText(
 		join(dir, 'discover.sh'),

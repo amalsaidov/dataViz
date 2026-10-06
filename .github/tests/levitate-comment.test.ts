@@ -3,20 +3,20 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { test } from 'node:test';
-import { FIXTURES, SCRIPTS, bash, tempDir, writeText } from './helpers.mjs';
+import { test, type TestContext } from 'node:test';
+import { FIXTURES, SCRIPTS, bash, tempDir, writeText } from './helpers.ts';
 
 const SCRIPT = join(SCRIPTS, 'levitate-comment.sh');
 const ENV = { ID: 'clock-panel', MODULE: './plugins/x/src/module.ts', RUN_URL: 'https://example.test/runs/1' };
 
-function comment(t, reportPath) {
+function comment(t: TestContext, reportPath: string): string {
 	const out = join(tempDir(t), 'comment.md');
 	const r = bash(SCRIPT, [reportPath, out], { env: ENV });
 	assert.equal(r.status, 0, r.stderr);
 	return readFileSync(out, 'utf8');
 }
 
-function fences(body) {
+function fences(body: string): number {
 	return body.split('\n').filter((l) => l.startsWith('```')).length;
 }
 

@@ -1,12 +1,12 @@
 // scripts/find-module.sh: locating module.ts(x) next to a target's plugin.json.
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { test } from 'node:test';
-import { SCRIPTS, bash, readOutputs, tempDir, writeText } from './helpers.mjs';
+import { test, type TestContext } from 'node:test';
+import { SCRIPTS, bash, readOutputs, tempDir, writeText } from './helpers.ts';
 
 const SCRIPT = join(SCRIPTS, 'find-module.sh');
 
-function find(t, files, pluginJson = 'src/plugin.json') {
+function find(t: TestContext, files: string[], pluginJson = 'src/plugin.json') {
 	const cwd = tempDir(t);
 	for (const f of files) {
 		writeText(join(cwd, 'pkg', f), '');

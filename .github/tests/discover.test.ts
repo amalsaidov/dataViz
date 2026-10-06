@@ -2,14 +2,28 @@
 import assert from 'node:assert/strict';
 import { renameSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, test } from 'node:test';
-import { DISCOVER, bash, errors, git, mkPkg, tempDir, writeText } from './helpers.mjs';
+import { describe, test, type TestContext } from 'node:test';
+import { DISCOVER, type PkgOptions, type RunResult, bash, errors, git, mkPkg, tempDir, writeText } from './helpers.ts';
 
-function discover(root, args = [], cwd) {
+interface Target {
+	dir: string;
+	pkg: string;
+	id: string;
+	script: string;
+	plugin_json: string;
+}
+interface E2e {
+	dir: string;
+	pkg: string;
+	url: string;
+	grafana_dependency: string;
+}
+
+function discover(root: string, args: string[] = [], cwd?: string): RunResult {
 	return bash(DISCOVER, [root, ...args], cwd ? { cwd } : {});
 }
 
-function ok(result) {
+function ok(result: RunResult): { targets: Target[]; e2e: E2e[] } {
 	assert.equal(result.status, 0, result.stderr);
 	return JSON.parse(result.stdout);
 }
@@ -82,20 +96,20 @@ describe('e2e', () => {
 });
 
 describe('validation', () => {
-	// Each case: [package name, package options, extra setup, expected error substring].
-	const cases = [
-		['bad id', { id: 'x', pluginCi: { targets: [{ id: 'Bad_Id', script: 'build', pluginJson: 'src/plugin.json' }] } }, null, 'must match'],
-		['missing script', { id: 'x', pluginCi: { targets: [{ id: 'x', script: 'build:nope', pluginJson: 'src/plugin.json' }] } }, null, "script 'build:nope' is not in"],
-		['missing pluginJson', { id: 'x', pluginCi: { targets: [{ id: 'x', script: 'build', pluginJson: 'src/missing.json' }] } }, null, 'does not exist'],
-		['id mismatch', { id: 'actual', pluginCi: { targets: [{ id: 'declared', script: 'build', pluginJson: 'src/plugin.json' }] } }, null, "has id 'actual'"],
-		['empty targets', { id: 'x', pluginCi: { targets: [] } }, null, 'non-empty array'],
-		['no identity', {}, null, 'no build target'],
-		['e2e script without config', { id: 'x', scripts: { build: 'x', e2e: 'x' } }, null, 'no playwright.config.ts'],
-		['config without e2e script', { id: 'x', playwright: true }, null, 'has no e2e script'],
-		['e2e without grafanaDependency', { id: 'x', scripts: { build: 'x', e2e: 'x' }, playwright: true, grafanaDependency: '' }, null, 'no dependencies.grafanaDependency'],
+	// Each case: [name, package options, expected error substring].
+	const cases: [string, PkgOptions, string][] = [
+		['bad id', { id: 'x', pluginCi: { targets: [{ id: 'Bad_Id', script: 'build', pluginJson: 'src/plugin.json' }] } }, 'must match'],
+		['missing script', { id: 'x', pluginCi: { targets: [{ id: 'x', script: 'build:nope', pluginJson: 'src/plugin.json' }] } }, "script 'build:nope' is not in"],
+		['missing pluginJson', { id: 'x', pluginCi: { targets: [{ id: 'x', script: 'build', pluginJson: 'src/missing.json' }] } }, 'does not exist'],
+		['id mismatch', { id: 'actual', pluginCi: { targets: [{ id: 'declared', script: 'build', pluginJson: 'src/plugin.json' }] } }, "has id 'actual'"],
+		['empty targets', { id: 'x', pluginCi: { targets: [] } }, 'non-empty array'],
+		['no identity', {}, 'no build target'],
+		['e2e script without config', { id: 'x', scripts: { build: 'x', e2e: 'x' } }, 'no playwright.config.ts'],
+		['config without e2e script', { id: 'x', playwright: true }, 'has no e2e script'],
+		['e2e without grafanaDependency', { id: 'x', scripts: { build: 'x', e2e: 'x' }, playwright: true, grafanaDependency: '' }, 'no dependencies.grafanaDependency'],
 	];
 
-	for (const [name, opts, , expected] of cases) {
+	for (const [name, opts, expected] of cases) {
 		test(name, (t) => {
 			const root = tempDir(t);
 			mkPkg(root, 'p', opts);
@@ -129,7 +143,7 @@ describe('validation', () => {
 
 describe('changed-only', () => {
 	// A temp repo laid out like this one, so paths match the real rules.
-	function repo(t) {
+	function repo(t: TestContext): { cwd: string; root: string; base: string } {
 		const cwd = tempDir(t);
 		const root = 'plugins/packages/@plugins';
 		git(cwd, 'init', '-q', '-b', 'main');
@@ -142,13 +156,13 @@ describe('changed-only', () => {
 		return { cwd, root, base: git(cwd, 'rev-parse', 'HEAD') };
 	}
 
-	function change(cwd, path) {
+	function change(cwd: string, path: string): void {
 		writeText(join(cwd, path), `// ${Math.random()}\n`);
 		git(cwd, 'add', '-A');
 		git(cwd, 'commit', '-qm', 'change');
 	}
 
-	function selected(cwd, root, base) {
+	function selected(cwd: string, root: string, base: string): { t: string[]; e: string[] } {
 		const out = ok(discover(root, [base], cwd));
 		return { t: out.targets.map((x) => x.id), e: out.e2e.map((x) => x.pkg) };
 	}

@@ -2,8 +2,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { test } from 'node:test';
-import { SCRIPTS, bash, errors, tempDir, writeText } from './helpers.mjs';
+import { test, type TestContext } from 'node:test';
+import { SCRIPTS, bash, errors, tempDir, writeText } from './helpers.ts';
 
 const SCRIPT = join(SCRIPTS, 'build-targets.sh');
 
@@ -23,7 +23,17 @@ if [ "$1" = --filter ] && [ "$3" = run ]; then
 fi
 `;
 
-function setup(t, targets, fakeIds) {
+interface Target {
+	dir: string;
+	pkg: string;
+	id: string;
+	script: string;
+}
+
+/** Per package: where it lives, its id, and ids particular scripts build instead. */
+type FakeIds = Record<string, { dir: string; id: string; built?: Record<string, string> }>;
+
+function setup(t: TestContext, targets: Target[], fakeIds: FakeIds) {
 	const ws = tempDir(t);
 	const bin = join(ws, 'bin');
 	writeText(join(bin, 'pnpm'), FAKE_PNPM, { executable: true });
@@ -42,9 +52,9 @@ function setup(t, targets, fakeIds) {
 	return { ...r, calls: readFileSync(log, 'utf8').trim().split('\n').filter(Boolean) };
 }
 
-const clock = { dir: 'p/clock', pkg: '@t/clock', id: 'clock-panel', script: 'build' };
-const relations = { dir: 'p/echarts', pkg: '@t/echarts', id: 'relations-panel', script: 'build:relations' };
-const ids = {
+const clock: Target = { dir: 'p/clock', pkg: '@t/clock', id: 'clock-panel', script: 'build' };
+const relations: Target = { dir: 'p/echarts', pkg: '@t/echarts', id: 'relations-panel', script: 'build:relations' };
+const ids: FakeIds = {
 	'@t/clock': { dir: 'p/clock', id: 'clock-panel' },
 	'@t/echarts': { dir: 'p/echarts', id: 'relations-panel', built: { build: 'echarts-app' } },
 };

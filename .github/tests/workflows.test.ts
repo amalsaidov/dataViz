@@ -9,22 +9,22 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, test } from 'node:test';
-import { REPO } from './helpers.mjs';
+import { REPO } from './helpers.ts';
 
-function tracked(...patterns) {
+function tracked(...patterns: string[]): string[] {
 	return execFileSync('git', ['ls-files', ...patterns], { cwd: REPO, encoding: 'utf8' }).split('\n').filter(Boolean);
 }
 
 const workflows = tracked('.github/workflows/*.yml', '.github/workflows/*.yaml');
 const actions = tracked('.github/actions/*/action.yml', '.github/actions/*/action.yaml');
 
-const indent = (line) => line.length - line.trimStart().length;
-const lines = (file) => readFileSync(join(REPO, file), 'utf8').split('\n');
+const indent = (line: string): number => line.length - line.trimStart().length;
+const lines = (file: string): string[] => readFileSync(join(REPO, file), 'utf8').split('\n');
 
 /** Every `run:` script as { line, text }, block scalars included. */
-function runScripts(file) {
+function runScripts(file: string): { line: number; text: string }[] {
 	const ls = lines(file);
-	const scripts = [];
+	const scripts: { line: number; text: string }[] = [];
 	ls.forEach((l, i) => {
 		const m = l.match(/^(\s*)(?:- )?run:\s*(.*)$/);
 		if (!m) {
@@ -35,7 +35,7 @@ function runScripts(file) {
 			scripts.push({ line: i + 1, text: m[2] });
 			return;
 		}
-		const body = [];
+		const body: string[] = [];
 		for (let j = i + 1; j < ls.length && (ls[j].trim() === '' || indent(ls[j]) > keyIndent); j++) {
 			body.push(ls[j]);
 		}
@@ -59,8 +59,8 @@ describe('workflows', () => {
 				const ls = lines(file);
 				const start = ls.indexOf('jobs:');
 				assert.ok(start >= 0);
-				let job;
-				const missing = [];
+				let job: string | undefined;
+				const missing: string[] = [];
 				let has = false;
 				for (const l of [...ls.slice(start + 1), 'end:']) {
 					if (/^\S/.test(l) || /^ {2}[\w-]+:\s*$/.test(l)) {
@@ -87,7 +87,7 @@ describe('workflows and composite actions', () => {
 		describe(file, () => {
 			test('third-party uses: are pinned to a commit SHA with a # tag comment', () => {
 				const bad = lines(file)
-					.map((l, i) => [i + 1, l.trim()])
+					.map((l, i): [number, string] => [i + 1, l.trim()])
 					.filter(([, l]) => /^(- )?uses:/.test(l))
 					.filter(([, l]) => !/uses: (\$|\.)\//.test(l))
 					.filter(([, l]) => !/uses: [\w.-]+\/[\w./-]+@[0-9a-f]{40} # \S+/.test(l));

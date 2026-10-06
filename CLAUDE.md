@@ -223,10 +223,13 @@ Iterate on CI logic locally, and push only to confirm what needs GitHub itself (
 matrix/reusable-workflow fan-out, token scope). Run from the repo root:
 
 ```bash
-node --test '.github/tests/*.test.mjs'
+node --test '.github/tests/*.test.ts'     # run
+plugins/node_modules/.bin/tsc -p .github/tests   # type-check (after `pnpm install` in plugins/)
 ```
 
-(A glob, not a directory: Node 24's `--test` doesn't take directories.) Local only, not run in CI, no
+TypeScript run directly by Node 24, which strips the types, so: erasable syntax only (no `enum`,
+`namespace`, parameter properties), `.ts` extensions in imports, and Node does not type-check, so `tsc`
+does. A glob, not a directory: Node 24's `--test` doesn't take directories. Local only, not run in CI, no
 dependencies. It covers `discover-plugins` (targets, e2e, every validation error, `changed-only` against
 temp git repos), the scripts in `.github/scripts/` (with a fake `pnpm` on `PATH`, so no real builds), and
 security invariants over every **tracked** workflow and composite action: SHA-pinned third-party
