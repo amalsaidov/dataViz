@@ -190,9 +190,10 @@ comes from `.github/actions/discover-plugins`, which reads an optional
   Grafana. A package gets e2e CI when it has both an `e2e` script and a `playwright.config.ts`. Having only
   one of them is a discovery error.
 - The levitate `compatibility (<id>)` jobs in `plugin-ci.yml` are **non-blocking**: a possible
-  incompatibility leaves the job green and adds a `Grafana API compatibility (<id>)` warning annotation.
+  incompatibility leaves the job green, adds a `Grafana API compatibility (<id>)` warning annotation, and
+  posts levitate's report as a PR comment keyed per plugin id (deleted again once a later run is clean).
   levitate flags any type change in a used export, so most hits are type-only (the e2e jobs show whether
-  it actually breaks). Read the job log when the warning appears.
+  it actually breaks).
 
 ## GitHub Actions workflows
 
