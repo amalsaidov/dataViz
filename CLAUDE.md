@@ -236,7 +236,10 @@ does. A glob, not a directory: Node 24's `--test` doesn't take directories. Loca
 dependencies. It covers `discover-plugins` (targets, e2e, every validation error, `changed-only` against
 temp git repos), the scripts in `.github/scripts/` (with a fake `pnpm` on `PATH`, so no real builds), and
 security invariants over every **tracked** workflow and composite action: SHA-pinned third-party
-`uses:`, no `${{ }}` inside `run:`, top-level `permissions: {}`, per-job `permissions:`.
+`uses:`, no `${{ }}` inside `run:`, top-level `permissions: {}`, per-job `permissions:`, and no job holding
+`pull-requests: write` checks out this repo or runs package or repo code. It also fails if a cached task
+in `plugins/turbo.json` narrows its `inputs` without `$TURBO_DEFAULT$`, since root CI's persisted turbo
+cache would then replay stale results.
 
 That's why non-trivial step logic lives in `.github/scripts/*.sh` rather than inline `run:` blocks: a
 script can be tested; the workflow keeps only the `env:` wiring. zizmor audits YAML only, so keep those
