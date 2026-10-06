@@ -40,17 +40,4 @@ runs:
         PR_BASE: ${{ github.event.pull_request.base.sha }}
         PUSH_BEFORE: ${{ github.event.before }}
         ACTION_PATH: ${{ github.action_path }}
-      run: |
-        set -euo pipefail
-        base=''
-        if [ "$CHANGED_ONLY" = true ]; then
-          base="${PR_BASE:-$PUSH_BEFORE}"
-          # A push that creates a branch has an all-zero `before`.
-          [[ "$base" =~ ^0+$ ]] && base=''
-        fi
-        result="$(bash "$ACTION_PATH/discover.sh" "$ROOT" $base)"
-        jq . <<<"$result"
-        {
-          echo "targets=$(jq -c '.targets' <<<"$result")"
-          echo "e2e=$(jq -c '.e2e' <<<"$result")"
-        } >> "$GITHUB_OUTPUT"
+      run: bash "$ACTION_PATH/run.sh"

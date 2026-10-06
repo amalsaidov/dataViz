@@ -1,0 +1,51 @@
+🔍 Resolving @grafana/data@latest...
+🔍 Resolving @grafana/ui@latest...
+🔍 Resolving @grafana/runtime@latest...
+🔍 Resolving @grafana/schema@latest...
+🔍 Resolving @grafana/e2e-selectors@latest...
+🔍 Resolving @grafana/experimental@latest...
+
+
+🔬 Checking compatibility between ./plugins/packages/@plugins/grafana-clock-panel/src/module.ts and @grafana/data@13.2.3...
+✔ Found @grafana/data version 12.2.10 locally
+
+
+🔬 Checking compatibility between ./plugins/packages/@plugins/grafana-clock-panel/src/module.ts and @grafana/ui@13.2.3...
+✔ Found @grafana/ui version 12.2.10 locally
+
+
+🔬 Checking compatibility between ./plugins/packages/@plugins/grafana-clock-panel/src/module.ts and @grafana/runtime@13.2.3...
+✔ Found @grafana/runtime version 12.2.10 locally
+
+Comparing @grafana/runtime@12.2.10 to @grafana/runtime@13.2.3
+
+  INCOMPATIBILITIES (3)
+
+1) Changed `config` used in `/home/runner/work/dataViz/dataViz/plugins/packages/@plugins/grafana-clock-panel/src/ColorEditor.tsx:4`
+	To get more details run  `npx @grafana/levitate@latest compare --prev @grafana/runtime@12.2.10 --current @grafana/runtime@13.2.3 --json`
+2) Changed `config` used in `/home/runner/work/dataViz/dataViz/plugins/packages/@plugins/grafana-clock-panel/src/migrations.ts:3`
+	To get more details run  `npx @grafana/levitate@latest compare --prev @grafana/runtime@12.2.10 --current @grafana/runtime@13.2.3 --json`
+3) Changed `config` used in `plugins/packages/@plugins/grafana-clock-panel/src/module.ts:9`
+	To get more details run  `npx @grafana/levitate@latest compare --prev @grafana/runtime@12.2.10 --current @grafana/runtime@13.2.3 --json`
+
+
+🔬 Checking compatibility between ./plugins/packages/@plugins/grafana-clock-panel/src/module.ts and @grafana/schema@13.2.3...
+✔ Found @grafana/schema version 12.2.10 locally
+
+
+🔬 Checking compatibility between ./plugins/packages/@plugins/grafana-clock-panel/src/module.ts and @grafana/e2e-selectors@13.2.3...
+   Skipping package @grafana/e2e-selectors because it is not used in the project or not installed locally.
+   did you forget to run yarn install or npm install?
+
+
+
+🔬 Checking compatibility between ./plugins/packages/@plugins/grafana-clock-panel/src/module.ts and @grafana/experimental@2.1.6...
+   Skipping package @grafana/experimental because it is not used in the project or not installed locally.
+   did you forget to run yarn install or npm install?
+
+
+
+./plugins/packages/@plugins/grafana-clock-panel/src/module.ts is not fully compatible with @grafana/data,@grafana/ui,@grafana/runtime,@grafana/schema,@grafana/e2e-selectors,@grafana/experimental
+Please read over the compatibility report above and update possible issues.
+
+If you think the compatibility issues are not a problem (e.g. only type changes), it is adviced to update the target list of packages to their latest version in your project.

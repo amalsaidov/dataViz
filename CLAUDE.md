@@ -217,6 +217,30 @@ and pin as `uses: <owner>/<repo>@<sha> # <tag>`. Don't use `git/refs/tags/<tag> 
 for an **annotated** tag that returns the tag *object's* SHA, not the commit, and zizmor flags it as an
 impostor commit (this is how `pnpm/action-setup@f520ece…` got pinned; its `v6` commit is `0977fd9…`).
 
+### Testing CI changes locally
+
+Iterate on CI logic locally, and push only to confirm what needs GitHub itself (PR comments, artifacts,
+matrix/reusable-workflow fan-out, token scope). Run from the repo root:
+
+```bash
+node --test '.github/tests/*.test.mjs'
+```
+
+(A glob, not a directory: Node 24's `--test` doesn't take directories.) Local only, not run in CI, no
+dependencies. It covers `discover-plugins` (targets, e2e, every validation error, `changed-only` against
+temp git repos), the scripts in `.github/scripts/` (with a fake `pnpm` on `PATH`, so no real builds), and
+security invariants over every **tracked** workflow and composite action: SHA-pinned third-party
+`uses:`, no `${{ }}` inside `run:`, top-level `permissions: {}`, per-job `permissions:`.
+
+That's why non-trivial step logic lives in `.github/scripts/*.sh` rather than inline `run:` blocks: a
+script can be tested; the workflow keeps only the `env:` wiring. zizmor audits YAML only, so keep those
+scripts small. They sit under `.github/`, and the same reviewers apply.
+
+**Jobs that hold a PR write token run no PR code.** `plugin-ci.yml` and `plugin-bundle-stats.yml` each
+split into a read-only job that installs, builds and analyses (PR code, plus unpinned levitate from
+npm), and a report job with `pull-requests: write` that checks out nothing from the PR and only turns
+the first job's artifact into a comment. Keep that split when adding comment-posting steps.
+
 ## Bringing a plugin into this monorepo
 
 Four command docs cover this, in the order you'll need them:

@@ -54,12 +54,11 @@ jobs:
     needs: discover
     if: github.event_name == 'pull_request' && needs.discover.outputs.targets != '[]'
     runs-on: ubuntu-latest
-    # pull-requests: write is only for the per-plugin report comment. On fork
-    # PRs the `pull_request` token is read-only regardless; those comment steps
-    # are continue-on-error, so the job stays green without a comment.
+    # Read-only: this job runs PR code (install scripts, the build) and an
+    # unpinned levitate from npm. Commenting happens in compatibility-report,
+    # which runs none of that.
     permissions:
       contents: read
-      pull-requests: write
     strategy:
       fail-fast: false
       matrix:
@@ -91,22 +90,12 @@ jobs:
           pnpm turbo run build --filter "$PKG^..."
           pnpm --filter "$PKG" run "$SCRIPT"
 
-      # module.ts(x) sits next to the target's plugin.json.
       - name: Find module
         id: module
         env:
           DIR: ${{ matrix.target.dir }}
           PLUGIN_JSON: ${{ matrix.target.plugin_json }}
-        run: |
-          src="$DIR/$(dirname "$PLUGIN_JSON")"
-          for f in "$src/module.ts" "$src/module.tsx"; do
-            if [ -f "$f" ]; then
-              echo "path=./$f" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          done
-          echo "::error file=$DIR/$PLUGIN_JSON::no module.ts or module.tsx next to it"
-          exit 1
+        run: bash .github/scripts/find-module.sh
 
       # Module paths are repo-root-relative, which is where the action runs levitate.
       # Non-blocking: levitate flags any type change in a used export (e.g.
@@ -131,48 +120,69 @@ jobs:
           MODULE: ${{ steps.module.outputs.path }}
         run: echo "::warning title=Grafana API compatibility ($ID)::$MODULE may be incompatible with the latest @grafana/* packages; see the levitate output in the Compatibility check step"
 
-      # The action leaves levitate's console report in .levitate_output at the
-      # workspace root. The comment leads with the "Comparing …" and numbered
-      # incompatibility lines, and folds the full report (truncated well under
-      # GitHub's 65536-char comment limit) into a collapsed code block.
-      - name: Write compatibility report comment
-        if: steps.compat.outcome == 'failure'
+      # Hands compatibility-report either the comment body or a `clean` marker.
+      # The action leaves levitate's console report in .levitate_output.
+      - name: Write compatibility report
+        if: steps.compat.outcome == 'failure' || steps.compat.outcome == 'success'
         env:
+          OUTCOME: ${{ steps.compat.outcome }}
           ID: ${{ matrix.target.id }}
           MODULE: ${{ steps.module.outputs.path }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          {
-            echo "### Grafana API compatibility: \`$ID\`"
-            echo
-            echo "levitate reports \`$MODULE\` may be incompatible with the latest \`@grafana/*\` packages."
-            echo "This is non-blocking: levitate flags any type change in a used export, so check the e2e jobs"
-            echo "for whether it actually breaks. [Full run]($RUN_URL)"
-            echo
-            echo '```text'
-            grep -E '^Comparing |^[0-9]+\) ' .levitate_output || echo '(no itemized incompatibilities; see the full report)'
-            echo '```'
-            echo
-            echo '<details><summary>Full levitate report</summary>'
-            echo
-            echo '```text'
-            head -c 60000 .levitate_output
-            echo '```'
-            echo
-            echo '</details>'
-          } > levitate-comment.md
+          mkdir -p levitate-report
+          if [ "$OUTCOME" = failure ]; then
+            bash .github/scripts/levitate-comment.sh .levitate_output levitate-report/comment.md
+          else
+            touch levitate-report/clean
+          fi
+
+      - name: Upload compatibility report
+        if: steps.compat.outcome == 'failure' || steps.compat.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: levitate-${{ matrix.target.id }}
+          path: levitate-report/
+          retention-days: 5
+
+  # Posts (or, once clean, removes) each target's levitate comment. Holds the
+  # PR write token, so it checks out nothing and runs no PR code: it only
+  # reads the text artifact compatibility wrote. On fork PRs the token is
+  # read-only regardless; the comment steps are continue-on-error, so this
+  # job stays green there without commenting.
+  compatibility-report:
+    name: compatibility report (${{ matrix.target.id }})
+    needs: [discover, compatibility]
+    # always(): one target's failed build must not drop the other targets' reports.
+    if: always() && github.event_name == 'pull_request' && needs.discover.result == 'success' && needs.discover.outputs.targets != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.discover.outputs.targets) }}
+    steps:
+      # Missing when compatibility didn't get as far as levitate; then neither
+      # step below runs and any earlier comment is left as it was.
+      - name: Download compatibility report
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: levitate-${{ matrix.target.id }}
+          path: levitate-report
 
       - name: Comment compatibility report
-        if: steps.compat.outcome == 'failure'
+        if: hashFiles('levitate-report/comment.md') != ''
         continue-on-error: true
         uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         with:
           header: levitate-${{ matrix.target.id }}
-          path: levitate-comment.md
+          path: levitate-report/comment.md
 
       # A later clean run removes this plugin's earlier report, so it can't go stale.
       - name: Remove stale compatibility report
-        if: steps.compat.outcome == 'success'
+        if: hashFiles('levitate-report/clean') != ''
         continue-on-error: true
         uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         with:

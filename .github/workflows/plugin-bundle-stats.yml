@@ -59,37 +59,20 @@ jobs:
     needs: discover
     if: needs.discover.outputs.targets != '[]'
     runs-on: ubuntu-latest
-    # pull-requests: write is only needed by the final report step. This is a
-    # `pull_request` trigger, so on fork PRs the token is read-only regardless
-    # and that step fails rather than posting -- deliberate, versus taking a
-    # write token onto `pull_request_target`.
+    # Read-only: this job runs PR code (install scripts, the build). The PR
+    # comment is posted by `report`, which runs none of it.
     permissions:
-      contents: read # checkout, plus grafana/plugin-actions for the report script
-      pull-requests: write # comment the size delta on the PR
-      actions: read # look up the latest main-branch stats.json artifact
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         target: ${{ fromJSON(needs.discover.outputs.targets) }}
     env:
-      PACKAGE_DIR: ${{ matrix.target.dir }}
       PKG: ${{ matrix.target.pkg }}
       SCRIPT: ${{ matrix.target.script }}
-      TARGET_ID: ${{ matrix.target.id }}
-      # Namespaced per plugin id: the action looks up the latest artifact by
-      # name repo-wide, so a generic name would collide across plugins.
-      MAIN_STATS_ARTIFACT: ${{ matrix.target.id }}-main-branch-stats
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          persist-credentials: false
-
-      - name: Check out bundle-size report script
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          repository: grafana/plugin-actions
-          ref: a66a1c96cdbb176f9cccf10cf23593e250db7cce # bundle-size/v1.1.0
-          path: .plugin-actions
           persist-credentials: false
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
@@ -119,16 +102,69 @@ jobs:
         working-directory: ${{ matrix.target.dir }}
         run: pnpm run "$SCRIPT" --profile --json pr-stats.json
 
+      # Namespaced per plugin id: `report` looks up the latest artifact by name
+      # repo-wide, so a generic name would collide across plugins.
       - name: Upload main branch stats.json artifact
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: ${{ env.MAIN_STATS_ARTIFACT }}
+          name: ${{ matrix.target.id }}-main-branch-stats
           path: ${{ matrix.target.dir }}/stats.json
           overwrite: true
 
-      - name: Get main stats artifact run-id
+      - name: Upload PR stats for the report job
         if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ matrix.target.id }}-pr-stats
+          path: ${{ matrix.target.dir }}/pr-stats.json
+          retention-days: 5
+
+  # Compares each target's PR stats against main's and comments the delta.
+  # Holds the PR write token, so it runs no PR code: it checks out only the
+  # pinned grafana/plugin-actions report script and reads the stats JSON that
+  # compare uploaded. This is a `pull_request` trigger, so on fork PRs the
+  # token is read-only regardless and the comment step fails rather than
+  # posting -- deliberate, versus taking a write token onto
+  # `pull_request_target`.
+  report:
+    name: bundle size report (${{ matrix.target.id }})
+    needs: [discover, compare]
+    # always(): one target's failed build must not drop the other targets' reports.
+    if: always() && github.event_name == 'pull_request' && needs.discover.result == 'success' && needs.discover.outputs.targets != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # grafana/plugin-actions for the report script
+      pull-requests: write # comment the size delta on the PR
+      actions: read # look up the latest main-branch stats.json artifact
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.discover.outputs.targets) }}
+    env:
+      PACKAGE_DIR: ${{ matrix.target.dir }}
+      TARGET_ID: ${{ matrix.target.id }}
+      MAIN_STATS_ARTIFACT: ${{ matrix.target.id }}-main-branch-stats
+    steps:
+      - name: Check out bundle-size report script
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: grafana/plugin-actions
+          ref: a66a1c96cdbb176f9cccf10cf23593e250db7cce # bundle-size/v1.1.0
+          path: .plugin-actions
+          persist-credentials: false
+
+      # Missing when compare's build failed; then the report steps are skipped.
+      - name: Download PR stats
+        id: pr-stats
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: ${{ matrix.target.id }}-pr-stats
+          path: ${{ matrix.target.dir }}
+
+      - name: Get main stats artifact run-id
+        if: steps.pr-stats.outcome == 'success'
         id: main-stats-info
         env:
           GH_TOKEN: ${{ github.token }}
@@ -138,7 +174,7 @@ jobs:
           echo "run-id=${MAIN_STATS_RUN_ID}" >> "$GITHUB_OUTPUT"
 
       - name: Download main branch stats artifact
-        if: github.event_name == 'pull_request' && steps.main-stats-info.outputs.run-id != ''
+        if: steps.pr-stats.outcome == 'success' && steps.main-stats-info.outputs.run-id != ''
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: ${{ env.MAIN_STATS_ARTIFACT }}
@@ -148,7 +184,7 @@ jobs:
 
       # The last argument keys the PR comment; per target, so two targets of one package don't overwrite each other.
       - name: Generate stats report and comment on PR
-        if: github.event_name == 'pull_request' && steps.main-stats-info.outputs.run-id != ''
+        if: steps.pr-stats.outcome == 'success' && steps.main-stats-info.outputs.run-id != ''
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -157,5 +193,5 @@ jobs:
             await script({ github, context, core }, THRESHOLD, `${PACKAGE_DIR}/stats.json`, `${PACKAGE_DIR}/pr-stats.json`, `${PACKAGE_DIR} (${TARGET_ID})`);
 
       - name: Warn if main stats artifact could not be found
-        if: github.event_name == 'pull_request' && steps.main-stats-info.outputs.run-id == ''
+        if: steps.pr-stats.outcome == 'success' && steps.main-stats-info.outputs.run-id == ''
         run: echo "::warning title=Main stats artifact could not be found::No ${MAIN_STATS_ARTIFACT} artifact yet. Run this workflow on main (workflow_dispatch) or push a change to this plugin to main to generate it."
