@@ -4,6 +4,11 @@
       "id": "grafana-relations-panel",
       "script": "build:relations",
       "pluginJson": "src/modules/relations/plugin.json"
+    },
+    {
+      "id": "grafana-relations-panel",
+      "script": "build:relations",
+      "pluginJson": "src/modules/relations/plugin.json"
     }
   ]
 }
