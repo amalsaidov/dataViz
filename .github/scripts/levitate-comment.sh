@@ -28,9 +28,30 @@ This is non-blocking: levitate flags any type change in a used export, so check 
 for whether it actually breaks."
 fi
 
-# Every "Comparing …" header, and the first max_items numbered findings.
-items="$(awk -v max="$max_items" '/^Comparing /{ print; next } /^[0-9]+\) /{ found++; if (found <= max) print }' "$report")"
-item_count="$(grep -cE '^[0-9]+\) ' "$report" || true)"
+# Every "Comparing …" header line, and the first max_items numbered findings
+# ("1) Changed `config` used in …").
+numbered_finding='^[0-9]+\) '
+items=''
+item_count=0
+add_item() {
+	if [ -z "$items" ]; then
+		items="$1"
+	else
+		items="$items
+$1"
+	fi
+}
+while IFS= read -r line; do
+	if [[ "$line" == 'Comparing '* ]]; then
+		add_item "$line"
+	elif [[ "$line" =~ $numbered_finding ]]; then
+		item_count=$((item_count + 1))
+		if [ "$item_count" -le "$max_items" ]; then
+			add_item "$line"
+		fi
+	fi
+done <"$report"
+
 if [ -z "$items" ]; then
 	items='(no itemized incompatibilities; see the full report)'
 elif [ "$item_count" -gt "$max_items" ]; then
@@ -47,8 +68,9 @@ $items
 \`\`\`
 "
 
-# Whatever the summary leaves, minus room for the details wrapper. iconv -c
-# drops a multibyte character that head -c cut in half.
+# The folded report gets what the summary leaves (${#summary} is the
+# summary's length), minus room for the details wrapper. iconv -c drops a
+# multibyte character that head -c cut in half.
 report_budget=$((max_comment_bytes - ${#summary} - 200))
 {
 	printf '%s\n' "$summary"

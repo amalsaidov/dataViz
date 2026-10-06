@@ -25,7 +25,12 @@ kept=0
 removed=0
 for entry in "$cache_dir"/*; do
 	name="$(basename "$entry")"
-	hash="${name%%[-.]*}" # <hash>.tar.zst, <hash>-meta.json, <hash>-manifest.json
+	case "$name" in
+	*.tar.zst) hash="${name%.tar.zst}" ;;
+	*-meta.json) hash="${name%-meta.json}" ;;
+	*-manifest.json) hash="${name%-manifest.json}" ;;
+	*) continue ;; # not a turbo cache entry; leave it alone
+	esac
 	if grep -qx "$hash" <<<"$used"; then
 		kept=$((kept + 1))
 	else
