@@ -135,7 +135,7 @@ Differences worth knowing:
   `src/modules/relations/plugin.json` (`build:relations` publishes it standalone as
   `grafana-relations-panel`). Both use the reserved link names from `plugin-metadata.md`. The other
   `src/modules/*/plugin.json` ship only inside the app.
-- **Root CI builds `grafana-relations-panel`, not the app.** Its `build-targets.json` lists only the
+- **Root CI builds `grafana-relations-panel`, not the app.** Its `plugin-ci.json` lists only the
   relations target (`build:relations`). `build` itself is still the app build, used by the dev stack,
   `echarts-ci.yml` e2e and bundle stats. Adding another standalone module needs a `build:<module>` script
   **and** webpack support (`--env standalone=<module>` currently accepts only `relations`), plus a target
@@ -168,11 +168,11 @@ Differences worth knowing:
 2. Add a reference in root `plugins/tsconfig.json`
 3. Add an alias in `.shared/webpack-shared.mjs` if plugins will import it via webpack
 
-## Build targets (`build-targets.json`)
+## Per-package CI config (`plugin-ci.json`)
 
 Root `ci.yml` builds what each package **publishes**, not every package's `build` script. The list
-comes from `.github/actions/discover-build-targets`, which reads an optional
-`build-targets.json` at each `packages/@plugins/<pkg>/` root:
+comes from `.github/actions/discover-plugins`, which reads an optional
+`plugin-ci.json` at each `packages/@plugins/<pkg>/` root:
 
 ```json
 { "targets": [{ "id": "grafana-relations-panel", "script": "build:relations", "pluginJson": "src/modules/relations/plugin.json" }] }
@@ -184,6 +184,9 @@ comes from `.github/actions/discover-build-targets`, which reads an optional
 - Discovery fails CI if `script` isn't in `package.json`, if `pluginJson`'s id differs from `id`, or if an id is
   duplicated. After each build, CI also checks that `dist/plugin.json` has the target's id.
 - Targets build one at a time because a package's targets share `dist/`.
+- `e2e.url` (default `http://127.0.0.1:3000`) is where the package's own `docker-compose.yaml` serves
+  Grafana. A package gets e2e CI when it has both an `e2e` script and a `playwright.config.ts`. Having only
+  one of them is a discovery error.
 
 ## GitHub Actions workflows
 

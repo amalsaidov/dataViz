@@ -5,5 +5,8 @@
       "script": "build:relations",
       "pluginJson": "src/modules/relations/plugin.json"
     }
-  ]
+  ],
+  "e2e": {
+    "url": "http://127.0.0.1:3020"
+  }
 }

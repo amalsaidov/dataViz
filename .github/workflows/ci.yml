@@ -54,13 +54,13 @@ jobs:
         run: pnpm type-check
       - name: Unit tests
         run: pnpm test:ci
-      # Builds what each package publishes, per its build-targets.json (or the
+      # Builds what each package publishes, per its plugin-ci.json (or the
       # implicit src/plugin.json + `build` target), rather than every
       # package's `build` script. Sequential: targets of one package share
       # dist/, so they cannot build concurrently.
       - name: Discover build targets
         id: targets
-        uses: $/.github/actions/discover-build-targets
+        uses: $/.github/actions/discover-plugins
       - name: Build
         env:
           TARGETS: ${{ steps.targets.outputs.targets }}
