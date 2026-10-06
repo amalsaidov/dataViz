@@ -87,21 +87,6 @@ jobs:
           PLUGIN_JSON: ${{ matrix.target.plugin_json }}
         run: bash .github/scripts/find-module.sh
 
-      # The action runs `npx @grafana/levitate@latest`, which downloads levitate
-      # and the @grafana/* tarballs it compares, all through npm's cache in
-      # ~/.npm. Keyed per ISO week, so @latest still moves forward.
-      - name: Read cache week
-        id: week
-        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache npm downloads for levitate
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.npm
-          key: levitate-npm-${{ runner.os }}-${{ steps.week.outputs.week }}
-          restore-keys: |
-            levitate-npm-${{ runner.os }}-
-
       # Module paths are repo-root-relative, which is where the action runs levitate.
       # Non-blocking: levitate flags any type change in a used export (e.g.
       # @grafana/runtime `config`), most of which don't break at run time. The
