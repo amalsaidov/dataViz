@@ -131,8 +131,10 @@ jobs:
           MODULE: ${{ steps.module.outputs.path }}
         run: echo "::warning title=Grafana API compatibility ($ID)::$MODULE may be incompatible with the latest @grafana/* packages; see the levitate output in the Compatibility check step"
 
-      # The action leaves levitate's markdown report in .levitate_output at the
-      # workspace root. Truncated well under GitHub's 65536-char comment limit.
+      # The action leaves levitate's console report in .levitate_output at the
+      # workspace root. The comment leads with the "Comparing …" and numbered
+      # incompatibility lines, and folds the full report (truncated well under
+      # GitHub's 65536-char comment limit) into a collapsed code block.
       - name: Write compatibility report comment
         if: steps.compat.outcome == 'failure'
         env:
@@ -147,7 +149,17 @@ jobs:
             echo "This is non-blocking: levitate flags any type change in a used export, so check the e2e jobs"
             echo "for whether it actually breaks. [Full run]($RUN_URL)"
             echo
+            echo '```text'
+            grep -E '^Comparing |^[0-9]+\) ' .levitate_output || echo '(no itemized incompatibilities; see the full report)'
+            echo '```'
+            echo
+            echo '<details><summary>Full levitate report</summary>'
+            echo
+            echo '```text'
             head -c 60000 .levitate_output
+            echo '```'
+            echo
+            echo '</details>'
           } > levitate-comment.md
 
       - name: Comment compatibility report
