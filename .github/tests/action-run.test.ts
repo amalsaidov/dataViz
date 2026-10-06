@@ -23,18 +23,18 @@ function run(t: TestContext, env: Record<string, string>): { args: string[]; e2e
 describe('discover-plugins/run.sh', () => {
 	describe('base selection', () => {
 		const ROOT = 'plugins/packages/@plugins';
-		// [case, env, expected discover.sh arguments]
-		const cases: [string, Record<string, string>, string[]][] = [
-			['changed-only off passes no base', { PR_BASE: 'abc123' }, [ROOT]],
-			['pull_request uses the PR base', { CHANGED_ONLY: 'true', PR_BASE: 'abc123', PUSH_BEFORE: 'def456' }, [ROOT, 'abc123']],
-			['push uses the previous commit', { CHANGED_ONLY: 'true', PUSH_BEFORE: 'def456' }, [ROOT, 'def456']],
-			['a branch-creating push (all-zero before) passes no base', { CHANGED_ONLY: 'true', PUSH_BEFORE: '0'.repeat(40) }, [ROOT]],
-			['no event base (workflow_dispatch) passes no base', { CHANGED_ONLY: 'true' }, [ROOT]],
+		// `args` is what run.sh should pass to discover.sh.
+		const cases: { name: string; env: Record<string, string>; args: string[] }[] = [
+			{ name: 'changed-only off passes no base', env: { PR_BASE: 'abc123' }, args: [ROOT] },
+			{ name: 'pull_request uses the PR base', env: { CHANGED_ONLY: 'true', PR_BASE: 'abc123', PUSH_BEFORE: 'def456' }, args: [ROOT, 'abc123'] },
+			{ name: 'push uses the previous commit', env: { CHANGED_ONLY: 'true', PUSH_BEFORE: 'def456' }, args: [ROOT, 'def456'] },
+			{ name: 'a branch-creating push (all-zero before) passes no base', env: { CHANGED_ONLY: 'true', PUSH_BEFORE: '0'.repeat(40) }, args: [ROOT] },
+			{ name: 'no event base (workflow_dispatch) passes no base', env: { CHANGED_ONLY: 'true' }, args: [ROOT] },
 		];
 
-		for (const [name, env, expected] of cases) {
+		for (const { name, env, args } of cases) {
 			test(name, (t) => {
-				assert.deepEqual(run(t, env).args, expected);
+				assert.deepEqual(run(t, env).args, args);
 			});
 		}
 	});

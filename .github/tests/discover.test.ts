@@ -97,29 +97,28 @@ describe('discover-plugins/discover.sh', () => {
 	});
 
 	describe('validation', () => {
-		// Each case: [name, package options, expected error substring].
-		const cases: [string, PkgOptions, string][] = [
-			['rejects a target id that is not lowercase-kebab', { id: 'x', pluginCi: { targets: [{ id: 'Bad_Id', script: 'build', pluginJson: 'src/plugin.json' }] } }, 'must match'],
-			['rejects a target script that package.json does not define', { id: 'x', pluginCi: { targets: [{ id: 'x', script: 'build:nope', pluginJson: 'src/plugin.json' }] } }, "script 'build:nope' is not in"],
-			['rejects a target pluginJson that does not exist', { id: 'x', pluginCi: { targets: [{ id: 'x', script: 'build', pluginJson: 'src/missing.json' }] } }, 'does not exist'],
-			['rejects a target whose pluginJson has a different id', { id: 'actual', pluginCi: { targets: [{ id: 'declared', script: 'build', pluginJson: 'src/plugin.json' }] } }, "has id 'actual'"],
-			['rejects an empty targets list', { id: 'x', pluginCi: { targets: [] } }, 'non-empty array'],
-			['rejects a package with no targets and no src/plugin.json id', {}, 'no build target'],
-			['rejects an e2e script without playwright.config.ts', { id: 'x', scripts: { build: 'x', e2e: 'x' } }, 'no playwright.config.ts'],
-			['rejects playwright.config.ts without an e2e script', { id: 'x', playwright: true }, 'has no e2e script'],
-			['rejects an e2e suite with no grafanaDependency to pick versions from', { id: 'x', scripts: { build: 'x', e2e: 'x' }, playwright: true, grafanaDependency: '' }, 'no dependencies.grafanaDependency'],
+		const cases: { name: string; pkg: PkgOptions; error: string }[] = [
+			{ name: 'rejects a target id that is not lowercase-kebab', pkg: { id: 'x', pluginCi: { targets: [{ id: 'Bad_Id', script: 'build', pluginJson: 'src/plugin.json' }] } }, error: 'must match' },
+			{ name: 'rejects a target script that package.json does not define', pkg: { id: 'x', pluginCi: { targets: [{ id: 'x', script: 'build:nope', pluginJson: 'src/plugin.json' }] } }, error: "script 'build:nope' is not in" },
+			{ name: 'rejects a target pluginJson that does not exist', pkg: { id: 'x', pluginCi: { targets: [{ id: 'x', script: 'build', pluginJson: 'src/missing.json' }] } }, error: 'does not exist' },
+			{ name: 'rejects a target whose pluginJson has a different id', pkg: { id: 'actual', pluginCi: { targets: [{ id: 'declared', script: 'build', pluginJson: 'src/plugin.json' }] } }, error: "has id 'actual'" },
+			{ name: 'rejects an empty targets list', pkg: { id: 'x', pluginCi: { targets: [] } }, error: 'non-empty array' },
+			{ name: 'rejects a package with no targets and no src/plugin.json id', pkg: {}, error: 'no build target' },
+			{ name: 'rejects an e2e script without playwright.config.ts', pkg: { id: 'x', scripts: { build: 'x', e2e: 'x' } }, error: 'no playwright.config.ts' },
+			{ name: 'rejects playwright.config.ts without an e2e script', pkg: { id: 'x', playwright: true }, error: 'has no e2e script' },
+			{ name: 'rejects an e2e suite with no grafanaDependency to pick versions from', pkg: { id: 'x', scripts: { build: 'x', e2e: 'x' }, playwright: true, grafanaDependency: '' }, error: 'no dependencies.grafanaDependency' },
 		];
 
-		for (const [name, opts, expected] of cases) {
+		for (const { name, pkg, error } of cases) {
 			test(name, (t) => {
 				const root = tempDir(t);
-				mkPkg(root, 'p', opts);
+				mkPkg(root, 'p', pkg);
 				const r = discover(root);
 				assert.equal(r.status, 1);
 				assert.equal(r.stdout, '', 'nothing on stdout when discovery fails');
 				const errs = errors(r.stderr);
 				assert.equal(errs.length, 1, r.stderr);
-				assert.ok(errs[0].includes(expected), errs[0]);
+				assert.ok(errs[0].includes(error), errs[0]);
 			});
 		}
 
@@ -163,21 +162,22 @@ describe('discover-plugins/discover.sh', () => {
 			git(cwd, 'commit', '-qm', 'change');
 		}
 
-		function selected(cwd: string, root: string, base: string): { t: string[]; e: string[] } {
+		/** The target ids and e2e packages discovery selects for changes since `base`. */
+		function selected(cwd: string, root: string, base: string): { targets: string[]; e2e: string[] } {
 			const out = ok(discover(root, [base], cwd));
-			return { t: out.targets.map((x) => x.id), e: out.e2e.map((x) => x.pkg) };
+			return { targets: out.targets.map((x) => x.id).sort(), e2e: out.e2e.map((x) => x.pkg).sort() };
 		}
 
 		test('a change inside one package selects only that package', (t) => {
 			const { cwd, root, base } = repo(t);
 			change(cwd, `${root}/clock/src/module.ts`);
-			assert.deepEqual(selected(cwd, root, base), { t: ['clock-panel'], e: ['@t/clock'] });
+			assert.deepEqual(selected(cwd, root, base), { targets: ['clock-panel'], e2e: ['@t/clock'] });
 		});
 
 		test('no relevant change selects nothing', (t) => {
 			const { cwd, root, base } = repo(t);
 			change(cwd, 'README.md');
-			assert.deepEqual(selected(cwd, root, base), { t: [], e: [] });
+			assert.deepEqual(selected(cwd, root, base), { targets: [], e2e: [] });
 		});
 
 		for (const path of [
@@ -190,7 +190,7 @@ describe('discover-plugins/discover.sh', () => {
 			test(`${path} selects every package`, (t) => {
 				const { cwd, root, base } = repo(t);
 				change(cwd, path);
-				assert.deepEqual(selected(cwd, root, base).t.sort(), ['clock-panel', 'echarts-app']);
+				assert.deepEqual(selected(cwd, root, base).targets, ['clock-panel', 'echarts-app']);
 			});
 		}
 
@@ -204,7 +204,7 @@ describe('discover-plugins/discover.sh', () => {
 			renameSync(join(cwd, root, 'clock/src/moved.ts'), join(cwd, root, 'echarts/moved.ts'));
 			git(cwd, 'add', '-A');
 			git(cwd, 'commit', '-qm', 'move');
-			assert.deepEqual(selected(cwd, root, before).t.sort(), ['clock-panel', 'echarts-app']);
+			assert.deepEqual(selected(cwd, root, before).targets, ['clock-panel', 'echarts-app']);
 		});
 
 		test('an unusable base warns and selects everything', (t) => {

@@ -19,8 +19,8 @@ const turbo: { globalDependencies?: string[]; tasks: Record<string, Task> } = JS
 describe('plugins/turbo.json', () => {
 	test('cached tasks keep turbo default inputs', () => {
 		const narrowed = Object.entries(turbo.tasks)
-			.filter(([, t]) => t.cache !== false && t.inputs !== undefined && !t.inputs.includes('$TURBO_DEFAULT$'))
-			.map(([name, t]) => `${name}: ${JSON.stringify(t.inputs)}`);
+			.filter(([_name, task]) => task.cache !== false && task.inputs !== undefined && !task.inputs.includes('$TURBO_DEFAULT$'))
+			.map(([name, task]) => `${name}: ${JSON.stringify(task.inputs)}`);
 		assert.deepEqual(narrowed, [], 'add "$TURBO_DEFAULT$" to inputs, or drop them');
 	});
 

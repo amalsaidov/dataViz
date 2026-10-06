@@ -55,11 +55,16 @@ describe('workflows and composite actions', () => {
 	for (const file of [...workflows, ...actions]) {
 		describe(file, () => {
 			test('third-party uses: are pinned to a commit SHA with a # tag comment', () => {
-				const bad = lines(file)
-					.map((l, i): [number, string] => [i + 1, l.trim()])
-					.filter(([, l]) => /^(- )?uses:/.test(l))
-					.filter(([, l]) => !/uses: (\$|\.)\//.test(l))
-					.filter(([, l]) => !/uses: [\w.-]+\/[\w./-]+@[0-9a-f]{40} # \S+/.test(l));
+				const bad: string[] = [];
+				for (const [i, raw] of lines(file).entries()) {
+					const line = raw.trim();
+					const isUses = /^(- )?uses:/.test(line);
+					const isLocal = /uses: (\$|\.)\//.test(line);
+					const isPinned = /uses: [\w.-]+\/[\w./-]+@[0-9a-f]{40} # \S+/.test(line);
+					if (isUses && !isLocal && !isPinned) {
+						bad.push(`line ${i + 1}: ${line}`);
+					}
+				}
 				assert.deepEqual(bad, []);
 			});
 
@@ -105,6 +110,11 @@ function jobs(file: string): { name: string; lines: string[] }[] {
 	return out;
 }
 
+/** Whether a job's permissions include `pull-requests: write`. */
+function canWriteToPr(job: { lines: string[] }): boolean {
+	return job.lines.some((l) => /^ {6}pull-requests:\s*write/.test(l));
+}
+
 /** A job's steps, each as the lines from its `- ` to the next one. */
 function steps(jobLines: string[]): string[][] {
 	const out: string[][] = [];
@@ -131,7 +141,7 @@ describe('PR write tokens never run PR code', () => {
 	const runsPrCode = /\b(pnpm|npm|npx|yarn|node)\b|\.github\/(scripts|actions)\//;
 
 	for (const file of workflows) {
-		for (const job of jobs(file).filter((j) => j.lines.some((l) => /^ {6}pull-requests:\s*write/.test(l)))) {
+		for (const job of jobs(file).filter(canWriteToPr)) {
 			test(`${file}: ${job.name}`, () => {
 				assert.ok(!job.lines.some((l) => /^ {4}uses:/.test(l)), 'calls a reusable workflow');
 				for (const step of steps(job.lines)) {
@@ -139,7 +149,9 @@ describe('PR write tokens never run PR code', () => {
 					if (/uses: actions\/checkout@/.test(text)) {
 						assert.match(text, /^\s+repository:/m, `checks out this repo:\n${text}`);
 					}
-					const run = text.match(/run:\s*([\s\S]*)/)?.[1] ?? '';
+					// Everything after `run:`, whether inline or a block.
+					const runAt = text.indexOf('run:');
+					const run = runAt === -1 ? '' : text.slice(runAt + 'run:'.length);
 					assert.doesNotMatch(run, runsPrCode, `runs repo or package code:\n${text}`);
 				}
 			});
@@ -149,7 +161,7 @@ describe('PR write tokens never run PR code', () => {
 	test('covers both comment-posting report jobs', () => {
 		const guarded = workflows.flatMap((f) =>
 			jobs(f)
-				.filter((j) => j.lines.some((l) => /^ {6}pull-requests:\s*write/.test(l)))
+				.filter(canWriteToPr)
 				.map((j) => `${f}:${j.name}`)
 		);
 		// Others (e.g. stale.yml's scheduled jobs) are guarded too; these two

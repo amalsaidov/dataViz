@@ -27,7 +27,8 @@ describe('scripts/levitate-comment.sh', () => {
 		assert.match(summary, /^### Grafana API compatibility: `clock-panel`/);
 		assert.match(summary, /\[Full run\]\(https:\/\/example\.test\/runs\/1\)/);
 		assert.match(summary, /^Comparing @grafana\/runtime@12\.2\.10 to @grafana\/runtime@13\.2\.3$/m);
-		assert.equal((summary.match(/^\d+\) Changed `config`/gm) ?? []).length, 3);
+		const numbered = summary.split('\n').filter((line) => /^\d+\) Changed `config`/.test(line));
+		assert.equal(numbered.length, 3);
 		assert.doesNotMatch(summary, /Resolving/, 'progress noise stays in the folded report');
 	});
 

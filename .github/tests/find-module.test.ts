@@ -18,23 +18,33 @@ function find(t: TestContext, files: string[], pluginJson = 'src/plugin.json') {
 }
 
 describe('scripts/find-module.sh', () => {
-	// [case, files in the package, target pluginJson, expected path output]
-	const found: [string, string[], string, string][] = [
-		['finds module.ts next to plugin.json', ['src/plugin.json', 'src/module.ts'], 'src/plugin.json', './pkg/src/module.ts'],
-		[
-			'finds module.tsx for a nested target',
-			['src/modules/relations/plugin.json', 'src/modules/relations/module.tsx'],
-			'src/modules/relations/plugin.json',
-			'./pkg/src/modules/relations/module.tsx',
-		],
-		['prefers module.ts when both exist', ['src/module.ts', 'src/module.tsx'], 'src/plugin.json', './pkg/src/module.ts'],
+	// `files` exist in the package; `path` is the module find-module.sh should report.
+	const found: { name: string; files: string[]; pluginJson: string; path: string }[] = [
+		{
+			name: 'finds module.ts next to plugin.json',
+			files: ['src/plugin.json', 'src/module.ts'],
+			pluginJson: 'src/plugin.json',
+			path: './pkg/src/module.ts',
+		},
+		{
+			name: 'finds module.tsx for a nested target',
+			files: ['src/modules/relations/plugin.json', 'src/modules/relations/module.tsx'],
+			pluginJson: 'src/modules/relations/plugin.json',
+			path: './pkg/src/modules/relations/module.tsx',
+		},
+		{
+			name: 'prefers module.ts when both exist',
+			files: ['src/module.ts', 'src/module.tsx'],
+			pluginJson: 'src/plugin.json',
+			path: './pkg/src/module.ts',
+		},
 	];
 
-	for (const [name, files, pluginJson, expected] of found) {
+	for (const { name, files, pluginJson, path } of found) {
 		test(name, (t) => {
 			const r = find(t, files, pluginJson);
 			assert.equal(r.status, 0, r.stderr);
-			assert.equal(r.path, expected);
+			assert.equal(r.path, path);
 		});
 	}
 
