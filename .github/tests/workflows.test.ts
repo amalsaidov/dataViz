@@ -44,45 +44,39 @@ function runScripts(file: string): { line: number; text: string }[] {
 	return scripts;
 }
 
-describe('workflows', () => {
-	test('finds tracked workflows to check', () => {
+/** Jobs under `jobs:` that do not declare their own `permissions:`. */
+function jobsWithoutPermissions(file: string): string[] {
+	const ls = lines(file);
+	const start = ls.indexOf('jobs:');
+	assert.ok(start >= 0, 'no jobs: block');
+	let job: string | undefined;
+	const missing: string[] = [];
+	let has = false;
+	for (const l of [...ls.slice(start + 1), 'end:']) {
+		if (/^\S/.test(l) || /^ {2}[\w-]+:\s*$/.test(l)) {
+			if (job && !has) {
+				missing.push(job);
+			}
+			job = /^ {2}([\w-]+):/.exec(l)?.[1];
+			has = false;
+			if (/^\S/.test(l)) {
+				break;
+			}
+		} else if (/^ {4}permissions:/.test(l)) {
+			has = true;
+		}
+	}
+	return missing;
+}
+
+// One group per file: the checks for every workflow and composite action,
+// plus the permission checks that only apply to workflows.
+describe('workflows and composite actions', () => {
+	test('finds tracked workflows and actions to check', () => {
 		assert.ok(workflows.length > 0);
+		assert.ok(actions.length > 0);
 	});
 
-	for (const file of workflows) {
-		describe(file, () => {
-			test('defaults the token to no permissions (top-level permissions: {})', () => {
-				assert.ok(lines(file).includes('permissions: {}'), 'workflow must default the token to no permissions');
-			});
-
-			test('every job declares its own permissions', () => {
-				const ls = lines(file);
-				const start = ls.indexOf('jobs:');
-				assert.ok(start >= 0);
-				let job: string | undefined;
-				const missing: string[] = [];
-				let has = false;
-				for (const l of [...ls.slice(start + 1), 'end:']) {
-					if (/^\S/.test(l) || /^ {2}[\w-]+:\s*$/.test(l)) {
-						if (job && !has) {
-							missing.push(job);
-						}
-						job = /^ {2}([\w-]+):/.exec(l)?.[1];
-						has = false;
-						if (/^\S/.test(l)) {
-							break;
-						}
-					} else if (/^ {4}permissions:/.test(l)) {
-						has = true;
-					}
-				}
-				assert.deepEqual(missing, []);
-			});
-		});
-	}
-});
-
-describe('workflows and composite actions', () => {
 	for (const file of [...workflows, ...actions]) {
 		describe(file, () => {
 			test('third-party uses: are pinned to a commit SHA with a # tag comment', () => {
@@ -100,6 +94,16 @@ describe('workflows and composite actions', () => {
 					.map((s) => `line ${s.line}`);
 				assert.deepEqual(bad, [], 'pass values through env: instead');
 			});
+
+			if (workflows.includes(file)) {
+				test('defaults the token to no permissions (top-level permissions: {})', () => {
+					assert.ok(lines(file).includes('permissions: {}'), 'workflow must default the token to no permissions');
+				});
+
+				test('every job declares its own permissions', () => {
+					assert.deepEqual(jobsWithoutPermissions(file), []);
+				});
+			}
 		});
 	}
 });

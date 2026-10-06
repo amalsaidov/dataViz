@@ -1,5 +1,5 @@
 // Shared helpers for the CI script tests. Run the suite from the repo root:
-//   node --test '.github/tests/*.test.ts'
+//   node --test --test-concurrency=1 '.github/tests/*.test.ts'
 // Node runs these .ts files directly by stripping the types, so only
 // erasable syntax is allowed (no enum, namespace or parameter properties).
 import { spawnSync } from 'node:child_process';

@@ -203,7 +203,7 @@ On a pull request:
   - Playwright e2e against every Grafana version the plugin supports
 - **`plugin-bundle-stats.yml`** - a bundle-size comparison against `main`, as a PR comment per plugin
 
-A change outside the plugin packages (the lockfile, `plugins/.shared/`, the workflows) runs everything for every package. Per-package settings live in an optional `plugin-ci.json`. To test CI changes locally before pushing, run `node --test '.github/tests/*.test.ts'` from the repo root. Both are described in `CLAUDE.md`.
+A change outside the plugin packages (the lockfile, `plugins/.shared/`, the workflows) runs everything for every package. Per-package settings live in an optional `plugin-ci.json`. To test CI changes locally before pushing, run `node --test --test-concurrency=1 '.github/tests/*.test.ts'` from the repo root. Both are described in `CLAUDE.md`.
 
 ## License
 

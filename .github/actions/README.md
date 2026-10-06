@@ -77,7 +77,7 @@ Non-trivial step logic lives in `.github/scripts/` and `discover-plugins/`, not 
 so it can be tested. Run the tests locally before pushing:
 
 ```bash
-node --test '.github/tests/*.test.ts'
+node --test --test-concurrency=1 '.github/tests/*.test.ts'
 plugins/node_modules/.bin/tsc -p .github/tests   # type-check, after pnpm install in plugins/
 ```
 

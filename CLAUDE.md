@@ -226,7 +226,7 @@ Iterate on CI logic locally, and push only to confirm what needs GitHub itself (
 matrix/reusable-workflow fan-out, token scope). Run from the repo root:
 
 ```bash
-node --test '.github/tests/*.test.ts'     # run
+node --test --test-concurrency=1 '.github/tests/*.test.ts'     # run (one file at a time, so output order is stable)
 plugins/node_modules/.bin/tsc -p .github/tests   # type-check (after `pnpm install` in plugins/)
 ```
 
