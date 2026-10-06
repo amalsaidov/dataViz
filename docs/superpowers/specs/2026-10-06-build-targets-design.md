@@ -1,5 +1,8 @@
 # Build targets: what CI builds per plugin package
 
+> Superseded in part by `2026-10-06-generic-plugin-ci-design.md`: `build-targets.json` is now `plugin-ci.json`, and
+> `discover-build-targets` is now `discover-plugins`. The build-target rules below still apply.
+
 ## Problem
 
 Root `ci.yml` builds every package with `pnpm build` (turbo), which runs each package's `build` script.
@@ -51,8 +54,7 @@ config can read it later too (e.g. to validate `--env standalone=<x>` instead of
 ### Discovery: `.github/actions/discover-build-targets`
 
 Composite action modeled on `discover-i18n-packages`: input `root` (default
-`plugins/packages/@plugins`), one bash + `jq` step, no checkout of its own (callers sparse-checkout
-`plugins/packages/@plugins`).
+`plugins/packages/@plugins`), one bash + `jq` step, no checkout of its own (callers check out the repo first).
 
 Output `targets`: JSON array, one entry per target, implicit targets included:
 `[{dir, pkg, id, script, plugin_json}]`.
@@ -84,7 +86,8 @@ The discover action runs in the same job, after checkout. The Build step loops o
    and actual ids. This catches a build that put the wrong plugin into `dist/`, e.g. a broken
    standalone path silently building the app.
 
-The step runs under `set -euo pipefail`. Sequential rather than a matrix: one `pnpm install`, and the
+The loop lives in `.github/scripts/build-targets.sh`. It also fails when no targets were discovered, or when a
+build writes no `dist/plugin.json`. The step runs under `set -euo pipefail`. Sequential rather than a matrix: one `pnpm install`, and the
 `dist/` collision cannot happen. The release workflow will use a matrix, where per-job isolation is
 worth the extra installs.
 

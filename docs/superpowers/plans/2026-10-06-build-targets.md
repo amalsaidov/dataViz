@@ -1,5 +1,8 @@
 # Build Targets Implementation Plan
 
+> Executed. Kept as a record; later review changes are not reflected here. For the current design, see
+> `2026-10-06-generic-plugin-ci-design.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Root `ci.yml` builds exactly the plugins each package publishes, as declared by an optional per-package `build-targets.json`, so `grafana-echarts` builds `grafana-relations-panel` instead of the app.
