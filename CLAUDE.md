@@ -135,6 +135,11 @@ Differences worth knowing:
   `src/modules/relations/plugin.json` (`build:relations` publishes it standalone as
   `grafana-relations-panel`). Both use the reserved link names from `plugin-metadata.md`. The other
   `src/modules/*/plugin.json` ship only inside the app.
+- **Root CI builds `grafana-relations-panel`, not the app.** Its `build-targets.json` lists only the
+  relations target (`build:relations`). `build` itself is still the app build, used by the dev stack,
+  `echarts-ci.yml` e2e and bundle stats. Adding another standalone module needs a `build:<module>` script
+  **and** webpack support (`--env standalone=<module>` currently accepts only `relations`), plus a target
+  entry. To build the app in root CI too, add `{ "id": "grafana-echarts-app", "script": "build", "pluginJson": "src/plugin.json" }`.
 - **It is not yet in i18n CI, and when it opts in it gets ONE Crowdin project, not one per published
   plugin.** A package opts in by having a `crowdin.yml`; echarts has none, no locales, and no
   `i18n-extract:ci` script, so `.github/actions/discover-i18n-packages` ignores it. It does already
@@ -162,6 +167,23 @@ Differences worth knowing:
 1. `mkdir -p packages/@shared/<name>`, add `package.json` (with `exports`) and `tsconfig.json` extending `.shared/tsconfig.json`
 2. Add a reference in root `plugins/tsconfig.json`
 3. Add an alias in `.shared/webpack-shared.mjs` if plugins will import it via webpack
+
+## Build targets (`build-targets.json`)
+
+Root `ci.yml` builds what each package **publishes**, not every package's `build` script. The list
+comes from `.github/actions/discover-build-targets`, which reads an optional
+`build-targets.json` at each `packages/@plugins/<pkg>/` root:
+
+```json
+{ "targets": [{ "id": "grafana-relations-panel", "script": "build:relations", "pluginJson": "src/modules/relations/plugin.json" }] }
+```
+
+- **No file** means one implicit target: `src/plugin.json`'s id, built by `build`. Most packages need nothing.
+- **Only listed targets are built.** A package that lists targets loses its implicit one. To keep
+  building the default too, list it explicitly.
+- Discovery fails CI if `script` isn't in `package.json`, if `pluginJson`'s id differs from `id`, or if an id is
+  duplicated. After each build, CI also checks that `dist/plugin.json` has the target's id.
+- Targets build one at a time because a package's targets share `dist/`.
 
 ## GitHub Actions workflows
 
