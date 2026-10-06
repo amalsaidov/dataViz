@@ -117,9 +117,9 @@ jobs:
   # Holds the PR write token, so it runs no PR code: it checks out only the
   # pinned grafana/plugin-actions report script and reads the stats JSON that
   # compare uploaded. This is a `pull_request` trigger, so on fork PRs the
-  # token is read-only regardless and the comment step fails rather than
-  # posting -- deliberate, versus taking a write token onto
-  # `pull_request_target`.
+  # token is read-only regardless (rather than taking a write token onto
+  # `pull_request_target`): the comment step is continue-on-error, so the job
+  # stays green there, like compatibility-report, and warns instead.
   report:
     name: bundle size report (${{ matrix.target.id }})
     needs: [discover, compare]
@@ -177,13 +177,21 @@ jobs:
 
       # The last argument keys the PR comment; per target, so two targets of one package don't overwrite each other.
       - name: Generate stats report and comment on PR
+        id: report
         if: steps.pr-stats.outcome == 'success' && steps.main-stats-info.outputs.run-id != ''
+        continue-on-error: true
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const script = require(`${process.env.GITHUB_WORKSPACE}/.plugin-actions/bundle-size/index.js`);
             const { THRESHOLD, PACKAGE_DIR, TARGET_ID } = process.env;
             await script({ github, context, core }, THRESHOLD, `${PACKAGE_DIR}/stats.json`, `${PACKAGE_DIR}/pr-stats.json`, `${PACKAGE_DIR} (${TARGET_ID})`);
+
+      # Also catches a real report failure, which continue-on-error would
+      # otherwise hide.
+      - name: Warn if the report could not be posted
+        if: steps.report.outcome == 'failure'
+        run: echo "::warning title=Bundle size report (${TARGET_ID})::could not generate or post the bundle-size comment (a fork PR's token is read-only); see the Generate stats report step"
 
       - name: Warn if main stats artifact could not be found
         if: steps.pr-stats.outcome == 'success' && steps.main-stats-info.outputs.run-id == ''
