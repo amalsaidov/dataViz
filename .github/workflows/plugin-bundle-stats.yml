@@ -80,6 +80,8 @@ jobs:
 
       - name: Set up workspace
         uses: $/.github/actions/setup-workspace
+        with:
+          package: ${{ matrix.target.pkg }}
 
       # main's stats become the baseline (stats.json); a PR's are compared
       # against it (pr-stats.json). Either way the file is written in the

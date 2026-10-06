@@ -49,6 +49,8 @@ jobs:
 
       - name: Set up workspace
         uses: $/.github/actions/setup-workspace
+        with:
+          package: ${{ inputs.pkg }}
 
       # The package's `build` (what its docker-compose.yaml mounts), not a
       # build target, so there is no plugin id to check here.
@@ -134,6 +136,8 @@ jobs:
 
       - name: Set up workspace
         uses: $/.github/actions/setup-workspace
+        with:
+          package: ${{ inputs.pkg }}
 
       - name: Wait for grafana server
         uses: grafana/plugin-actions/wait-for-grafana@4205a0824a13b71fdb9b9b49f28f5f72b754f81f # wait-for-grafana/v1.0.5

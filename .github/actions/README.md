@@ -96,7 +96,9 @@ every workflow: pinned actions, no `${{ }}` inside `run:`, and the write-token r
 check what needs GitHub itself: PR comments, artifacts, and how matrix jobs fan out.
 
 pnpm, Node and `pnpm install` are set up by `.github/actions/setup-workspace`, so those pins live in one
-place.
+place. Jobs that build or test one package pass it `package:`, which installs only that package and its
+workspace dependencies. Only root CI's full install saves the pnpm store cache; the one-package jobs only
+restore it, so the saved store is never missing packages.
 
 # i18n CI
 
