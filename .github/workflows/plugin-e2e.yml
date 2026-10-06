@@ -2,7 +2,7 @@
 # grafanaDependency allows (plus a non-blocking nightly). Called once per
 # package by plugin-ci.yml; reusable rather than inline because the version
 # list is per-package matrix output, which can't feed a second matrix within
-# one workflow.
+# one workflow. Design notes: .github/actions/README.md.
 #
 # The package's own docker-compose.yaml serves Grafana (not the monorepo dev
 # stack in plugins/), with this package's dist/ (built by its `build` script)

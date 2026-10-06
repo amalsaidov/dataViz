@@ -1,6 +1,6 @@
 # Bundle-size report per plugin build target: on main, builds each target's
 # webpack stats and stores them as an artifact; on a PR, builds the PR's stats
-# and comments the delta against main's.
+# and comments the delta against main's. Design notes: .github/actions/README.md.
 #
 # grafana/plugin-actions/bundle-size can't be used as-is here: its install step
 # runs `pnpm install` at the repo root, ignoring its working-directory input,

@@ -2,6 +2,7 @@
 # levitate API compatibility for every build target, and Playwright e2e for
 # every package with an e2e suite. Both lists come from discover-plugins
 # (see plugin-ci.json in CLAUDE.md), limited to packages this change touches.
+# Design notes: .github/actions/README.md.
 name: Plugin CI
 
 on:
