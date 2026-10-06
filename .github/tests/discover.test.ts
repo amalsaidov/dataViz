@@ -99,9 +99,9 @@ describe('discover-plugins/discover.sh', () => {
 	describe('validation', () => {
 		// Each case: [name, package options, expected error substring].
 		const cases: [string, PkgOptions, string][] = [
-			["rejects a target id that isn't lowercase-kebab", { id: 'x', pluginCi: { targets: [{ id: 'Bad_Id', script: 'build', pluginJson: 'src/plugin.json' }] } }, 'must match'],
-			["rejects a target script that package.json doesn't define", { id: 'x', pluginCi: { targets: [{ id: 'x', script: 'build:nope', pluginJson: 'src/plugin.json' }] } }, "script 'build:nope' is not in"],
-			["rejects a target pluginJson that doesn't exist", { id: 'x', pluginCi: { targets: [{ id: 'x', script: 'build', pluginJson: 'src/missing.json' }] } }, 'does not exist'],
+			['rejects a target id that is not lowercase-kebab', { id: 'x', pluginCi: { targets: [{ id: 'Bad_Id', script: 'build', pluginJson: 'src/plugin.json' }] } }, 'must match'],
+			['rejects a target script that package.json does not define', { id: 'x', pluginCi: { targets: [{ id: 'x', script: 'build:nope', pluginJson: 'src/plugin.json' }] } }, "script 'build:nope' is not in"],
+			['rejects a target pluginJson that does not exist', { id: 'x', pluginCi: { targets: [{ id: 'x', script: 'build', pluginJson: 'src/missing.json' }] } }, 'does not exist'],
 			['rejects a target whose pluginJson has a different id', { id: 'actual', pluginCi: { targets: [{ id: 'declared', script: 'build', pluginJson: 'src/plugin.json' }] } }, "has id 'actual'"],
 			['rejects an empty targets list', { id: 'x', pluginCi: { targets: [] } }, 'non-empty array'],
 			['rejects a package with no targets and no src/plugin.json id', {}, 'no build target'],
