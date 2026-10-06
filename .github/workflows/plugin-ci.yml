@@ -105,12 +105,27 @@ jobs:
           exit 1
 
       # Module paths are repo-root-relative, which is where the action runs levitate.
+      # Non-blocking: levitate flags any type change in a used export (e.g.
+      # @grafana/runtime `config`), most of which don't break at run time. The
+      # next step turns a failure into a warning annotation instead; delete
+      # continue-on-error to make it blocking. comment-pr stays off because the
+      # action's sticky comment has no per-target key, so matrix legs would
+      # overwrite each other.
       - name: Compatibility check
+        id: compat
+        continue-on-error: true
         uses: grafana/plugin-actions/is-compatible@4698961fa64137fcac207108397ebe8a738a33d1 # is-compatible/v1.0.3
         with:
           module: ${{ steps.module.outputs.path }}
           comment-pr: 'no'
           fail-if-incompatible: 'yes'
+
+      - name: Warn on possible incompatibility
+        if: steps.compat.outcome == 'failure'
+        env:
+          ID: ${{ matrix.target.id }}
+          MODULE: ${{ steps.module.outputs.path }}
+        run: echo "::warning title=Grafana API compatibility ($ID)::$MODULE may be incompatible with the latest @grafana/* packages; see the levitate output in the Compatibility check step"
 
   e2e:
     name: e2e (${{ matrix.package.pkg }})

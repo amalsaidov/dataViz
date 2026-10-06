@@ -189,6 +189,10 @@ comes from `.github/actions/discover-plugins`, which reads an optional
 - `e2e.url` (default `http://127.0.0.1:3000`) is where the package's own `docker-compose.yaml` serves
   Grafana. A package gets e2e CI when it has both an `e2e` script and a `playwright.config.ts`. Having only
   one of them is a discovery error.
+- The levitate `compatibility (<id>)` jobs in `plugin-ci.yml` are **non-blocking**: a possible
+  incompatibility leaves the job green and adds a `Grafana API compatibility (<id>)` warning annotation.
+  levitate flags any type change in a used export, so most hits are type-only (the e2e jobs show whether
+  it actually breaks). Read the job log when the warning appears.
 
 ## GitHub Actions workflows
 
