@@ -1,0 +1,128 @@
+# Per-plugin CI beyond root ci.yml's format/lint/type-check/test/build:
+# levitate API compatibility for every build target, and Playwright e2e for
+# every package with an e2e suite. Both lists come from discover-plugins
+# (see plugin-ci.json in CLAUDE.md), limited to packages this change touches.
+name: Plugin CI
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/**'
+      - '.github/actions/discover-plugins/**'
+      - '.github/workflows/plugin-ci.yml'
+      - '.github/workflows/plugin-e2e.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'plugins/**'
+      - '.github/actions/discover-plugins/**'
+      - '.github/workflows/plugin-ci.yml'
+      - '.github/workflows/plugin-e2e.yml'
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    name: Discover plugins
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      targets: ${{ steps.find.outputs.targets }}
+      e2e: ${{ steps.find.outputs.e2e }}
+    steps:
+      # Full history: changed-only diffs against the PR base / previous commit.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - id: find
+        uses: $/.github/actions/discover-plugins
+        with:
+          changed-only: 'true'
+
+  compatibility:
+    name: compatibility (${{ matrix.target.id }})
+    needs: discover
+    if: github.event_name == 'pull_request' && needs.discover.outputs.targets != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.discover.outputs.targets) }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          package_json_file: plugins/package.json
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: plugins/.nvmrc
+          cache: 'pnpm'
+          cache-dependency-path: plugins/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: plugins
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build
+        working-directory: plugins
+        env:
+          PKG: ${{ matrix.target.pkg }}
+          SCRIPT: ${{ matrix.target.script }}
+        run: |
+          pnpm turbo run build --filter "$PKG^..."
+          pnpm --filter "$PKG" run "$SCRIPT"
+
+      # module.ts(x) sits next to the target's plugin.json.
+      - name: Find module
+        id: module
+        env:
+          DIR: ${{ matrix.target.dir }}
+          PLUGIN_JSON: ${{ matrix.target.plugin_json }}
+        run: |
+          src="$DIR/$(dirname "$PLUGIN_JSON")"
+          for f in "$src/module.ts" "$src/module.tsx"; do
+            if [ -f "$f" ]; then
+              echo "path=./$f" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "::error file=$DIR/$PLUGIN_JSON::no module.ts or module.tsx next to it"
+          exit 1
+
+      # Module paths are repo-root-relative, which is where the action runs levitate.
+      - name: Compatibility check
+        uses: grafana/plugin-actions/is-compatible@4698961fa64137fcac207108397ebe8a738a33d1 # is-compatible/v1.0.3
+        with:
+          module: ${{ steps.module.outputs.path }}
+          comment-pr: 'no'
+          fail-if-incompatible: 'yes'
+
+  e2e:
+    name: e2e (${{ matrix.package.pkg }})
+    needs: discover
+    if: needs.discover.outputs.e2e != '[]'
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.discover.outputs.e2e) }}
+    uses: ./.github/workflows/plugin-e2e.yml
+    with:
+      dir: ${{ matrix.package.dir }}
+      pkg: ${{ matrix.package.pkg }}
+      url: ${{ matrix.package.url }}
+      grafana-dependency: ${{ matrix.package.grafana_dependency }}
