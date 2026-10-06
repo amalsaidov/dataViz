@@ -68,7 +68,7 @@ Default host ports for every Docker stack in the repo. Commands run from the dir
 
 ## Prerequisites
 
-- **Node.js** 22 (see `plugins/.nvmrc`)
+- **Node.js** 24 (see `plugins/.nvmrc`)
 - **pnpm** 10 or later
 - **Docker** (for the local development environment)
 
@@ -114,6 +114,10 @@ Then update:
 - root `tsconfig.json` - add a project reference
 - `jest.config.js` - copy from the template; add a `moduleNameMapper` entry if it imports a workspace package
 - Docker files - add a `dist` volume / mount and allow the id as unsigned if you want it loaded by the Docker Grafana stack
+
+CI picks the new package up automatically; no workflow needs editing. Add a `plugin-ci.json` only when the
+defaults don't fit, e.g. the package publishes more than one plugin, or its e2e Grafana isn't on port 3000.
+e2e runs only for packages with both an `e2e` script and a `playwright.config.ts`. See `CLAUDE.md`.
 
 ### Add a shared package
 
@@ -186,16 +190,17 @@ This template uses an "ejected" approach that differs from the standard `@grafan
 
 ## Continuous Integration
 
-The build system is designed to work well with CI/CD:
+No workflow names a plugin. Each one asks `.github/actions/discover-plugins` which packages exist and what they publish, so a new package gets CI without workflow changes.
 
-```yaml
-# Example GitHub Actions
-- run: cd plugins && pnpm install
-- run: cd plugins && pnpm check  # Runs format, test, lint, type-check
-- run: cd plugins && pnpm build
-```
+On a pull request:
 
-Turborepo's caching works in CI with remote cache configuration.
+- **`ci.yml`** - format, lint, type-check and unit tests for every package, then a build of each plugin the packages publish, checking that the right plugin ended up in `dist/`
+- **`plugin-ci.yml`** - for the packages the PR touches:
+  - a Grafana API compatibility check (levitate). It is non-blocking: a possible incompatibility shows as a warning and a PR comment.
+  - Playwright e2e against every Grafana version the plugin supports
+- **`plugin-bundle-stats.yml`** - a bundle-size comparison against `main`, as a PR comment per plugin
+
+A change outside the plugin packages (the lockfile, `plugins/.shared/`, the workflows) runs everything for every package. Per-package settings live in an optional `plugin-ci.json`. To test CI changes locally before pushing, run `node --test '.github/tests/*.test.ts'` from the repo root. Both are described in `CLAUDE.md`.
 
 ## License
 
