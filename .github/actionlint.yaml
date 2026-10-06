@@ -1,13 +1,15 @@
 # actionlint config. Nothing in CI runs actionlint — zizmor is the workflow
 # linter that gates — but it is worth running locally, and without this it
-# reports five errors that are not errors.
+# reports an error for every `$/` reference, none of which are errors.
 paths:
   .github/workflows/**/*.{yml,yaml}:
     ignore:
-      # The i18n workflows reference this repo's own actions as
-      # `$/.github/actions/<name>`, GitHub's self-repository syntax. actionlint
-      # only recognizes `./`, `docker://` and `{owner}/{repo}@{ref}`, so it
-      # reads the `$/` form as a reference with a missing ref.
+      # The workflows reference this repo's own actions and reusable workflows
+      # as `$/.github/actions/<name>` and `$/.github/workflows/<name>.yml`,
+      # GitHub's self-repository syntax. actionlint only recognizes `./`,
+      # `docker://` and `{owner}/{repo}@{ref}`, so it reads the `$/` form as a
+      # reference with a missing ref. It reports actions and reusable-workflow
+      # calls under different messages, hence two patterns.
       #
       # Not a version problem — v1.7.12 is the newest release and its master
       # branch still only special-cases `./` and `docker://`. Tracked upstream
@@ -25,3 +27,4 @@ paths:
       # flags `./` and asks for `$/` — so the two linters disagree and zizmor
       # is the one that gates.
       - 'specifying action "\$/.+" in invalid format because ref is missing'
+      - 'reusable workflow call "\$/.+" at "uses" is not following the format'
