@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 // jsdom has no `IntersectionObserver`, which the list of `MultiCombobox` uses.
-import { stubIntersectionObserver } from 'standalone/editors/testIntersectionObserver';
+import { stubIntersectionObserver } from 'test/intersectionObserver';
 import { AnnotationEditor } from './AnnotationEditor';
 import { AnnotationTagsContext, type SearchAnnotationTags } from './annotationTagsContext';
 
