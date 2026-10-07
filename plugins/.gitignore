@@ -6,6 +6,8 @@ node_modules/
 # Build outputs
 dist/
 lib/
+# Source, not output: without this, new files under a package's src/lib/ are silently untracked.
+!**/src/lib/
 deps/
 .cache/
 *.tsbuildinfo
