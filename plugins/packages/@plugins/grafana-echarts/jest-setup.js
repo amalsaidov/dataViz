@@ -4,6 +4,12 @@ const { TextEncoder, TextDecoder } = require('util');
 
 Object.assign(global, { TextDecoder, TextEncoder });
 
+// jsdom has no `structuredClone`. The browser and Node have it, so the test gives the one of Node.
+// https://developer.mozilla.org/en-US/docs/Web/API/Window/structuredClone
+// The module is loaded one time: a `require` in each call is slow in jest.
+const v8 = require('v8');
+global.structuredClone ??= (value) => v8.deserialize(v8.serialize(value));
+
 // webpack's DefinePlugin sets `__PLUGIN_ID__` in each build (webpack.config.ts). Each panel `module.tsx` reads it
 // when it loads. A test can set its own value.
 global.__PLUGIN_ID__ = 'grafana-echarts-app';
