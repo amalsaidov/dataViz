@@ -19,7 +19,7 @@ if [ "$1" = --filter ] && [ "$3" = run ]; then
   dir="$(jq -r --arg p "$pkg" '.[$p].dir' <<<"$FAKE_IDS")"
   id="$(jq -r --arg p "$pkg" --arg s "$script" '.[$p].built[$s] // .[$p].id' <<<"$FAKE_IDS")"
   mkdir -p "$GITHUB_WORKSPACE/$dir/dist"
-  printf '{"id":"%s"}' "$id" > "$GITHUB_WORKSPACE/$dir/dist/plugin.json"
+  jq -n --arg id "$id" '{id: $id}' > "$GITHUB_WORKSPACE/$dir/dist/plugin.json"
 fi
 `;
 
@@ -83,6 +83,15 @@ describe('scripts/build-targets.sh', () => {
 		const build = runBuildTargets(t, [{ ...relations, script: 'build' }], packageIds);
 		assert.equal(build.status, 1);
 		assert.match(build.stdout, /::error file=p\/echarts\/dist\/plugin.json::.*built 'echarts-app', expected 'relations-panel'/);
+	});
+
+	test('escapes a built plugin id, so it cannot start another workflow command', (t) => {
+		const ids: FakeIds = { '@t/clock': { dir: 'p/clock', id: 'clock-panel', built: { build: 'evil\n::warning::injected' } } };
+		const build = runBuildTargets(t, [clock], ids);
+		assert.equal(build.status, 1);
+		const commandLines = build.stdout.split('\n').filter((line) => line.startsWith('::') && !line.startsWith('::group') && !line.startsWith('::endgroup'));
+		assert.equal(commandLines.length, 1, build.stdout);
+		assert.match(commandLines[0], /built 'evil%0A::warning::injected', expected 'clock-panel'/);
 	});
 
 	test('fails with an annotation when the build wrote no dist/plugin.json', (t) => {

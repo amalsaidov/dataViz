@@ -21,7 +21,7 @@
     "format:fix": {},
     "build-types": {
       "dependsOn": ["^build-types"],
-      "outputs": []
+      "outputs": [".cache/tsbuild/**"]
     },
     "type-check": {
       "dependsOn": ["build-types"]

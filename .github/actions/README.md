@@ -81,7 +81,9 @@ two plugins, the relations panel and the app, and its e2e Grafana listens on 302
   rerunning (about 3 minutes saved per run). That's only correct while every task hashes every file it
   reads. Don't narrow `inputs` in `plugins/turbo.json`: limiting tests to `src/**` would let a
   `jest.config.js` change replay a stale pass. Tests also depend on `^transit`, a task with no script whose
-  hash covers each workspace dependency's files, because Jest reads `@shared/core` from source. CI prunes
+  hash covers each workspace dependency's files, because Jest reads `@shared/core` from source. A task that
+writes files another task reads must declare them as `outputs` (as `build-types` does), since a cache hit
+restores only those. CI prunes
   the cache to the entries the run used before saving it. Tests in `.github/tests/` check these rules.
 - **Playwright's browser download is cached** per Playwright version.
 

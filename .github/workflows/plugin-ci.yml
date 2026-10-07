@@ -111,9 +111,6 @@ jobs:
           comment-pr: 'no'
           fail-if-incompatible: 'yes'
 
-      # The step's own outcome can't be trusted as "compatible": the action
-      # swallows levitate failures, so a crash also reports success. Read the
-      # report it leaves in .levitate_output instead.
       # Hands compatibility-report either a comment body or a `clean` marker,
       # judged from levitate's own report: the action swallows levitate
       # failures, so the step outcome can't tell "compatible" from "never ran".

@@ -8,6 +8,8 @@
 # package dir), ID (expected plugin id; optional), GITHUB_WORKSPACE (repo root).
 # Run from plugins/, where pnpm resolves the workspace.
 set -euo pipefail
+# shellcheck source=SCRIPTDIR/annotations.sh
+source "$(dirname "$0")/annotations.sh"
 
 # `^...` builds the package's workspace dependencies but not the package
 # itself; exits 0 when it has none. --summarize keeps these cache entries
@@ -21,11 +23,11 @@ fi
 
 dist_json="$GITHUB_WORKSPACE/$DIR/dist/plugin.json"
 if [ ! -f "$dist_json" ]; then
-	echo "::error file=$DIR/package.json::$PKG script '$SCRIPT' wrote no dist/plugin.json, expected '$ID'"
+	echo "::error file=$(escape_property "$DIR/package.json")::$(escape_message "$PKG script '$SCRIPT' wrote no dist/plugin.json, expected '$ID'")"
 	exit 1
 fi
 built="$(jq -r '.id // ""' "$dist_json")"
 if [ "$built" != "$ID" ]; then
-	echo "::error file=$DIR/dist/plugin.json::$PKG script '$SCRIPT' built '$built', expected '$ID'"
+	echo "::error file=$(escape_property "$DIR/dist/plugin.json")::$(escape_message "$PKG script '$SCRIPT' built '$built', expected '$ID'")"
 	exit 1
 fi

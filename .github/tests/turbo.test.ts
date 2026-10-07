@@ -12,6 +12,7 @@ interface Task {
 	cache?: boolean;
 	inputs?: string[];
 	dependsOn?: string[];
+	outputs?: string[];
 }
 const turbo: { globalDependencies?: string[]; tasks: Record<string, Task> } = JSON.parse(
 	readFileSync(join(REPO, 'plugins/turbo.json'), 'utf8')
@@ -33,6 +34,13 @@ describe('plugins/turbo.json', () => {
 			assert.ok(turbo.tasks[name]?.dependsOn?.includes('^transit'), `${name} must dependsOn "^transit"`);
 		}
 		assert.deepEqual(turbo.tasks.transit?.dependsOn, ['^transit']);
+	});
+
+	// A cache hit restores only declared outputs. build-types writes the
+	// declarations that a dependent package's type-check reads, so with no
+	// outputs a cached build-types would leave them missing (TS6305).
+	test('build-types declares the declarations it writes as outputs', () => {
+		assert.ok(turbo.tasks['build-types']?.outputs?.includes('.cache/tsbuild/**'));
 	});
 
 	test('shared build and lint config, and the Node version, invalidate every package', () => {

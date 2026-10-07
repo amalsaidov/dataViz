@@ -158,6 +158,21 @@ describe('discover-plugins/discover.sh', () => {
 		assert.match(errors(discovery.stderr).join('\n'), /targets\[0\] must be an object/);
 	});
 
+	const badE2e: { name: string; e2e: unknown; error: string }[] = [
+		{ name: 'rejects an e2e block that is not an object', e2e: 'http://127.0.0.1:3020', error: 'e2e must be an object' },
+		{ name: 'rejects an e2e.url that is not a string', e2e: { url: 3020 }, error: 'e2e.url must be an http:// or https:// URL' },
+		{ name: 'rejects an e2e.url that is not an http(s) URL', e2e: { url: '127.0.0.1:3020' }, error: 'e2e.url must be an http:// or https:// URL' },
+	];
+	for (const { name, e2e, error } of badE2e) {
+		test(name, (t) => {
+			const root = tempDir(t);
+			mkPkg(root, 'p', { id: 'p-panel', pluginCi: { e2e } });
+			const discovery = discover(root);
+			assert.equal(discovery.status, 1);
+			assert.match(errors(discovery.stderr).join('\n'), new RegExp(error.replace(/[()]/g, '\\$&')));
+		});
+	}
+
 	test('rejects a plugin-ci.json that is not an object', (t) => {
 		const root = tempDir(t);
 		mkPkg(root, 'p', { id: 'p-panel', pluginCi: [] });

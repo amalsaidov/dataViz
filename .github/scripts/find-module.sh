@@ -6,6 +6,8 @@
 # Env: DIR (repo-root-relative package dir), PLUGIN_JSON (package-relative),
 # GITHUB_OUTPUT. Run from the repo root.
 set -euo pipefail
+# shellcheck source=SCRIPTDIR/annotations.sh
+source "$(dirname "$0")/annotations.sh"
 
 src="$DIR/$(dirname "$PLUGIN_JSON")"
 for f in "$src/module.ts" "$src/module.tsx"; do
@@ -14,5 +16,5 @@ for f in "$src/module.ts" "$src/module.tsx"; do
 		exit 0
 	fi
 done
-echo "::error file=$DIR/$PLUGIN_JSON::no module.ts or module.tsx next to it"
+echo "::error file=$(escape_property "$DIR/$PLUGIN_JSON")::no module.ts or module.tsx next to it"
 exit 1

@@ -41,31 +41,17 @@ default_e2e_url='http://127.0.0.1:3000'
 shared_paths=".github/actions/discover-plugins/
 .github/actions/setup-workspace/
 .github/scripts/build-target.sh
+.github/scripts/annotations.sh
 ${SHARED_PATHS:-}"
 
 targets='[]'
 e2e='[]'
 failed=0
 
-# Annotation text can include values from a PR's plugin-ci.json or
-# package.json. GitHub reads `%`, CR and LF in it as escapes and line breaks,
-# so an unescaped newline could start a second workflow command. Property
-# values (file=) also escape `:` and `,`.
-escape_message() {
-	local text="$1"
-	text="${text//\%/%25}"
-	text="${text//$'\r'/%0D}"
-	text="${text//$'\n'/%0A}"
-	printf '%s' "$text"
-}
-
-escape_property() {
-	local text
-	text="$(escape_message "$1")"
-	text="${text//:/%3A}"
-	text="${text//,/%2C}"
-	printf '%s' "$text"
-}
+# escape_message / escape_property: values from a PR's plugin-ci.json or
+# package.json must not be able to start another workflow command.
+# shellcheck source=SCRIPTDIR/../../scripts/annotations.sh
+source "$(dirname "$0")/../../scripts/annotations.sh"
 
 error() {
 	echo "::error file=$(escape_property "$1")::$(escape_message "$2")" >&2
@@ -89,6 +75,16 @@ for pkg_json in "$root"/*/package.json; do
 		if [ "$(jq -r 'type' <<<"$config")" != object ]; then
 			error "$manifest" "must be a JSON object, like {\"targets\": [...]}"
 			continue
+		fi
+		if jq -e 'has("e2e")' <<<"$config" >/dev/null; then
+			if [ "$(jq -r '.e2e | type' <<<"$config")" != object ]; then
+				error "$manifest" "e2e must be an object, like {\"url\": \"http://127.0.0.1:3000\"}"
+				continue
+			fi
+			if ! jq -e '(.e2e | has("url") | not) or (.e2e.url | type == "string" and test("^https?://"))' <<<"$config" >/dev/null; then
+				error "$manifest" "e2e.url must be an http:// or https:// URL"
+				continue
+			fi
 		fi
 	fi
 

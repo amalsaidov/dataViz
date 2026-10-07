@@ -10,10 +10,12 @@ on:
 
 permissions: {}
 
+# PR runs share a group per PR, so a newer push cancels the superseded run.
+# Runs on main get a group per commit, so every merged commit gets a completed
+# check: GitHub drops a *pending* run when a newer one queues in the same
+# group, even without cancel-in-progress.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # Superseded PR pushes are canceled, but main is not: canceling there would
-  # leave the merged commit without a completed check.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

@@ -226,7 +226,9 @@ security invariants over every **tracked** workflow and composite action: SHA-pi
 `pull-requests: write` checks out this repo or runs package or repo code. It also fails if a cached task
 in `plugins/turbo.json` narrows its `inputs` without `$TURBO_DEFAULT$`, or if `test`/`test:ci` stop
 depending on `^transit` (Jest reads workspace packages such as `@shared/core` from source, so their files
-must be in the test hash), since root CI's persisted turbo cache would then replay stale results.
+must be in the test hash), or if `build-types` stops declaring its `.cache/tsbuild/**` outputs (a cache hit
+restores only declared outputs, and a dependent type-check needs those declarations), since root CI's
+persisted turbo cache would then replay stale or missing results.
 
 That's why non-trivial step logic lives in `.github/scripts/*.sh` rather than inline `run:` blocks: a
 script can be tested; the workflow keeps only the `env:` wiring. zizmor audits YAML only, so keep those

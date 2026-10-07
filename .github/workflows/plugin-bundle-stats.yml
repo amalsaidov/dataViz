@@ -161,10 +161,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-        # The newest unexpired baseline uploaded by a run on main in this
-        # repository. Any run can upload an artifact with this name (a PR runs
-        # its own copy of this workflow), and a fork's branch can be named
-        # main, so both the branch and the repository are checked.
+        # The baseline from the latest run on main in this repository. Any run
+        # can upload an artifact with this name (a PR runs its own copy of
+        # this workflow), and a fork's branch can be named main, so both the
+        # branch and the repository are checked. "Latest" is by run id, not
+        # upload time: main runs for different commits run side by side, so an
+        # older commit's run can finish and upload last.
         run: |
           MAIN_STATS_RUN_ID="$(gh api "/repos/${REPO}/actions/artifacts?name=${MAIN_STATS_ARTIFACT}" | jq -r --arg name "$MAIN_STATS_ARTIFACT" '
             .artifacts
@@ -174,7 +176,7 @@ jobs:
                 and .workflow_run.head_branch == "main"
                 and .workflow_run.head_repository_id == .workflow_run.repository_id
               ))
-            | sort_by(.created_at)
+            | sort_by(.workflow_run.id)
             | last
             | .workflow_run.id // ""
           ')"
