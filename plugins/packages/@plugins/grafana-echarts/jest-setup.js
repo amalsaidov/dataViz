@@ -4,6 +4,10 @@ const { TextEncoder, TextDecoder } = require('util');
 
 Object.assign(global, { TextDecoder, TextEncoder });
 
+// webpack's DefinePlugin sets `__PLUGIN_ID__` in each build (webpack.config.ts). Each panel `module.tsx` reads it
+// when it loads. A test can set its own value.
+global.__PLUGIN_ID__ = 'grafana-echarts-app';
+
 // https://jestjs.io/docs/manual-mocks#mocking-methods-which-are-not-implemented-in-jsdom
 Object.defineProperty(global, 'matchMedia', {
   writable: true,

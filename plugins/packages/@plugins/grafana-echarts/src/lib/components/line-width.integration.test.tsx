@@ -2,7 +2,7 @@ import { FieldType, getPanelOptionsWithDefaults, toDataFrame } from '@grafana/da
 import { render } from '@testing-library/react';
 import { plugin } from 'modules/cartesian/module';
 // Registers the option editors that Grafana registers, so the plugin builder can give its defaults.
-import 'standalone/standardRegistries';
+import 'test/standardRegistries';
 import { SERIES_ZLEVEL } from 'test/canvas';
 import { getCanvasEvents, getComponent } from 'test/panel';
 import { type PanelOptions } from 'types';
