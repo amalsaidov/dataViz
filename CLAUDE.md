@@ -116,12 +116,14 @@ Differences worth knowing:
 - **`lefthook` was dropped** (config + dep + `prepare` script). A nested hook manager installs hooks
   into the repo-root `.git`, so it would have gated commits for the whole monorepo on one package's
   checks.
-- **Its nested `.github/` was removed; CI lives at root** as `echarts-ci.yml` (Playwright e2e matrix +
-  levitate is-compatible) and `echarts-bundle-stats.yml`, both `paths:`-scoped to the package. The
+- **Its nested `.github/` was removed; CI lives at root** in the generic `plugin-ci.yml` (levitate
+  is-compatible per build target, Playwright e2e matrix via `plugin-e2e.yml`) and `plugin-bundle-stats.yml`,
+  which run for every package. echarts only differs through its `plugin-ci.json`. The
   `grafana-enterprise@nightly` e2e job is `continue-on-error` (non-blocking); don't make it required. The
   bundle-stats workflow does **not** `uses:` `grafana/plugin-actions/bundle-size` — that action runs
   `pnpm install` at the repo root, which has no `package.json` — so it inlines the action's steps and
-  calls its `index.js` report script from a pinned checkout. Bump both pins together. The upstream
+  calls its `index.js` report script from a pinned checkout. Bump both pins together. It reports the
+  relations panel and the app separately, one comment each. The upstream
   `release.yml` (tag-triggered sign + validate of the standalone Relations build) and `cp-update.yml`
   (create-plugin update, which only works on a repo-root plugin) were not ported.
 - **It keeps its own `.nvmrc` and `packageManager`**, both synced to the workspace root. Same reason as
@@ -129,12 +131,17 @@ Differences worth knowing:
   `<plugin-directory>/.nvmrc` for the Node version (falling back to its own default if absent).
 - **Its standalone dev/e2e stack (`pnpm run server` inside the package) defaults to port 3020**, not
   upstream's 3001, so it can run alongside the monorepo stack (`pnpm run server` from `plugins/`, on
-  3001). `playwright.config.ts`, `docker-compose.yaml`, `echarts-ci.yml` and the `parity.md` live links
+  3001). `playwright.config.ts`, `docker-compose.yaml`, `plugin-ci.json` (`e2e.url`) and the `parity.md` live links
   all assume 3020 — change them together. Its LGTM stack stays on 3010, standalone Relations on 4001.
 - **Two `plugin.json`s ship on their own:** `src/plugin.json` (the app) and
   `src/modules/relations/plugin.json` (`build:relations` publishes it standalone as
   `grafana-relations-panel`). Both use the reserved link names from `plugin-metadata.md`. The other
   `src/modules/*/plugin.json` ship only inside the app.
+- **CI builds two plugins from it.** Its `plugin-ci.json` lists `grafana-relations-panel` (`build:relations`)
+  and the app, `grafana-echarts-app` (`build`), so root CI, compatibility and bundle stats cover both. The
+  two build one after another because both write `dist/`. e2e tests the app, built by `build`. Adding another
+  standalone module needs a `build:<module>` script **and** webpack support (`--env standalone=<module>`
+  currently accepts only `relations`), plus a target entry.
 - **It is not yet in i18n CI, and when it opts in it gets ONE Crowdin project, not one per published
   plugin.** A package opts in by having a `crowdin.yml`; echarts has none, no locales, and no
   `i18n-extract:ci` script, so `.github/actions/discover-i18n-packages` ignores it. It does already
@@ -163,6 +170,17 @@ Differences worth knowing:
 2. Add a reference in root `plugins/tsconfig.json`
 3. Add an alias in `.shared/webpack-shared.mjs` if plugins will import it via webpack
 
+## Per-package CI config (`plugin-ci.json`)
+
+CI finds plugin packages on its own; an optional `plugin-ci.json` at a package root only overrides the
+defaults (which plugins it publishes, the e2e Grafana URL). What it can contain, what CI runs per package
+and how to read a failure are in the "Plugin CI" section of `.github/actions/README.md`. Two rules to keep
+in mind when editing one:
+
+- **Listing `targets` replaces the default** (`src/plugin.json` built by `build`). List the default too to
+  keep building it.
+- A package's targets build one at a time, because they all write `dist/`.
+
 ## GitHub Actions workflows
 
 Grafana's org-wide `zizmor` CI check requires every `uses:` action reference in
@@ -184,6 +202,42 @@ gh api repos/<owner>/<repo>/commits/<tag> --jq '.sha'
 and pin as `uses: <owner>/<repo>@<sha> # <tag>`. Don't use `git/refs/tags/<tag> --jq '.object.sha'`:
 for an **annotated** tag that returns the tag *object's* SHA, not the commit, and zizmor flags it as an
 impostor commit (this is how `pnpm/action-setup@f520ece…` got pinned; its `v6` commit is `0977fd9…`).
+
+Workflows set up pnpm, Node and `pnpm install` through `.github/actions/setup-workspace`, so the
+`pnpm/action-setup` and `actions/setup-node` pins live in one place (i18n workflows aside).
+
+### Testing CI changes locally
+
+Iterate on CI logic locally, and push only to confirm what needs GitHub itself (PR comments, artifacts,
+matrix/reusable-workflow fan-out, token scope). Run from the repo root:
+
+```bash
+node --test --test-concurrency=1 '.github/tests/*.test.ts'     # run (one file at a time, so output order is stable)
+plugins/node_modules/.bin/tsc -p .github/tests   # type-check (after `pnpm install` in plugins/)
+```
+
+TypeScript run directly by Node 24, which strips the types, so: erasable syntax only (no `enum`,
+`namespace`, parameter properties), `.ts` extensions in imports, and Node does not type-check, so `tsc`
+does. A glob, not a directory: Node 24's `--test` doesn't take directories. Local only, not run in CI, no
+dependencies. It covers `discover-plugins` (targets, e2e, every validation error, `changed-only` against
+temp git repos), the scripts in `.github/scripts/` (with a fake `pnpm` on `PATH`, so no real builds), and
+security invariants over every **tracked** workflow and composite action: SHA-pinned third-party
+`uses:`, no `${{ }}` inside `run:`, top-level `permissions: {}`, per-job `permissions:`, and no job holding
+`pull-requests: write` checks out this repo or runs package or repo code. It also fails if a cached task
+in `plugins/turbo.json` narrows its `inputs` without `$TURBO_DEFAULT$`, or if `test`/`test:ci` stop
+depending on `^transit` (Jest reads workspace packages such as `@shared/core` from source, so their files
+must be in the test hash), or if `build-types` stops declaring its `.cache/tsbuild/**` outputs (a cache hit
+restores only declared outputs, and a dependent type-check needs those declarations), since root CI's
+persisted turbo cache would then replay stale or missing results.
+
+That's why non-trivial step logic lives in `.github/scripts/*.sh` rather than inline `run:` blocks: a
+script can be tested; the workflow keeps only the `env:` wiring. zizmor audits YAML only, so keep those
+scripts small. They sit under `.github/`, and the same reviewers apply.
+
+**Jobs that hold a PR write token run no PR code.** `plugin-ci.yml` and `plugin-bundle-stats.yml` each
+split into a read-only job that installs, builds and analyzes (PR code, plus unpinned levitate from
+npm), and a report job with `pull-requests: write` that checks out nothing from the PR and only turns
+the first job's artifact into a comment. Keep that split when adding comment-posting steps.
 
 ## Bringing a plugin into this monorepo
 

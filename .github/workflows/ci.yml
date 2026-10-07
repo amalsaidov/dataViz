@@ -10,10 +10,12 @@ on:
 
 permissions: {}
 
+# PR runs share a group per PR, so a newer push cancels the superseded run.
+# Runs on main get a group per commit, so every merged commit gets a completed
+# check: GitHub drops a *pending* run when a newer one queues in the same
+# group, even without cancel-in-progress.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # Superseded PR pushes are cancelled, but main is not: cancelling there would
-  # leave the merged commit without a completed check.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -26,33 +28,50 @@ jobs:
       run:
         working-directory: plugins
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      # pnpm action uses the packageManager field in plugins/package.json to
-      # understand which version to install. package_json_file is relative
-      # to the workspace root, not affected by defaults.run.working-directory.
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
-        with:
-          package_json_file: plugins/package.json
-      - name: Setup Node.js environment
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version-file: plugins/.nvmrc
-          cache: 'pnpm'
-          cache-dependency-path: plugins/pnpm-lock.yaml
+      - name: Set up workspace
+        uses: $/.github/actions/setup-workspace
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
+      # Replays format/lint/type-check/test results for packages whose inputs
+      # didn't change. Correct only while turbo.json's task inputs cover every
+      # file a task reads, so leave them at turbo's default (all files in the
+      # package) plus globalDependencies, not narrowed to src/. Keyed per
+      # commit and restored from the newest entry for the same lockfile; a PR's
+      # entries are scoped to its branch, so they never feed main.
+      - name: Cache turbo results
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: plugins/.turbo/cache
+          key: turbo-${{ runner.os }}-${{ hashFiles('plugins/pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ hashFiles('plugins/pnpm-lock.yaml') }}-
 
+      # --summarize records which cache entries each run used, for the prune
+      # step at the end of the job.
       - name: Format
-        run: pnpm format
+        run: pnpm format --summarize
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint --summarize
       - name: Type check
-        run: pnpm type-check
+        run: pnpm type-check --summarize
       - name: Unit tests
-        run: pnpm test:ci
+        run: pnpm test:ci --summarize
+      # Builds what each package publishes, per its plugin-ci.json (or the
+      # implicit src/plugin.json + `build` target), rather than every
+      # package's `build` script. Sequential: targets of one package share
+      # dist/, so they cannot build concurrently.
+      - name: Discover build targets
+        id: targets
+        uses: $/.github/actions/discover-plugins
       - name: Build
-        run: pnpm build
+        env:
+          TARGETS: ${{ steps.targets.outputs.targets }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/build-targets.sh"
+
+      # Keeps only this run's entries, so the cache saved at the end of the job
+      # stays one run's size instead of growing with every commit.
+      - name: Prune turbo cache
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/prune-turbo-cache.sh" .turbo/cache .turbo/runs

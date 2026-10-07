@@ -1,0 +1,192 @@
+# Per-plugin CI beyond root ci.yml's format/lint/type-check/test/build:
+# levitate API compatibility for every build target, and Playwright e2e for
+# every package with an e2e suite. Both lists come from discover-plugins
+# (see plugin-ci.json in CLAUDE.md), limited to packages this change touches.
+# Design notes: .github/actions/README.md.
+#
+# No `paths:` filter: discover-plugins decides what a change affects, and a
+# second copy of that rule here would drift from it. A change that touches no
+# package runs only the discover job.
+name: Plugin CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+# PR runs share a group per PR, so a newer push cancels the superseded run.
+# Runs on main get a group per commit, so none waits behind another: GitHub
+# drops a *pending* run when a newer one queues, even without
+# cancel-in-progress, and each main run only checks packages changed since the
+# previous commit, so a dropped run's changes would never be checked.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  discover:
+    name: Discover plugins
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      targets: ${{ steps.find.outputs.targets }}
+      e2e: ${{ steps.find.outputs.e2e }}
+    steps:
+      # Full history: changed-only diffs against the PR base / previous commit.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - id: find
+        uses: $/.github/actions/discover-plugins
+        with:
+          changed-only: 'true'
+          # What only this workflow runs; a change to these re-runs it for every package.
+          shared-paths: |
+            .github/workflows/plugin-ci.yml
+            .github/workflows/plugin-e2e.yml
+            .github/scripts/find-module.sh
+            .github/scripts/levitate-report.sh
+            .github/scripts/levitate-verdict.sh
+            .github/scripts/levitate-comment.sh
+
+  compatibility:
+    name: compatibility (${{ matrix.target.id }})
+    needs: discover
+    if: github.event_name == 'pull_request' && needs.discover.outputs.targets != '[]'
+    runs-on: ubuntu-latest
+    # Read-only: this job runs PR code (install scripts, the build) and an
+    # unpinned levitate from npm. Commenting happens in compatibility-report,
+    # which runs none of that.
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.discover.outputs.targets) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up workspace
+        uses: $/.github/actions/setup-workspace
+        with:
+          package: ${{ matrix.target.pkg }}
+
+      - name: Build
+        working-directory: plugins
+        env:
+          PKG: ${{ matrix.target.pkg }}
+          SCRIPT: ${{ matrix.target.script }}
+          DIR: ${{ matrix.target.dir }}
+          ID: ${{ matrix.target.id }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/build-target.sh"
+
+      - name: Find module
+        id: module
+        env:
+          DIR: ${{ matrix.target.dir }}
+          PLUGIN_JSON: ${{ matrix.target.plugin_json }}
+        run: bash .github/scripts/find-module.sh
+
+      # Module paths are repo-root-relative, which is where the action runs levitate.
+      # Non-blocking: levitate flags any type change in a used export (e.g.
+      # @grafana/runtime `config`), most of which don't break at run time. The
+      # steps below turn a failure into a warning annotation and a PR comment
+      # instead; delete continue-on-error to make it blocking. The action's own
+      # comment-pr stays off because its sticky comment has no per-target key,
+      # so matrix legs would overwrite each other; ours is keyed per plugin id.
+      - name: Compatibility check
+        id: compat
+        continue-on-error: true
+        uses: grafana/plugin-actions/is-compatible@4698961fa64137fcac207108397ebe8a738a33d1 # is-compatible/v1.0.3
+        with:
+          module: ${{ steps.module.outputs.path }}
+          comment-pr: 'no'
+          fail-if-incompatible: 'yes'
+
+      # Hands compatibility-report either a comment body or a `clean` marker,
+      # judged from levitate's own report: the action swallows levitate
+      # failures, so the step outcome can't tell "compatible" from "never ran".
+      # Runs after a failed check too, since that step is continue-on-error.
+      - name: Write compatibility report
+        env:
+          ID: ${{ matrix.target.id }}
+          MODULE: ${{ steps.module.outputs.path }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash .github/scripts/levitate-report.sh .levitate_output levitate-report
+
+      - name: Upload compatibility report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: levitate-${{ matrix.target.id }}
+          path: levitate-report/
+          retention-days: 5
+
+  # Posts (or, once clean, removes) each target's levitate comment. Holds the
+  # PR write token, so it checks out nothing and runs no PR code: it only
+  # reads the text artifact compatibility wrote. On fork PRs the token is
+  # read-only regardless; the comment steps are continue-on-error, so this
+  # job stays green there without commenting.
+  compatibility-report:
+    name: compatibility report (${{ matrix.target.id }})
+    needs: [discover, compatibility]
+    # !cancelled(): one target's failed build must not drop the other targets'
+    # reports, but a run superseded by a newer push posts nothing.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.discover.result == 'success' && needs.discover.outputs.targets != '[]' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.discover.outputs.targets) }}
+    steps:
+      # Missing when compatibility didn't get as far as levitate; then neither
+      # step below runs and any earlier comment is left as it was.
+      - name: Download compatibility report
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: levitate-${{ matrix.target.id }}
+          path: levitate-report
+
+      - name: Comment compatibility report
+        if: hashFiles('levitate-report/comment.md') != ''
+        continue-on-error: true
+        uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
+        with:
+          header: levitate-${{ matrix.target.id }}
+          path: levitate-report/comment.md
+
+      # A later clean run removes this plugin's earlier report, so it can't go stale.
+      - name: Remove stale compatibility report
+        if: hashFiles('levitate-report/clean') != ''
+        continue-on-error: true
+        uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
+        with:
+          header: levitate-${{ matrix.target.id }}
+          delete: true
+
+  e2e:
+    name: e2e (${{ matrix.package.pkg }})
+    needs: discover
+    if: needs.discover.outputs.e2e != '[]'
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.discover.outputs.e2e) }}
+    uses: $/.github/workflows/plugin-e2e.yml
+    with:
+      dir: ${{ matrix.package.dir }}
+      pkg: ${{ matrix.package.pkg }}
+      url: ${{ matrix.package.url }}
+      grafana-dependency: ${{ matrix.package.grafana_dependency }}

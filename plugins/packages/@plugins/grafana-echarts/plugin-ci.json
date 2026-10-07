@@ -1,0 +1,17 @@
+{
+  "targets": [
+    {
+      "id": "grafana-relations-panel",
+      "script": "build:relations",
+      "pluginJson": "src/modules/relations/plugin.json"
+    },
+    {
+      "id": "grafana-echarts-app",
+      "script": "build",
+      "pluginJson": "src/plugin.json"
+    }
+  ],
+  "e2e": {
+    "url": "http://127.0.0.1:3020"
+  }
+}

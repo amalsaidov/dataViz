@@ -1,3 +1,111 @@
+# Plugin CI
+
+How every plugin package gets built, checked and tested, and why it is built the way it is.
+
+| workflow | runs on | does |
+|---|---|---|
+| `ci.yml` | every PR and push to main | Format, lint, type-check and unit tests for all packages, then builds each plugin the packages publish |
+| `plugin-ci.yml` | every PR and push to main | Grafana API compatibility (levitate) per plugin, and Playwright e2e per package |
+| `plugin-bundle-stats.yml` | every PR and push to main | Bundle size per plugin, compared against main |
+
+None of them names a plugin. Each asks `discover-plugins` what exists, so a new package gets CI without
+any workflow changes.
+
+## What runs for a package
+
+- **Build:** each plugin the package publishes. By default that's the one in `src/plugin.json`, built by
+  the `build` script. After each build, CI checks that `dist/plugin.json` has the expected plugin id, so a
+  build that quietly produced the wrong plugin fails.
+- **Compatibility:** levitate checks the plugin's `module.ts` against the latest `@grafana/*` packages.
+- **e2e:** Playwright against every Grafana version the plugin's `grafanaDependency` allows, plus a
+  nightly run that never blocks. Only for packages with both an `e2e` script and a `playwright.config.ts`.
+- **Bundle size:** a PR comment per plugin with the size change against main.
+
+`plugin-ci.yml` and `plugin-bundle-stats.yml` only run their jobs for packages the change touches; a
+change that touches none runs only the discover job. A change anywhere else under `plugins/` (the
+lockfile, `.shared/`, workspace config), or to `discover-plugins`, `setup-workspace` or `build-target.sh`,
+runs everything for every package. Each workflow also passes `discover-plugins` its own `shared-paths`:
+the workflow file and the scripts only it runs. Editing `plugin-bundle-stats.yml` re-runs bundle stats
+for every package, but not e2e. The workflows have no `paths:` filters, so this is the only copy of the
+rule. That rule is inverted on purpose: a new shared file is covered without anyone having to list
+it.
+
+## `plugin-ci.json`
+
+Optional, at a package root. Only needed when the defaults don't fit. echarts is the example: it publishes
+two plugins, the relations panel and the app, and its e2e Grafana listens on 3020.
+
+```json
+{
+  "targets": [
+    { "id": "grafana-relations-panel", "script": "build:relations", "pluginJson": "src/modules/relations/plugin.json" },
+    { "id": "grafana-echarts-app", "script": "build", "pluginJson": "src/plugin.json" }
+  ],
+  "e2e": { "url": "http://127.0.0.1:3020" }
+}
+```
+
+- `targets` replaces the default. Only listed plugins are built, so to keep the default as well, list it.
+  Each target's `script` must write that plugin into `dist/`.
+- `e2e.url` is where the package's own `docker-compose.yaml` serves Grafana. The default is
+  `http://127.0.0.1:3000`.
+
+## When a check fails
+
+- **Discover plugins** fails with an annotation on the file at fault: a target `script` that isn't in
+  `package.json`, a `pluginJson` whose id doesn't match the target, the same id declared twice, or an `e2e`
+  script without a Playwright config (or the reverse).
+- **Build** fails when a target's script built a different plugin than declared, or wrote no
+  `dist/plugin.json`.
+- **Compatibility** doesn't fail. levitate flags any type change in an export the plugin uses, and most of
+  those don't break anything at run time. A hit shows as a warning plus a PR comment with the details; the
+  e2e jobs show whether it really breaks. A later clean run for that plugin removes the comment; if a later
+  push takes the package out of the PR's changes, that plugin isn't checked again and its comment stays. If levitate
+  doesn't finish (an npm outage, a crash), that's a separate "did not finish" warning and comment, never a
+  clean pass.
+
+## Design rules
+
+- **Jobs that can write to the PR never run PR code.** Installing dependencies and building runs PR code
+  (and levitate comes unpinned from npm), so those jobs get a read-only token. A separate job holding
+  `pull-requests: write` turns their output into the comment, without checking out the PR or running any
+  package code. `.github/tests/workflows.test.ts` enforces this. Keep the split when adding a comment.
+- **Runs on main are never canceled or dropped.** Push runs only check packages changed since the previous
+  commit, so losing one could leave a plugin without its main-branch e2e run or bundle baseline. GitHub
+  drops a *pending* run when a newer one queues in the same concurrency group, even without
+  `cancel-in-progress`, so each push to main gets a group of its own. Only superseded PR runs are canceled.
+- **Bundle baselines come only from main in this repository.** A PR runs its own copy of
+  `plugin-bundle-stats.yml` and could upload an artifact with the baseline's name, and a fork's branch can
+  be called main, so the report checks both the branch and the repository of the run that uploaded it.
+- **turbo's cache is shared between CI runs**, so unchanged packages replay their results instead of
+  rerunning (about 3 minutes saved per run). That's only correct while every task hashes every file it
+  reads. Don't narrow `inputs` in `plugins/turbo.json`: limiting tests to `src/**` would let a
+  `jest.config.js` change replay a stale pass. Tests also depend on `^transit`, a task with no script whose
+  hash covers each workspace dependency's files, because Jest reads `@shared/core` from source. A task that
+writes files another task reads must declare them as `outputs` (as `build-types` does), since a cache hit
+restores only those. CI prunes
+  the cache to the entries the run used before saving it. Tests in `.github/tests/` check these rules.
+- **Playwright's browser download is cached** per Playwright version.
+
+## Changing CI
+
+Non-trivial step logic lives in `.github/scripts/` and `discover-plugins/`, not inline in the workflows,
+so it can be tested. Run the tests locally before pushing:
+
+```bash
+node --test --test-concurrency=1 '.github/tests/*.test.ts'
+plugins/node_modules/.bin/tsc -p .github/tests   # type-check, after pnpm install in plugins/
+```
+
+They cover discovery, the scripts (with a fake `pnpm`, so nothing is really built), and security rules for
+every workflow: pinned actions, no `${{ }}` inside `run:`, and the write-token rule above. Push only to
+check what needs GitHub itself: PR comments, artifacts, and how matrix jobs fan out.
+
+pnpm, Node and `pnpm install` are set up by `.github/actions/setup-workspace`, so those pins live in one
+place. Jobs that build or test one package pass it `package:`, which installs only that package and its
+workspace dependencies. Only root CI's full install saves the pnpm store cache; the one-package jobs only
+restore it, so the saved store is never missing packages.
+
 # i18n CI
 
 How strings move between this monorepo and Crowdin, and why it is built the way it is.

@@ -8,7 +8,7 @@ A template for building Grafana **frontend** plugins (panel and app plugins) in 
 
 - **Monorepo Architecture** - Multiple plugins and shared packages in one repository
 - **Full Build Control** - Ejected webpack and build configurations, no hidden abstractions
-- **Modern Toolchain** - Turborepo, pnpm workspaces, SWC, TypeScript, Biome.js
+- **Modern Toolchain** - Turborepo, pnpm workspaces, SWC, TypeScript, Biome.js (imported plugins keep their own ESLint + Prettier)
 - **Panel Example** - Ready-to-copy `PanelPlugin` template (app plugins are supported too)
 - **Type Safety** - Strict TypeScript with composite builds and project references
 - **Fast Development** - Docker Compose setup with hot reload
@@ -68,15 +68,16 @@ Default host ports for every Docker stack in the repo. Commands run from the dir
 
 ## Prerequisites
 
-- **Node.js** 22 (see `plugins/.nvmrc`)
+- **Node.js** 24 (see `plugins/.nvmrc`)
 - **pnpm** 10 or later
 - **Docker** (for the local development environment)
 
 ## Repository Structure
 
 ```
-dataViz/
-└── plugins/                          # Main workspace directory
+dataViz/                              # git root
+├── .github/                          # CI: workflows, actions, scripts, local tests
+└── plugins/                          # pnpm workspace root (run commands from here)
     ├── .shared/                      # Shared build configurations
     │   ├── tsconfig.base.json       # Base TypeScript config
     │   ├── tsconfig.json            # Shared packages config
@@ -85,7 +86,9 @@ dataViz/
     │   ├── @shared/                 # Shared libraries
     │   │   └── core/                # Core utilities package
     │   └── @plugins/                # Grafana plugins
-    │       └── grafana-workspace-panel/  # Example panel plugin
+    │       ├── grafana-workspace-panel/  # Example panel plugin (template)
+    │       ├── grafana-clock-panel/      # Clock panel, imported with its own toolchain
+    │       └── grafana-echarts/          # ECharts app plugin; also publishes grafana-relations-panel
     ├── provisioning/                # Grafana provisioning
     ├── docker-compose.yaml          # Plugin build/watch stack
     ├── docker-compose.grafana.yaml  # Grafana instance stack
@@ -114,6 +117,10 @@ Then update:
 - root `tsconfig.json` - add a project reference
 - `jest.config.js` - copy from the template; add a `moduleNameMapper` entry if it imports a workspace package
 - Docker files - add a `dist` volume / mount and allow the id as unsigned if you want it loaded by the Docker Grafana stack
+
+CI picks the new package up automatically; no workflow needs editing. Add a `plugin-ci.json` only when the
+defaults don't fit, e.g. the package publishes more than one plugin, or its e2e Grafana isn't on port 3000.
+e2e runs only for packages with both an `e2e` script and a `playwright.config.ts`. See `CLAUDE.md`.
 
 ### Add a shared package
 
@@ -159,7 +166,7 @@ pnpm check          # format + test:ci + lint + type-check
 
 ### Development Tools
 - **SWC** - Fast TypeScript/JSX compiler
-- **Biome.js** - Fast linting and formatting
+- **Biome.js** - Fast linting and formatting for packages on this repo's toolchain. `grafana-clock-panel` and `grafana-echarts` were imported with their own ESLint + Prettier setup and still use it
 - **Jest** - Unit testing (via `@swc/jest`)
 - **Docker Compose** - Local development environment
 
@@ -186,16 +193,17 @@ This template uses an "ejected" approach that differs from the standard `@grafan
 
 ## Continuous Integration
 
-The build system is designed to work well with CI/CD:
+No workflow names a plugin. Each one asks `.github/actions/discover-plugins` which packages exist and what they publish, so a new package gets CI without workflow changes.
 
-```yaml
-# Example GitHub Actions
-- run: cd plugins && pnpm install
-- run: cd plugins && pnpm check  # Runs format, test, lint, type-check
-- run: cd plugins && pnpm build
-```
+On a pull request:
 
-Turborepo's caching works in CI with remote cache configuration.
+- **`ci.yml`** - format, lint, type-check and unit tests for every package, then a build of each plugin the packages publish, checking that the right plugin ended up in `dist/`
+- **`plugin-ci.yml`** - for the packages the PR touches:
+  - a Grafana API compatibility check (levitate). It is non-blocking: a possible incompatibility shows as a warning and a PR comment.
+  - Playwright e2e against every Grafana version the plugin supports
+- **`plugin-bundle-stats.yml`** - a bundle-size comparison against `main`, as a PR comment per plugin
+
+A change outside the plugin packages (the lockfile, `plugins/.shared/`) runs everything for every package, and a change to one of these workflows re-runs that workflow for every package. Per-package settings live in an optional `plugin-ci.json`. To test CI changes locally before pushing, run `node --test --test-concurrency=1 '.github/tests/*.test.ts'` from the repo root. Both are described in `CLAUDE.md`.
 
 ## License
 

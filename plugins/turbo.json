@@ -1,28 +1,30 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [".shared/**", "biome.json", ".nvmrc"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
     "build:dev": {},
+    "transit": {
+      "dependsOn": ["^transit"]
+    },
     "test": {
-      "inputs": ["src/**/*.tsx", "src/**/*.ts"]
+      "dependsOn": ["^transit"]
     },
     "test:ci": {
-      "inputs": ["src/**/*.tsx", "src/**/*.ts"]
+      "dependsOn": ["^transit"]
     },
     "clean": {},
     "format": {},
     "format:fix": {},
     "build-types": {
       "dependsOn": ["^build-types"],
-      "inputs": ["src/**/*.tsx", "src/**/*.ts"],
-      "outputs": []
+      "outputs": [".cache/tsbuild/**"]
     },
     "type-check": {
-      "dependsOn": ["build-types"],
-      "inputs": ["src/**/*.tsx", "src/**/*.ts"]
+      "dependsOn": ["build-types"]
     },
     "lint": {},
     "lint:fix": {},

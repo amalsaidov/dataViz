@@ -1,0 +1,53 @@
+name: Discover plugins
+description: Emit JSON matrices of every plugin build target and every package e2e suite, optionally limited to changed packages.
+
+inputs:
+  root:
+    description: 'Directory holding the plugin packages to scan.'
+    required: false
+    default: plugins/packages/@plugins
+  changed-only:
+    description: |
+      'true' to keep only packages changed since the PR base (pull_request)
+      or the previous commit (push). Needs the base commit in the checkout
+      (fetch-depth: 0). Without a usable base, nothing is filtered.
+    required: false
+    default: 'false'
+  shared-paths:
+    description: |
+      With changed-only, files only the calling workflow runs (one per line;
+      a trailing / matches a directory), such as the workflow itself and the
+      scripts it calls. A change to one of them selects every package. What
+      every caller runs (this action, setup-workspace, build-target.sh) is
+      always included.
+    required: false
+    default: ''
+
+outputs:
+  targets:
+    description: |
+      One entry per build target. Fields: dir (repo-root-relative package
+      directory), pkg (package name), id (plugin id), script (package.json
+      script that builds it into dist/), plugin_json (package-relative source
+      plugin.json).
+    value: ${{ steps.find.outputs.targets }}
+  e2e:
+    description: |
+      One entry per package with an e2e suite. Fields: dir, pkg, url (where
+      its docker-compose.yaml serves Grafana), grafana_dependency (from
+      src/plugin.json).
+    value: ${{ steps.find.outputs.e2e }}
+
+runs:
+  using: 'composite'
+  steps:
+    - id: find
+      shell: bash
+      env:
+        ROOT: ${{ inputs.root }}
+        CHANGED_ONLY: ${{ inputs.changed-only }}
+        SHARED_PATHS: ${{ inputs.shared-paths }}
+        PR_BASE: ${{ github.event.pull_request.base.sha }}
+        PUSH_BEFORE: ${{ github.event.before }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: bash "$ACTION_PATH/run.sh"

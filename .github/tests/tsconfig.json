@@ -1,0 +1,18 @@
+{
+	// Type-checks the CI tests; Node itself only strips types when running them.
+	//   plugins/node_modules/.bin/tsc -p .github/tests
+	// Needs `pnpm install` in plugins/ first. @types/node comes from pnpm's
+	// hoisted store there, since .github/ is outside the workspace.
+	"compilerOptions": {
+		"strict": true,
+		"noEmit": true,
+		"target": "es2022",
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"erasableSyntaxOnly": true,
+		"typeRoots": ["../../plugins/node_modules/.pnpm/node_modules/@types"],
+		"types": ["node"]
+	},
+	"include": ["*.ts"]
+}

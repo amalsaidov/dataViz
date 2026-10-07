@@ -1,0 +1,183 @@
+# Playwright e2e for one plugin package, against every Grafana version its
+# grafanaDependency allows (plus a non-blocking nightly). Called once per
+# package by plugin-ci.yml; reusable rather than inline because the version
+# list is per-package matrix output, which can't feed a second matrix within
+# one workflow. Design notes: .github/actions/README.md.
+#
+# The package's own docker-compose.yaml serves Grafana (not the monorepo dev
+# stack in plugins/), with this package's dist/ (built by its `build` script)
+# as the plugin.
+name: Plugin e2e
+
+on:
+  workflow_call:
+    inputs:
+      dir:
+        description: Repo-root-relative package directory.
+        required: true
+        type: string
+      pkg:
+        description: Package name.
+        required: true
+        type: string
+      url:
+        description: Where the package's docker-compose.yaml serves Grafana.
+        required: true
+        type: string
+      grafana-dependency:
+        description: semver range from the package's src/plugin.json.
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: plugins
+    outputs:
+      artifact: ${{ steps.metadata.outputs.artifact }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up workspace
+        uses: $/.github/actions/setup-workspace
+        with:
+          package: ${{ inputs.pkg }}
+
+      # The package's `build` (what its docker-compose.yaml mounts), not a
+      # build target, so there is no plugin id to check here.
+      - name: Build
+        env:
+          PKG: ${{ inputs.pkg }}
+          SCRIPT: build
+          DIR: ${{ inputs.dir }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/build-target.sh"
+
+      - name: Get plugin metadata
+        id: metadata
+        env:
+          DIR: ${{ inputs.dir }}
+        run: |
+          id="$(jq -r '.id' "$GITHUB_WORKSPACE/$DIR/dist/plugin.json")"
+          version="$(jq -r '.info.version' "$GITHUB_WORKSPACE/$DIR/dist/plugin.json")"
+          echo "artifact=e2e-${id}-${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload test build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ steps.metadata.outputs.artifact }}
+          path: ${{ inputs.dir }}/dist
+          retention-days: 5
+
+  resolve-versions:
+    name: Resolve e2e images
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.resolve-versions.outputs.matrix }}
+    steps:
+      # e2e-version has no plugin-directory input; left alone it reads
+      # src/plugin.json at the repo root, which doesn't exist here.
+      - name: Resolve Grafana E2E versions
+        id: resolve-versions
+        uses: grafana/plugin-actions/e2e-version@3ef49643a84470fd25bafeb96701fa0be3be6746 # e2e-version/v3.0.2
+        with:
+          grafana-dependency: ${{ inputs.grafana-dependency }}
+
+  playwright-tests:
+    needs: [resolve-versions, build]
+    timeout-minutes: 15
+    # e2e-version adds a grafana-enterprise@nightly entry to the matrix. The
+    # nightly run is informational: a failure there shows on the job, but does
+    # not fail the workflow. Do not make its check required in branch protection,
+    # because that overrides this setting.
+    continue-on-error: ${{ matrix.GRAFANA_IMAGE.VERSION == 'nightly' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        GRAFANA_IMAGE: ${{ fromJson(needs.resolve-versions.outputs.matrix) }}
+    name: ${{ matrix.GRAFANA_IMAGE.name }}@${{ matrix.GRAFANA_IMAGE.VERSION }}${{ matrix.GRAFANA_IMAGE.VERSION == 'nightly' && ' (non-blocking)' || '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.dir }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download plugin
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          path: ${{ inputs.dir }}/dist
+          name: ${{ needs.build.outputs.artifact }}
+
+      # Before the install: the package's compose stack needs only dist/, so
+      # Grafana boots while pnpm installs.
+      - name: Start Grafana
+        env:
+          GRAFANA_VERSION: ${{ matrix.GRAFANA_IMAGE.VERSION }}
+          GRAFANA_IMAGE: ${{ matrix.GRAFANA_IMAGE.NAME }}
+        run: |
+          docker compose pull
+          ANONYMOUS_AUTH_ENABLED=false DEVELOPMENT=false docker compose up -d
+
+      - name: Set up workspace
+        uses: $/.github/actions/setup-workspace
+        with:
+          package: ${{ inputs.pkg }}
+
+      - name: Wait for grafana server
+        uses: grafana/plugin-actions/wait-for-grafana@4205a0824a13b71fdb9b9b49f28f5f72b754f81f # wait-for-grafana/v1.0.5
+        with:
+          url: ${{ inputs.url }}/login
+
+      # The Chromium download is cached per Playwright version (packages pin
+      # different ones). Uncached it usually takes ~30s but swings to several
+      # minutes with runner and network availability; the cache removes that
+      # download. The OS packages it needs aren't cacheable this way, so a
+      # cache hit still runs install-deps.
+      - name: Read Playwright version
+        id: playwright
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Playwright Browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+
+      - name: Run Playwright tests
+        id: run-tests
+        env:
+          GRAFANA_URL: ${{ inputs.url }}
+        run: pnpm run e2e
+
+      - name: Docker logs
+        if: ${{ always() && steps.run-tests.outcome == 'failure' }}
+        run: docker compose logs
+
+      - name: Stop grafana docker
+        if: ${{ always() }}
+        run: docker compose down
