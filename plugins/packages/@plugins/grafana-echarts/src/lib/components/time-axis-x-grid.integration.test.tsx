@@ -2,7 +2,6 @@
 // is even from one plot edge to the other and each label is on a grid line. The test reads the drawn grid lines
 // and time labels of each render. `time-axis-x-grid-matrix.integration.test.tsx` has the full matrix.
 import { render } from '@testing-library/react';
-import { timeseriesAdapter } from 'standalone/importAdapters/timeseries';
 import { type BarCanvasEvent, renderBars, timeFrame } from 'test/barCanvas';
 import { AXIS_ZLEVEL, SERIES_ZLEVEL } from 'test/canvas';
 import { getAxisCanvasEvents, getCanvasEvents, getComponent } from 'test/panel';
@@ -40,22 +39,7 @@ const expectCoreXGrid = (grid: BarCanvasEvent[]) => {
   labels.forEach(({ x }) => expect(xs.some((line) => Math.abs(line - x) <= 1)).toBe(true));
 };
 
-const importedBars = () =>
-  timeseriesAdapter.translate(
-    { type: 'timeseries', fieldConfig: { defaults: { custom: { drawStyle: 'bars' } }, overrides: [] } },
-    {}
-  ).options as Partial<PanelOptions>;
-
 describe('the x grid lines of a time axis', () => {
-  it('are even across the plot of imported Time series bars, as core', async () => {
-    const frame = timeFrame(
-      'A',
-      Array.from({ length: 12 }, (_, i) => i / 4),
-      Array.from({ length: 12 }, (_, i) => 100 + ((i * 7) % 21))
-    );
-    expectCoreXGrid((await renderBars([frame], importedBars())).grid);
-  });
-
   it('are even across the plot of bars on the default time range, as core', async () => {
     const frame = timeFrame('A', [0, 1, 2, 3], [1, 3, 2, 4]);
     expectCoreXGrid((await renderBars([frame], { barWidth: 60 })).grid);
