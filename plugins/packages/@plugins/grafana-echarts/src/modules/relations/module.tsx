@@ -7,6 +7,7 @@ import { addEditorModeOption } from 'lib/grafana/editor/common/editor-mode';
 
 import { addAnimationOption } from 'lib/grafana/editor/common/animation';
 import { addCommonLegendAndTooltip } from 'lib/grafana/editor/common/legend-and-tooltip';
+import { describeOption } from 'lib/grafana/editor/common/describeOption';
 import { removeOption } from 'lib/grafana/editor/common/removeOption';
 import { addRelationsChordOptions } from 'lib/grafana/editor/relations/chord';
 import { addRelationsCustomConfig } from 'lib/grafana/editor/relations/fieldConfig';
@@ -41,6 +42,26 @@ declare const __PLUGIN_ID__: string;
 
 initPluginTranslations(__PLUGIN_ID__);
 
+/**
+ * Users see this under the radio, and Grafana Assistant reads it as the panel's data hint, so keep it short.
+ * Full contract: docs/relations-data-sources.md and data-plane/graph-wide.md.
+ */
+const CHART_TYPE_DESCRIPTION =
+  'Graph for service maps, Sankey for weighted flow without cycles (up to 100 nodes and 12 levels), ' +
+  'chord for dense pairwise traffic. Each numeric field is one edge between its endpoint labels';
+
+/** Shared legend and tooltip builders register these without descriptions. */
+const LEGEND_AND_TOOLTIP_DESCRIPTIONS: Record<string, string> = {
+  'legend.showLegend': 'Show a legend entry for each node',
+  'legend.displayMode': 'List or table legend',
+  'legend.placement': 'Where the legend sits relative to the chart',
+  'legend.width': 'Legend width in px when placed on the right',
+  'legend.overflow': 'Truncate or wrap long legend items',
+  'tooltip.mode': 'Show a tooltip for the hovered node or edge, or hide tooltips',
+  'tooltip.maxWidth': 'Maximum tooltip width in px',
+  'tooltip.maxHeight': 'Maximum tooltip height in px',
+};
+
 // Graph, sankey, and chord share one field-based node and link model.
 const relationsPlugin = new PanelPlugin<PanelOptions, EChartsRelationsFieldConfig>(makeLazyPanel('relations'))
   .useFieldConfig({
@@ -54,6 +75,7 @@ const relationsPlugin = new PanelPlugin<PanelOptions, EChartsRelationsFieldConfi
       builder.addRadio({
         path: seriesTypePath,
         name: 'Chart type',
+        description: CHART_TYPE_DESCRIPTION,
         category: [relationsCategoryName],
         defaultValue: 'graph',
         settings: { options: relationsSeriesTypeOptions },
@@ -85,6 +107,9 @@ const relationsPlugin = new PanelPlugin<PanelOptions, EChartsRelationsFieldConfi
     // These options require the unavailable multi-tooltip mode.
     removeOption(builder, 'tooltip.sort');
     removeOption(builder, 'tooltip.hideZeros');
+    for (const [path, description] of Object.entries(LEGEND_AND_TOOLTIP_DESCRIPTIONS)) {
+      describeOption(builder, path, description);
+    }
 
     // Keep editor mode last in the Relations section.
     addEditorModeOption(builder, [relationsCategoryName]);
