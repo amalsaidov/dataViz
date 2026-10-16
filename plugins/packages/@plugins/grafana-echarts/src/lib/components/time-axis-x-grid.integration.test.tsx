@@ -5,7 +5,6 @@ import { render } from '@testing-library/react';
 import { type BarCanvasEvent, renderBars, timeFrame } from 'test/barCanvas';
 import { AXIS_ZLEVEL, SERIES_ZLEVEL } from 'test/canvas';
 import { getAxisCanvasEvents, getCanvasEvents, getComponent } from 'test/panel';
-import type { PanelOptions } from 'types';
 import { readGrid } from 'test/xGrid';
 
 import {
