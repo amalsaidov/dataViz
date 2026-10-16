@@ -23,7 +23,7 @@ import { applyAdvancedDefaults } from 'lib/echarts/options/editorMode';
 import { getThemedLabelStyle } from 'lib/echarts/options/labels';
 import { buildStreamTooltipModel } from 'lib/echarts/tooltip/stream';
 import { seriesTooltip } from 'lib/echarts/tooltip/option';
-import { getTimeAxisLabelFormatter } from 'lib/grafana/timeAxisFormat';
+import { getTimeXTicks } from 'lib/echarts/axes/timeXTicks';
 import { type PanelOptions } from 'types';
 
 /**
@@ -62,8 +62,10 @@ export function getStreamTimeAxisBase(
   timeRange: TimeRange,
   timeZone: string,
   theme: GrafanaTheme2,
-  showLabels = true
+  showLabels = true,
+  plotWidth?: number
 ): SingleAxisOption {
+  const xTicks = getTimeXTicks(timeRange, timeZone, plotWidth);
   const axisStyle = getCartesianAxisStyle(theme);
 
   return {
@@ -82,7 +84,7 @@ export function getStreamTimeAxisBase(
       // own time labels would render in browser-local time whatever the dashboard
       // is set to. Format each tick with Grafana's timezone, as the cartesian
       // x-axis and the heatmap both do.
-      formatter: getTimeAxisLabelFormatter(timeRange, timeZone),
+      ...xTicks.axisLabel,
     },
     splitLine: { show: false },
   };
@@ -101,10 +103,11 @@ export function getStreamSingleAxis(
   timeRange: TimeRange,
   timeZone: string,
   theme: GrafanaTheme2,
-  legend?: VizLegendOptions
+  legend?: VizLegendOptions,
+  plotWidth?: number
 ): SingleAxisOption {
   return {
-    ...getStreamTimeAxisBase(timeRange, timeZone, theme),
+    ...getStreamTimeAxisBase(timeRange, timeZone, theme, true, plotWidth),
     top: AXIS_PADDING,
     left: AXIS_PADDING,
     right: AXIS_PADDING + (legend?.placement === 'right' ? LEGEND_PADDING : 0),

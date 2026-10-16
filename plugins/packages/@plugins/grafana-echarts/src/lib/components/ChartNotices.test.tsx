@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { type ChartNotice } from 'lib/echarts/charts/types';
 import React from 'react';
 import { ChartNotices } from './ChartNotices';
@@ -26,15 +27,36 @@ describe('ChartNotices', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('renders one badge per notice, labelled with its text', () => {
+  it('renders one badge for one notice, labelled with its text', () => {
+    render(<ChartNotices notices={[notice('1 link hidden to remove cycles')]} />);
+
+    expect(screen.getByRole('note')).toHaveAttribute('aria-label', '1 link hidden to remove cycles');
+  });
+
+  // Several notices roll up into one button, not a row of icons (#965).
+  it('renders one button for several notices and lists every text on click', async () => {
     render(<ChartNotices notices={[notice('1 link hidden to remove cycles'), notice('and another', 'info')]} />);
 
-    const badges = screen.getAllByRole('note');
-    expect(badges).toHaveLength(2);
-    expect(badges.map((badge) => badge.getAttribute('aria-label'))).toEqual([
+    const button = screen.getByRole('button', { name: '2 notices' });
+    // Hidden notes keep each text in the accessibility tree before the click.
+    expect(screen.getAllByRole('note').map((n) => n.getAttribute('aria-label'))).toEqual([
       '1 link hidden to remove cycles',
       'and another',
     ]);
+
+    await userEvent.click(button);
+
+    const items = within(await screen.findByRole('list', { name: '2 notices' })).getAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual(['1 link hidden to remove cycles', 'and another']);
+  });
+
+  it('shows the warning icon on the roll-up when any notice is a warning', () => {
+    const { container, unmount } = render(<ChartNotices notices={[notice('a', 'info'), notice('b', 'warning')]} />);
+    expect(container.querySelector('svg')?.getAttribute('data-testid')).toBe('exclamation-triangle');
+    unmount();
+
+    const info = render(<ChartNotices notices={[notice('a', 'info'), notice('b', 'info')]} />);
+    expect(info.container.querySelector('svg')?.getAttribute('data-testid')).toBe('info-circle');
   });
 
   // Reachable by keyboard, so the tooltip can be opened without a pointer: an advisory
@@ -65,12 +87,13 @@ describe('ChartNotices', () => {
 
   // Two notices with the same text and severity would collide on the React key, which
   // React reports as a console error rather than a failure — so it is asserted directly.
-  it('keys each badge by severity and text', () => {
+  it('keys each listed notice by severity and text', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
     render(<ChartNotices notices={[notice('same text'), notice('same text', 'info')]} />);
+    await userEvent.click(screen.getByRole('button', { name: '2 notices' }));
 
-    expect(screen.getAllByRole('note')).toHaveLength(2);
+    expect(await screen.findAllByRole('listitem')).toHaveLength(2);
     expect(error).not.toHaveBeenCalled();
     error.mockRestore();
   });

@@ -4,7 +4,11 @@ import { type TooltipOption } from 'echarts/types/dist/shared';
 import { type EChartsAxisType } from 'lib/echarts/axes/converters';
 import { type ChartContext, type ChartModule } from 'lib/echarts/charts/types';
 import { buildTooltipModel, NOOP_TOOLTIP_SINK } from 'lib/echarts/tooltip/model';
-import { getSilentTooltipOption, grafanaTooltipModeToEChartsTrigger } from 'lib/echarts/tooltip/option';
+import {
+  getCategoryAxisPointer,
+  getSilentTooltipOption,
+  grafanaTooltipModeToEChartsTrigger,
+} from 'lib/echarts/tooltip/option';
 
 /**
  * Format the hovered x value for the header with Grafana's time formatting:
@@ -43,8 +47,11 @@ export function buildPanelTooltip(
   // Single: their editor no longer offers it, but a dashboard saved before that
   // still carries the value (see `ChartModule.singleTooltipOnly`).
   const requested = ctx.options.tooltip?.mode ?? TooltipDisplayMode.Single;
-  const mode =
-    chartModule.singleTooltipOnly && requested === TooltipDisplayMode.Multi ? TooltipDisplayMode.Single : requested;
+  const singleOnly =
+    typeof chartModule.singleTooltipOnly === 'function'
+      ? chartModule.singleTooltipOnly(ctx)
+      : chartModule.singleTooltipOnly === true;
+  const mode = singleOnly && requested === TooltipDisplayMode.Multi ? TooltipDisplayMode.Single : requested;
 
   // Per-series resolver so each row honors its field's unit/decimals overrides.
   // Families with a single value dimension omit it and share the panel formatter.
@@ -64,8 +71,9 @@ export function buildPanelTooltip(
   const formatHeaderValue =
     axisType === 'time' ? makeHeaderValueFormatter(ctx.timeZone, multiValueDimensions) : undefined;
 
+  const sharedCategoryAxis = axisType === 'category' && chartModule.sharedCategoryAxis === true;
   const option = getSilentTooltipOption(
-    grafanaTooltipModeToEChartsTrigger(axisType, mode),
+    grafanaTooltipModeToEChartsTrigger(axisType, mode, chartModule.sharedCategoryAxis),
     mode,
     (params) =>
       buildTooltipModel(params, resolveValueFormatter, {
@@ -74,7 +82,9 @@ export function buildPanelTooltip(
         formatHeaderValue,
         multiValueDimensions,
       }),
-    ctx.tooltipSink ?? NOOP_TOOLTIP_SINK
+    ctx.tooltipSink ?? NOOP_TOOLTIP_SINK,
+    // A band over the hovered category; the default is the time crosshair.
+    sharedCategoryAxis ? getCategoryAxisPointer() : undefined
   );
 
   return { option, mode };

@@ -19,6 +19,11 @@ describe('grafanaTooltipModeToEChartsTrigger', () => {
     expect(grafanaTooltipModeToEChartsTrigger('category', TooltipDisplayMode.Single)).toBe('item');
   });
 
+  it('uses axis for multi on a shared (cartesian) category axis, as core Bar chart', () => {
+    expect(grafanaTooltipModeToEChartsTrigger('category', TooltipDisplayMode.Multi, true)).toBe('axis');
+    expect(grafanaTooltipModeToEChartsTrigger('category', TooltipDisplayMode.Single, true)).toBe('item');
+  });
+
   it('uses no trigger when the tooltip is hidden', () => {
     expect(grafanaTooltipModeToEChartsTrigger('time', TooltipDisplayMode.None)).toBe('none');
   });

@@ -9,75 +9,94 @@ type of the family-fixed Cartesian panel, selected per field via `seriesType`.
 
 ## Design difference
 
-Core Bar chart adds many bar-specific panel options (orientation, bar/group
-width, radius, value labels, x-axis tick handling) on top of the graph field
-config. This module now exposes a curated set of these under the **Advanced**
-editor tier (plus a Default-tier "Show values"); orientation, group width, and
-3-way (percent) stacking remain deferred.
+Core Bar chart adds bar-specific panel options (orientation, bar and group
+width, radius, value labels, x tick handling) on top of the graph field config.
+This module has the core-parity options (Stacking, Orientation, Show values,
+"Color by field", tick spacing, and the bar geometry and style options) in every
+editor mode (#404). Only the value label position is in the **Advanced** editor tier. Two provisioned dashboards show
+the options: `cartesian-bar-options.json` has one panel for each option, and
+`cartesian-barchart-parity.json` shows each rule next to a core Bar chart twin.
+The rendered tests of each option are in
+`src/lib/components/integration-tests/bars/`.
 
 ## Panel options
 
-| Core Grafana option                           | ECharts equivalent                                                                                                            | Status        |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| X Axis field picker                           | none (x derived from time/first field)                                                                                        | Not supported |
-| Orientation (auto/horizontal/vertical)        | none (vertical)                                                                                                               | Not supported |
-| Rotate x tick labels, max length, min spacing | `xAxis.axisLabel.rotate` (`xTickRotate`, Advanced)                                                                            | Partial       |
-| Show values (auto/always/never)               | `series.label` (`showValues` Default + position Advanced)                                                                     | Supported     |
-| Stacking (none/normal/percent)                | per-field `stackSeries` (boolean)                                                                                             | Partial       |
-| Group width, bar width, bar radius            | `barWidth` / `itemStyle.borderRadius` (Advanced)                                                                              | Partial       |
-| Highlight full area on hover                  | none                                                                                                                          | Not supported |
-| Color by field                                | none (Color field config)                                                                                                     | Partial       |
-| Tooltip: mode                                 | `tooltip.mode`                                                                                                                | Supported     |
-| Legend                                        | Grafana legend via `addLegendOptions`                                                                                         | Supported     |
-| Animation                                     | `animation.enabled` (Advanced, **off by default** for every family)                                                           | Supported     |
-| Text size                                     | none                                                                                                                          | Not supported |
-| —                                             | `editorMode` radio (Default / Advanced editor tiers)                                                                          | ECharts-only  |
-| —                                             | Advanced: `performance.showPoints` / `performance.downsampling` (line-only); bar auto-enables `large` at 2,000+ points/series | Advanced      |
+| Core Grafana option                    | ECharts equivalent                                                                                                              | Status        |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| X Axis field picker                    | none (x is the time field, else the first string field)                                                                         | Not supported |
+| Orientation (auto/horizontal/vertical) | `orientation`: category y-axis with `inverse`, value axes on x. Category x-axis and bar panels only                             | Supported     |
+| Rotate x tick labels                   | `xAxis.axisLabel.rotate` (`xTickRotate`)                                                                                        | Supported     |
+| X tick label max length                | `xTickLabelMaxLength`: label formatter cuts rotated labels, as core                                                             | Supported     |
+| X-axis labels minimum spacing          | `xTickLabelSpacing`: `axisLabel.interval` from the category width. Category x-axis only                                         | Supported     |
+| Show values (auto/always/never)        | `series.label` with the field display text. Auto labels bars only, with `labelLayout.hideOverlap`                               | Supported     |
+| Stacking (none/normal/percent)         | `stacking`; percent draws each stack as shares of its total. A per-field `stackSeries` override opts out                        | Supported     |
+| Group width, bar width                 | core defaults as `barCategoryGap` / `barGap`; `barWidth` sets a width in % of the category                                      | Partial       |
+| Bar radius                             | `barRadius` in px, on the value end of unstacked bars and of the top stacked bar                                                | Partial       |
+| Highlight full area on hover           | `fullHighlight`: a `shadow` axis pointer on the category axis                                                                   | Supported     |
+| Color by field                         | `colorByField`: each bar takes the display color of that field in the same row                                                  | Supported     |
+| Tooltip: mode                          | `tooltip.mode`; All uses the `axis` trigger on the category axis too                                                            | Supported     |
+| Legend                                 | Grafana legend via `addLegendOptions`                                                                                           | Supported     |
+| —                                      | Annotations on the time x-axis (core Bar chart has none)                                                                        | ECharts-only  |
+| Animation                              | `animation.enabled` (Advanced, **off by default** for every family)                                                             | Supported     |
+| Text size: value                       | `text.valueSize`; unset fits the label in 65% of the bar thickness, 8 px to 14 px                                               | Supported     |
+| —                                      | `editorMode` radio (Default / Advanced editor tiers)                                                                            | ECharts-only  |
+| —                                      | Advanced: `performance.downsampling` (line-only). Bar uses `large` at 2,000+ points. Show points is Default tier (Graph styles) | Advanced      |
 
 ## Graph styles (core custom field config)
 
-| Core Grafana option                     | ECharts equivalent                                  | Status        |
-| --------------------------------------- | --------------------------------------------------- | ------------- |
-| Line width, fill opacity, gradient mode | `lineStyle.width` / `areaStyle.opacity` (Advanced)  | Partial       |
-| Point size                              | `symbolSize` / `showSymbol` (`pointSize`, Advanced) | Supported     |
-| Transform (constant / negative Y)       | none                                                | Not supported |
-| Show thresholds (thresholds style)      | per-field `thresholdsStyle.mode`                    | Supported     |
-| Axis placement                          | per-field `axisPlacement`                           | Supported     |
-| Axis: label, width, soft min/max, scale | none                                                | Not supported |
-| Hide in area                            | `custom.hideFrom` (via `addHideFrom`)               | Partial       |
+| Core Grafana option                     | ECharts equivalent                                                                    | Status        |
+| --------------------------------------- | ------------------------------------------------------------------------------------- | ------------- |
+| Fill opacity                            | `barFillOpacity` (default 80): fill color alpha; the border stays solid               | Supported     |
+| Line width                              | `lineWidth`: bar border width, default 1 px                                           | Supported     |
+| Gradient mode                           | none                                                                                  | Not supported |
+| Transform: negative Y                   | `custom.transform`: the bar draws below zero; labels and tooltip show the field value | Supported     |
+| Transform: constant                     | none                                                                                  | Not supported |
+| Show thresholds (thresholds style)      | per-field `thresholdsStyle.mode` (vertical marks on horizontal bars)                  | Supported     |
+| Axis placement                          | per-field `axisPlacement`                                                             | Partial       |
+| Axis: label, width, grid, color, border | `addAxisConfig`: axis `name`, label `width`, `splitLine`, series color, `axisLine`    | Supported     |
+| Axis: scale, centered zero, soft limits | log axis (symlog draws linear), symmetric range, `min`/`max` functions                | Partial       |
+| Hide in area                            | `custom.hideFrom`: viz, legend and tooltip                                            | Supported     |
 
 ## Standard (field-config) options
 
-Both keep the full standard field-config set; this module customizes only Color.
-Note the per-field `stackSeries` switch is shown only when a field's `seriesType`
-override is `bar`.
+Both keep the full standard field-config set. Thresholds and colored value
+mappings color each bar, as core. Note the per-field `stackSeries` switch is shown
+only when a field's `seriesType` override is `bar`.
 
 ## Notes / gaps
 
-- Core stacking is a three-way mode (none/normal/percent); this module exposes a
-  boolean per-field stack (percent stacking is not supported).
-- Bar geometry: width (`barWidth`) and corner radius (`itemStyle.borderRadius`) are
-  now exposed under the Advanced editor tier; group spacing and orientation remain
-  ECharts-managed / deferred.
-- Value labels, line width, fill opacity, point size, and x-tick rotation are
-  exposed under the Advanced tier (Show values is Default-tier). Each omits its
-  ECharts key at the default, so untouched panels render unchanged.
+- A bar axis includes zero unless Min or Max is set, as core. A line-only axis
+  fits the data, as core Time series.
+- The classic palette counts only the value fields, as core
+  `setClassicPaletteIdxs`. A label column does not move the series colors.
+- Stacked bars from several time frames join on time first, as core, so each
+  stack sums the values at one timestamp.
+- Deliberate differences, because this panel is also the Time series panel:
+  a time x-axis stays continuous (core Bar chart makes it ordinal), a time field
+  is the x-axis before a string field, and a second unit draws its axis on the
+  right (core Bar chart draws all Auto axes on the left).
+- Bar radius is in px: ECharts has no radius relative to the bar width.
+- Auto label size cannot measure the space above the tallest bar before layout,
+  so the grid keeps one label row above the bars. Core hides the labels when no
+  space is left.
 - Interactive legend: clicking a legend item shows/hides its series and the legend
   color picker sets a fixed color; color persists as a `byName` override and
   visibility as the core `hideSeriesFrom` system override.
-  **Hide in area** registers all three toggles but only `viz` is honored.
+- **Annotations** draw on the time x-axis, with the code of Time series
+  ([timeseries.md](./timeseries.md)). On a category x-axis, bars draw no annotations,
+  as core Bar chart (it has no annotation support). Tests:
+  [canvas baseline](../../../lib/components/annotations.canvas.test.tsx),
+  [integration](../../../lib/components/annotations.integration.test.tsx).
 - Per-field `seriesType` / `stackSeries` overrides apply on the **category** x-axis
   as well as the time axis, so a categorical bar chart can carry a line or scatter
-  overlay (e.g. actuals as bars with a target as a line). Previously these were
-  read only on the time-axis path, leaving the editor control visible but inert on
-  categorical data.
+  overlay (e.g. actuals as bars with a target as a line).
 - **Exceeds core here:** core Bar chart requires a single frame and errors on more.
   This module merges every frame on the category axis, joining series by category
   label (union of labels in first-appearance order; a category a frame has no row
   for renders as a gap). That is what lets a scatter overlay come from its own
   query rather than a joined column. See
-  [todo/multiple-frames.md](../../../../todo/multiple-frames.md) for the contract
-  and the parts still open (matrix heatmap).
+  [the multiple-frames note](https://github.com/grafana-experimental/grafana-beyond/blob/1612131378118a6c44a72976694d2aae7256fcb1/todo/multiple-frames.md) for the contract,
+  and [#198](https://github.com/grafana-experimental/grafana-beyond/issues/198) for the part still open (matrix heatmap).
 
 ## ECharts API support
 
@@ -87,7 +106,7 @@ the registered runtime surface.
 
 | ECharts API                                                                                    | Status                                        | Notes                                                                                                                                                                                                |
 | ---------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `series` (bar)                                                                                 | Supported                                     | `seriesType: bar`; per-field boolean stacking (percent not supported).                                                                                                                               |
+| `series` (bar)                                                                                 | Supported                                     | `seriesType: bar`; normal and percent stacking.                                                                                                                                                      |
 | `grid`                                                                                         | Supported                                     | Single cartesian grid; spacing adapts to stacked y-axes and legend.                                                                                                                                  |
 | `xAxis` / `yAxis`                                                                              | Supported                                     | X follows the data (time or category); one y-axis per field unit.                                                                                                                                    |
 | `tooltip`                                                                                      | Supported                                     | Rendered by a React `@grafana/ui` `VizTooltip` overlay; mode maps to `trigger` (item / axis / none). Supports pin, data links, ad-hoc filters. Bars opt out of proximity hover (see the note below). |

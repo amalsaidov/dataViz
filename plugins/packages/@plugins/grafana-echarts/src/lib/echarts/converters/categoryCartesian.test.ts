@@ -1,3 +1,4 @@
+import { StackingMode } from '@grafana/schema';
 import {
   createTheme,
   type DataFrame,
@@ -83,9 +84,10 @@ describe('categoryCartesianToEChartsOption', () => {
   it('resolves a color on itemStyle for each bar series', () => {
     const result = run([tableFrame()], 'bar');
 
-    // Bars render from itemStyle; they carry no lineStyle.
+    // Bars render from itemStyle; they carry no lineStyle. The fill is the
+    // color at the core default 80% opacity, the border the solid color.
     for (const s of result.series) {
-      expect(s.itemStyle?.color).toEqual('#808080');
+      expect(s.itemStyle).toMatchObject({ color: '#808080cc', borderColor: '#808080' });
     }
   });
 
@@ -219,6 +221,38 @@ describe('categoryCartesianToEChartsOption', () => {
       expect(series[1]).toMatchObject({ type: 'line' });
       expect(series[1]).not.toHaveProperty('stack');
     });
+
+    // A field in another stack group gets its own stack id, as on the time axis.
+    it('stacks a field of another stack group apart', () => {
+      const { series } = run([stackFrame({ stackGroup: 'B' })], 'bar', true);
+
+      expect(series[0]).toHaveProperty('stack', 'total');
+      expect(series[1]).toHaveProperty('stack', 'total:B');
+    });
+
+    // Each stack group has its own percent total.
+    it('gives each stack group its own percent total', () => {
+      const frame = toDataFrame({
+        fields: [
+          { name: 'category', type: FieldType.string, values: ['a', 'b'] },
+          { name: 'a1', type: FieldType.number, values: [1, 1], config: { displayName: 'a1' } },
+          { name: 'a2', type: FieldType.number, values: [3, 3], config: { displayName: 'a2' } },
+          {
+            name: 'b1',
+            type: FieldType.number,
+            values: [2, 2],
+            config: { displayName: 'b1', custom: { stackGroup: 'B' } },
+          },
+        ],
+      });
+      const { series } = run([frame], 'bar', true, { stacking: StackingMode.Percent });
+
+      // Each point is [category, share of the stack total, raw value].
+      expect(series[2].data).toEqual([
+        [0, 1, 2],
+        [1, 1, 2],
+      ]);
+    });
   });
 
   describe('stacking', () => {
@@ -316,7 +350,7 @@ describe('categoryCartesianToEChartsOption', () => {
     });
   });
 
-  // Contract A from todo/multiple-frames.md: one frame per series, categories
+  // Contract A of the multiple-frames note (#198, Source): one frame per series, categories
   // unioned by label. This is what a scatter-overlay-from-a-second-query panel
   // needs; before it, every frame after the first was silently dropped.
   describe('multiple value frames', () => {

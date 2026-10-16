@@ -1,4 +1,5 @@
 import { type SelectableValue } from '@grafana/data';
+import { StackingMode, VizOrientation } from '@grafana/schema';
 import { ANIMATION_ENABLED_DEFAULT } from 'editor/constants';
 import {
   type CartesianShowValues,
@@ -18,7 +19,7 @@ import {
 
 /**
  * Stack series option: panel option path and per-field custom config key share
- * the same name. Only meaningful for `bar` series.
+ * the same name. Only meaningful for `bar` series, and for `line` series on a time axis.
  */
 export const stackSeriesPath = 'stackSeries';
 export const stackSeriesName = 'Stacking';
@@ -28,6 +29,11 @@ export const stackSeriesName = 'Stacking';
  * https://echarts.apache.org/en/option.html#series-bar.stack
  */
 export const STACK_GROUP_ID = 'total';
+/**
+ * ECharts `stack` group id of the stacked line and area series. Core Time series stacks lines and bars
+ * in different groups, so they do not stack on each other.
+ */
+export const LINE_STACK_GROUP_ID = 'total-line';
 
 /**
  * Cartesian time series types that render on a time/value grid and consume the
@@ -67,10 +73,7 @@ export const cartesianSeriesTypeOptions: Array<SelectableValue<SeriesType>> = [
  * cannot be overlaid per field; non-cartesian types (pie/radar) use other
  * coordinate systems; and heatmap is detected from the frame type.
  */
-export const cartesianOverrideOptions: Array<SelectableValue<SeriesType>> = [
-  ...cartesianTimeSeriesTypes,
-  ...multiValueSeriesTypes,
-].map((type) => ({
+export const cartesianOverrideOptions: Array<SelectableValue<SeriesType>> = cartesianTimeSeriesTypes.map((type) => ({
   value: type,
   label: type,
 }));
@@ -119,10 +122,18 @@ export const thresholdsStyleModePath = 'thresholdsStyle.mode';
 export const thresholdsStyleModeName = 'Show thresholds';
 
 /* --- Categorical multi-axis parity uplift: value labels + geometry/style ------
- * Curated Bar-chart-parity / ECharts options grouped Default (value labels) vs
- * Advanced (position, geometry, stroke). Each render helper (see
+ * Curated Bar-chart-parity / ECharts options. The options with core parity (value
+ * labels, geometry, stroke) are Default tier (#404); the label position is Advanced. Each render helper (see
  * `options/cartesian.ts`) omits its ECharts key at the default so untouched
  * panels render identically. */
+
+/**
+ * Editor categories of the Default-tier cartesian style options. The names are
+ * the core Time series / Bar chart section names, because each option has core parity.
+ */
+export const cartesianGraphStylesCategoryName = 'Graph styles';
+export const cartesianBarChartCategoryName = 'Bar chart';
+export const cartesianAxisCategoryName = 'Axis';
 
 /**
  * Editor category for the cartesian "Value labels" control. Its Default-tier
@@ -140,9 +151,8 @@ export const showValuesOptions: Array<SelectableValue<CartesianShowValues>> = [
   { value: 'never', label: 'Never' },
 ];
 /**
- * Default "Show values" mode: `auto`, which currently resolves to hidden — so a
- * fresh panel (and every existing one) renders no value labels, unchanged. See
- * `getCartesianValueLabel`.
+ * Default "Show values" mode: `auto`, as in core Bar chart. It labels bar series
+ * and hides the labels that overlap. See `getCartesianValueLabel`.
  */
 export const CARTESIAN_SHOW_VALUES_DEFAULT: CartesianShowValues = 'auto';
 
@@ -161,16 +171,21 @@ export const CARTESIAN_VALUE_LABEL_POSITION_DEFAULT: CartesianValueLabelPosition
 
 /**
  * Panel option path for the bar width as a percentage of the category band
- * (ECharts `series.barWidth`). Advanced-only; only affects `bar` series. Unset
+ * (ECharts `series.barWidth`). Default tier; only affects `bar` series. Unset
  * uses ECharts' auto width. See `getBarWidth`.
  */
 export const barWidthPath = 'barWidth';
 /** Default bar width: unset (ECharts auto), so no `barWidth` is written. */
 export const CARTESIAN_BAR_WIDTH_DEFAULT: number | undefined = undefined;
 
+/** Panel option path for "Bars include zero" on the value axis. Default tier; `bar` series. */
+export const barsIncludeZeroPath = 'barsIncludeZero';
+/** Default: the bar value axes include zero, as core Bar chart. */
+export const CARTESIAN_BARS_INCLUDE_ZERO_DEFAULT = true;
+
 /**
  * Panel option path for the bar corner radius in px (ECharts
- * `itemStyle.borderRadius`). Advanced-only; `bar` series. `0` (square) omits the
+ * `itemStyle.borderRadius`). Default tier; `bar` series. `0` (square) omits the
  * key. See `getBarRadius` / `getCartesianItemStyle`.
  */
 export const barRadiusPath = 'barRadius';
@@ -179,15 +194,18 @@ export const CARTESIAN_BAR_RADIUS_DEFAULT = 0;
 
 /**
  * Panel option path for the line width in px (ECharts `lineStyle.width`).
- * Advanced-only; `line` series. Unset uses ECharts' default. See `getCartesianLineStyle`.
+ * Default tier; `line` series. Default 1px; empty gives the ECharts 2px stroke. See `getCartesianLineStyle`.
  */
 export const lineWidthPath = 'lineWidth';
-/** Default line width: unset (ECharts default, 2px), so no `width` is written. */
-export const CARTESIAN_LINE_WIDTH_DEFAULT: number | undefined = undefined;
+/**
+ * Default line width: 1px, the default of the core time series panel.
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/time-series/#line-width
+ */
+export const CARTESIAN_LINE_WIDTH_DEFAULT: number | undefined = 1;
 
 /**
  * Panel option path for the line fill opacity 0–100 (ECharts `areaStyle.opacity`;
- * a non-zero value turns a line into an area chart). Advanced-only; `line`
+ * a non-zero value turns a line into an area chart). Default tier; `line`
  * series. `0` omits the area fill. See `getCartesianAreaStyle`.
  */
 export const fillOpacityPath = 'fillOpacity';
@@ -196,7 +214,7 @@ export const CARTESIAN_FILL_OPACITY_DEFAULT = 0;
 
 /**
  * Panel option path for the point (symbol) size in px (ECharts `symbolSize`);
- * `0` hides the points (`showSymbol: false`). Advanced-only; line/scatter
+ * `0` hides the points (`showSymbol: false`). Default tier; line/scatter
  * series. Unset uses ECharts' default symbol. See `getCartesianSymbol`.
  */
 export const pointSizePath = 'pointSize';
@@ -205,14 +223,72 @@ export const CARTESIAN_POINT_SIZE_DEFAULT: number | undefined = undefined;
 
 /**
  * Panel option path for the x-axis tick label rotation in degrees (ECharts
- * `xAxis.axisLabel.rotate`). Advanced-only. `0` omits the key. See `getXTickRotate`.
+ * `xAxis.axisLabel.rotate`). Default tier. `0` omits the key. See `getXTickRotate`.
  */
 export const xTickRotatePath = 'xTickRotate';
 /** Default x tick rotation: 0 (horizontal labels; omitted). */
 export const CARTESIAN_X_TICK_ROTATE_DEFAULT = 0;
+
+/* --- Core Bar chart parity: stacking, orientation, bar style and x ticks ----- */
+
+/** Panel option path for the bar stacking mode (core Bar chart `stacking`). */
+export const stackingPath = 'stacking';
+/** Stacking options, as core Bar chart. */
+export const stackingOptions: Array<SelectableValue<StackingMode>> = [
+  { value: StackingMode.None, label: 'Off' },
+  { value: StackingMode.Normal, label: 'Normal' },
+  { value: StackingMode.Percent, label: '100%' },
+];
+
+/** Panel option path for the bar orientation (core Bar chart `orientation`). */
+export const orientationPath = 'orientation';
+export const orientationOptions: Array<SelectableValue<VizOrientation>> = [
+  { value: VizOrientation.Auto, label: 'Auto' },
+  { value: VizOrientation.Horizontal, label: 'Horizontal' },
+  { value: VizOrientation.Vertical, label: 'Vertical' },
+];
+/** Default orientation: `auto`, as core Bar chart. */
+export const CARTESIAN_ORIENTATION_DEFAULT = VizOrientation.Auto;
+
+/** Panel option path for the bar fill opacity, 0 to 100. Default tier. */
+export const barFillOpacityPath = 'barFillOpacity';
+/** Default bar fill opacity: 80, the core Bar chart `fillOpacity` default. */
+export const CARTESIAN_BAR_FILL_OPACITY_DEFAULT = 80;
+/** Bar border width (px) when "Line width" is unset: 1, the core Bar chart `lineWidth` default. */
+export const CARTESIAN_BAR_BORDER_WIDTH_DEFAULT = 1;
+
+/** Share of a category that a group of bars fills: 0.7, the core Bar chart `groupWidth` default. */
+export const CARTESIAN_GROUP_WIDTH = 0.7;
+/** Share of its slot that one bar (or one stack) fills: 0.97, the core Bar chart `barWidth` default. */
+export const CARTESIAN_SLOT_WIDTH = 0.97;
+
+/** Panel option path for "Color by field" (core Bar chart `colorByField`). */
+export const colorByFieldPath = 'colorByField';
+
+/** Panel option path for "Highlight full area on hover" (core Bar chart `fullHighlight`). */
+export const fullHighlightPath = 'fullHighlight';
+
+/** Panel option path for the x tick label max length, in characters. */
+export const xTickLabelMaxLengthPath = 'xTickLabelMaxLength';
+/** Panel option path for the minimum space between x tick labels, in px. */
+export const xTickLabelSpacingPath = 'xTickLabelSpacing';
+/** Minimum label spacing options, as the core Bar chart `TickSpacingEditor`. */
+export const xTickLabelSpacingOptions: Array<SelectableValue<number>> = [
+  { value: 0, label: 'None' },
+  { value: 100, label: 'Small' },
+  { value: 200, label: 'Medium' },
+  { value: 300, label: 'Large' },
+];
 
 /**
  * Default animation: off, from the shared `ANIMATION_ENABLED_DEFAULT` — animation
  * is opt-in for every family. See that constant for why, and `docs/performance.md`.
  */
 export const CARTESIAN_ANIMATION_ENABLED_DEFAULT = ANIMATION_ENABLED_DEFAULT;
+
+/**
+ * Histogram mode of the cartesian panel. The bucket options have the paths of the core Histogram panel, so a
+ * core panel keeps its values. https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/histogram/
+ */
+export const histogramPath = 'histogram';
+export const histogramCategoryName = 'Histogram';

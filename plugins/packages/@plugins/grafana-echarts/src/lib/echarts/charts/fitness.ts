@@ -20,6 +20,7 @@ import {
   SLICE_MIN,
   STREAM_MAX_LAYERS,
   STREAM_MIN_LAYERS,
+  TIMELINE_NUMBER_FIELDS_LIMIT,
 } from 'lib/echarts/charts/suggestionLimits';
 import { isFlameGraphFrame } from 'lib/echarts/converters/hierarchy';
 import { resolveMultiValueSeriesType } from 'lib/echarts/converters/multiValueCartesian';
@@ -489,4 +490,30 @@ export const scoreStream = (summary: PanelDataSummary): VisualizationSuggestionS
   }
   const isPivotable = summary.hasFieldType(FieldType.string);
   return fieldLayers >= STREAM_MIN_LAYERS || isPivotable ? VisualizationSuggestionScore.OK : undefined;
+};
+
+/**
+ * Timeline fitness (state timeline and status history): the core panels' own gate.
+ * The data needs a time field and a string or number field, fewer than
+ * `TIMELINE_NUMBER_FIELDS_LIMIT` number fields (one lane each), and is not logs.
+ * `maxRows` adds status history's per-frame row ceiling (`STATUS_HISTORY_MAX_ROWS`).
+ * Core returns no explicit score, which Grafana reads as `OK`.
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/state-timeline/
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/status-history/
+ */
+export const scoreTimeline = (
+  summary: PanelDataSummary,
+  maxRows?: number
+): VisualizationSuggestionScore | undefined => {
+  if (
+    !summary.hasData ||
+    !summary.hasFieldType(FieldType.time) ||
+    (!summary.hasFieldType(FieldType.string) && !summary.hasFieldType(FieldType.number)) ||
+    summary.fieldCountByType(FieldType.number) >= TIMELINE_NUMBER_FIELDS_LIMIT ||
+    (maxRows !== undefined && summary.rowCountMax > maxRows) ||
+    summary.hasPreferredVisualisationType('logs')
+  ) {
+    return undefined;
+  }
+  return VisualizationSuggestionScore.OK;
 };

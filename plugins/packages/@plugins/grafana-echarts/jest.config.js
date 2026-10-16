@@ -7,10 +7,19 @@ const { grafanaESModules, nodeModulesToTransform } = require('./.config/jest/uti
 module.exports = {
   // Jest configuration provided by Grafana scaffolding
   ...require('./.config/jest.config'),
-  // ECharts is imported via its modular ESM subpaths (echarts/core, /charts, ...)
-  // which, unlike the old CommonJS barrel, must be transformed for Jest. Add
-  // echarts and its ESM deps (zrender, tslib) to the transform allowlist.
-  transformIgnorePatterns: [nodeModulesToTransform([...grafanaESModules, 'echarts', 'zrender', 'tslib'])],
+  // Jest must transform these ESM-only packages:
+  // - echarts, zrender, tslib: the modular ECharts subpaths (echarts/core, /charts, ...).
+  // - @react-hookz/web and its @ver0/deep-equal: dependencies of @grafana/ui 13.2.
+  transformIgnorePatterns: [
+    nodeModulesToTransform([
+      ...grafanaESModules,
+      'echarts',
+      'zrender',
+      'tslib',
+      '@react-hookz/web',
+      '@ver0/deep-equal',
+    ]),
+  ],
   transform: {
     '^.+\\.(t|j)sx?$': [
       '@swc/jest',

@@ -9,15 +9,20 @@ import {
 } from 'echarts/types/src/coord/cartesian/AxisModel';
 import { frameHasCartesianOverride } from 'editor/series';
 import { type HeatmapSeriesType } from 'editor/types';
-import { buildCartesianYAxes, type CartesianYAxes, getAxisGridSpacing } from 'lib/echarts/axes/yAxes';
-import { type BinnedHeatmapData, frameToBinnedHeatmap } from 'lib/echarts/converters/binnedHeatmap';
+import { type CartesianYAxes } from 'lib/echarts/axes/types';
+import { buildCartesianYAxes, getAxisGridSpacing } from 'lib/echarts/axes/yAxes';
+import {
+  type BinnedHeatmapData,
+  type BinnedHeatmapRowsScale,
+  frameToBinnedHeatmap,
+} from 'lib/echarts/converters/binnedHeatmap';
 import { collectTimeSeriesFields } from 'lib/echarts/converters/frames';
 import { timeSeriesToEChartsOption } from 'lib/echarts/converters/timeSeries';
 import { getHeatmapGrid } from 'lib/echarts/grid/grid';
 import {
-  getBinnedHeatmapBucketAxis,
   getBinnedHeatmapSeries,
   getBinnedHeatmapVisualMap,
+  getBinnedHeatmapYAxis,
 } from 'lib/echarts/options/binnedHeatmap';
 import {
   cartesianTimeDefaultOptions,
@@ -27,9 +32,10 @@ import {
 } from 'lib/echarts/options/cartesian';
 import { buildTimeSeriesLegendItems } from 'lib/echarts/options/legendItems';
 import { getDefaultShortValueFieldConfig } from 'lib/grafana/fields/fieldConfig';
-import { getTimeAxisLabelFormatter } from 'lib/grafana/timeAxisFormat';
+import { calculateHeatmapFrames } from 'lib/grafana/heatmap/calculate';
+import { getTimeXTicks } from 'lib/echarts/axes/timeXTicks';
 import { type EChartsFrame } from 'lib/grafana/types';
-import { type HeatmapColorScalePlacement, type PanelOptions } from 'types';
+import { type HeatmapColorScalePlacement, type HeatmapYBucketScale, type PanelOptions } from 'types';
 import {
   type BaseOptionParts,
   type ChartContext,
@@ -62,7 +68,7 @@ export function buildBinnedHeatmapLegendItems(ctx: ChartContext, calcs: string[]
  */
 export function buildBinnedHeatmapOption(
   ctx: ChartContext<HeatmapSeriesType>,
-  { isGrafanaLegend }: BaseOptionParts
+  { isGrafanaLegend, plotWidth }: BaseOptionParts
 ): EChartBinnedHeatmapOption | null {
   const { theme, options, seriesType, formatValue, timeZone } = ctx;
   const placement = options.heatmapColorScale?.placement ?? 'right';
@@ -80,7 +86,7 @@ export function buildBinnedHeatmapOption(
     // Source frames present but no cells means every series was hidden via the
     // legend (its numeric fields are stripped). Keep the axes and render an empty
     // plot (matches core Grafana), mirroring the cartesian family.
-    return buildEmptyBinnedHeatmapOption(ctx, axisStyle, isGrafanaLegend, placement);
+    return buildEmptyBinnedHeatmapOption(ctx, axisStyle, isGrafanaLegend, placement, plotWidth);
   }
 
   // Overlay value axes: one per distinct unit, honoring per-field Left/Right/Hidden
@@ -107,7 +113,7 @@ export function buildBinnedHeatmapOption(
   const series = buildSeries(heatmap, theme, ctx, formatValue, options, cartSeries, overlayAxes);
   const yAxis = buildYAxisOption(heatmap, axisStyle, options, overlayAxes);
   const grid = buildGridOption(isGrafanaLegend, options, overlayAxes, placement);
-  const xAxis = buildXAxisOption(heatmap, ctx, axisStyle);
+  const xAxis = buildXAxisOption(heatmap, ctx, axisStyle, plotWidth);
 
   const formatDisplayValue = getDisplayProcessor({
     theme,
@@ -127,6 +133,7 @@ export function buildBinnedHeatmapOption(
       seriesIndex: 0,
       placement,
       scheme: options.heatmapColorScheme,
+      color: options.color,
       formatDisplayValue,
     }),
   };
@@ -142,13 +149,14 @@ function buildEmptyBinnedHeatmapOption(
   ctx: ChartContext<HeatmapSeriesType>,
   axisStyle: CartesianAxisOption | TimeAxisBaseOption,
   isGrafanaLegend: boolean,
-  placement: HeatmapColorScalePlacement
+  placement: HeatmapColorScalePlacement,
+  plotWidth: number | undefined
 ): EChartBinnedHeatmapOption {
   const { options, timeRange, timeZone } = ctx;
 
   const xAxis = mergeAxisStyle<XAXisOption>(cartesianTimeDefaultOptions.xAxis, axisStyle, {
     ...getTimeAxisBounds(timeRange),
-    axisLabel: { formatter: getTimeAxisLabelFormatter(timeRange, timeZone) },
+    ...getTimeXTicks(timeRange, timeZone, plotWidth),
   });
   const yAxis = mergeAxisStyle<YAXisOption>(cartesianTimeDefaultOptions.yAxis, axisStyle, {
     zlevel: options.zLevel?.axis,
@@ -169,14 +177,12 @@ const buildYAxisOption = (
   options: PanelOptions,
   overlayAxes: CartesianYAxes | undefined
 ) => {
-  const bucketAxisExtra: CartesianAxisOption | TimeAxisBaseOption = getBinnedHeatmapBucketAxis(heatmap);
-
   // Primary y-axis (index 0): the bucket scale the heatmap cells are drawn against.
   const bucketYAxis = mergeAxisStyle<YAXisOption>(cartesianTimeDefaultOptions.yAxis, axisStyle, {
     min: heatmap.yMin,
     max: heatmap.yMax,
     zlevel: options.zLevel?.axis,
-    ...bucketAxisExtra,
+    ...getBinnedHeatmapYAxis(heatmap, options.yAxis),
   });
 
   // https://echarts.apache.org/en/option.html#yAxis
@@ -187,13 +193,14 @@ const buildYAxisOption = (
 const buildXAxisOption = (
   heatmap: BinnedHeatmapData,
   ctx: ChartContext<HeatmapSeriesType>,
-  axisStyle: CartesianAxisOption | TimeAxisBaseOption
+  axisStyle: CartesianAxisOption | TimeAxisBaseOption,
+  plotWidth: number | undefined
 ) => {
   const xAxisIsTime = heatmap?.xIsTime ?? true;
 
   const getTimeAxisOptions: () => TimeAxisBaseOption = () => ({
     ...getTimeAxisBounds(ctx.timeRange),
-    axisLabel: { formatter: getTimeAxisLabelFormatter(ctx.timeRange, ctx.timeZone) },
+    ...getTimeXTicks(ctx.timeRange, ctx.timeZone, plotWidth),
   });
   const getCategoricalAxisOption: () => CartesianAxisOption = () => ({ type: 'value' });
 
@@ -231,7 +238,8 @@ const buildSeries = (
       heatmap,
       { theme, timeZone: ctx.timeZone, formatValue, tooltipSink: ctx.tooltipSink },
       0,
-      options.zLevel?.series
+      options.zLevel?.series,
+      { cellGap: options.cellGap }
     )
   );
   cartSeries.forEach((cartesian, i) => {
@@ -247,6 +255,14 @@ const buildSeries = (
   return series;
 };
 
+/** Core's `rowsFrame.yBucketScale` (unset means auto) as the converter's rows scale. */
+function toRowsScale(scale: HeatmapYBucketScale | undefined): BinnedHeatmapRowsScale {
+  if (scale?.type === 'log') {
+    return { type: 'log', log: scale.log ?? 2 };
+  }
+  return scale?.type === 'linear' ? { type: 'linear' } : { type: 'auto' };
+}
+
 /**
  * Split the panel's frames into the heatmap cell layer and an optional cartesian
  * overlay. The split is driven entirely by the per-field override: an overlay
@@ -257,8 +273,17 @@ function splitFrames(ctx: ChartContext) {
   const overlayFrames = getOverlayFrames(ctx);
   const heatmapSourceFrames = ctx.frames.filter((frame) => !frameHasCartesianOverride(frame));
 
+  // "Calculate from data" bins raw series with core's own transformer. Without
+  // a host transformer, the raw frames are drawn as rows.
+  const calculated = ctx.options.calculate
+    ? calculateHeatmapFrames(heatmapSourceFrames, ctx.options.calculation, ctx.timeRange)
+    : undefined;
+
   // returns null when there are no frames, otherwise throw
-  const heatmap = frameToBinnedHeatmap(heatmapSourceFrames, ctx.frames);
+  const heatmap = frameToBinnedHeatmap(calculated ?? heatmapSourceFrames, ctx.frames, {
+    filter: ctx.options.filterValues,
+    rowsScale: toRowsScale(ctx.options.rowsFrame?.yBucketScale),
+  });
 
   return { overlayFrames, heatmapSourceFrames, heatmap };
 }

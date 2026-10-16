@@ -3,10 +3,11 @@ import { debug, LOG_LEVELS } from 'development';
 import { type ECBasicOption } from 'echarts/types/dist/shared';
 import { partToWholeSeriesTypes } from 'editor/pie';
 import { panelTypeToAxis } from 'lib/echarts/axes/converters';
-import { isRelationsSeriesType } from 'lib/echarts/charts/narrowing';
+import { isHierarchySeriesType, isRelationsSeriesType } from 'lib/echarts/charts/narrowing';
 import { resolveChartModule } from 'lib/echarts/charts/registry';
-import { type BaseOptionParts, type ChartContext } from 'lib/echarts/charts/types';
+import { type BaseOptionParts, type ChartContext, type ChartModule } from 'lib/echarts/charts/types';
 import { framesHaveTimeField } from 'lib/echarts/converters/frames';
+import { isHistogramPanel } from 'lib/echarts/converters/histogram';
 import { applyEditorModeDefaults } from 'lib/echarts/options/editorMode';
 import { resolveAnimation } from 'lib/echarts/performance/resolvers';
 import { getTimeBrushOption } from 'lib/echarts/timeBrush';
@@ -56,7 +57,7 @@ export function buildPanelChartOption(
 
   // Drop value fields hidden via the legend visibility toggle before building.
   //
-  // Two families opt out and hide their own marks instead, for different reasons:
+  // These families opt out and hide their own marks instead, for different reasons:
   //
   // - **part-to-whole** (pie/funnel slices — see `resolvePieSlices`) because its
   //   legend rows are frame *rows*, so the override names categories and never
@@ -64,6 +65,8 @@ export function buildPanelChartOption(
   //   `byNames` matcher is in *exclude* mode, so a list of category names marks
   //   every real numeric field hidden and the stat column that sizes and colours
   //   the chart would be deleted.
+  // - **hierarchy** (treemap/sunburst) for the same reason: its legend rows are
+  //   top-level node names. It drops hidden roots in `toTreeData`.
   // - **relations** (graph/sankey/chord) because deleting a mark's column destroys
   //   the information its reader needs. A node's field carries the fact that it was
   //   hidden; remove the field and `frameToGraphWide` simply *re-derives* the node
@@ -74,8 +77,13 @@ export function buildPanelChartOption(
   //
   // Editor-mode normalization already ran generically above
   // (`applyEditorModeDefaults`), so both branches use the normalized `options`.
+  // - **histogram** mode of the cartesian panel, because a hidden field still counts for the automatic
+  //   bucket size, as core. The histogram hides the bars of the field (see `buildHistogramOption`).
   const hidesItsOwnMarks =
-    partToWholeSeriesTypes.includes(rawCtx.seriesType) || isRelationsSeriesType(rawCtx.seriesType);
+    partToWholeSeriesTypes.includes(rawCtx.seriesType) ||
+    isRelationsSeriesType(rawCtx.seriesType) ||
+    isHierarchySeriesType(rawCtx.seriesType) ||
+    isHistogramPanel(rawCtx.options);
   const ctx: ChartContext = hidesItsOwnMarks
     ? { ...rawCtx, tooltipSink: sink, options }
     : { ...rawCtx, tooltipSink: sink, options, frames: stripHiddenValueFields(rawCtx.frames, rawCtx.fieldConfig) };
@@ -116,20 +124,41 @@ export function buildPanelChartOption(
         : getCrosshairAxisPointer()
       : undefined;
 
-  // Drag-to-zoom is only meaningful on a time axis, where the brush selection
-  // maps to an absolute time range the dashboard can adopt. The cursor is armed
-  // programmatically in Panel.tsx after `setOption`. Families whose time axis is
-  // not a cartesian grid axis opt out (see `ChartModule.disableTimeBrush`).
-  const isTimeAxis = hasTimeField && axisType === 'time' && !chartModule.disableTimeBrush;
+  // The cursor is armed programmatically in useChartOption after `setOption`.
+  const isTimeAxis = hasTimeBrush(ctx, chartModule, hasTimeField, axisType);
 
   return {
     ...echartOption,
     ...(previewSeries ? { series: previewSeries } : {}),
-    tooltip: isPreview ? { show: false } : tooltipOption,
+    tooltip: isPreview ? { show: false } : (chartModule.getTooltipOption?.(ctx) ?? tooltipOption),
     // Animation is opt-in and off by default for every family — density thresholds
     // were tried and could not fire early enough to help. See `resolveAnimation`.
     animation: isPreview ? false : resolveAnimation(ctx.options),
     ...(!isPreview && axisPointer ? { axisPointer } : {}),
     ...(!isPreview && isTimeAxis ? { brush: getTimeBrushOption(ctx.theme) } : {}),
   };
+}
+
+/**
+ * Whether the chart has the time brush: drag-to-zoom, and the ctrl/cmd gestures that add an
+ * annotation. It is only meaningful on a time axis, where the brush selection maps to an
+ * absolute time range the dashboard can adopt. Families whose time axis is not a cartesian grid
+ * axis opt out (see `ChartModule.disableTimeBrush`).
+ */
+export function hasTimeBrush(
+  ctx: ChartContext,
+  chartModule: ChartModule,
+  hasTimeField = framesHaveTimeField(ctx.frames),
+  axisType = panelTypeToAxis(ctx, hasTimeField)
+): boolean {
+  return hasTimeAxis(ctx, hasTimeField, axisType) && !chartModule.disableTimeBrush;
+}
+
+/** Whether the chart has a time x axis. A double click on such a chart zooms the time range out. */
+export function hasTimeAxis(
+  ctx: ChartContext,
+  hasTimeField = framesHaveTimeField(ctx.frames),
+  axisType = panelTypeToAxis(ctx, hasTimeField)
+): boolean {
+  return hasTimeField && axisType === 'time';
 }

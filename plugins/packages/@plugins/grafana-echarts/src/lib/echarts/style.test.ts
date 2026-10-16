@@ -8,7 +8,14 @@ import {
   toDataFrame,
   type ValueFormatter,
 } from '@grafana/data';
-import { formatEChartsValue, getPaletteColorByIndex, getSeriesColor, getValueFormatter } from 'lib/echarts/style';
+import {
+  formatEChartsValue,
+  getCartesianSeriesColor,
+  getPaletteColorByIndex,
+  getSeriesColor,
+  getValueFormatter,
+} from 'lib/echarts/style';
+import { applyGrafanaFieldDefaults } from 'test/panel';
 
 const theme = createTheme();
 
@@ -112,5 +119,34 @@ describe('formatEChartsValue', () => {
 
   it('passes through a genuine non-numeric value (e.g. a category label)', () => {
     expect(formatEChartsValue('text', formatValue)).toBe('text');
+  });
+});
+
+describe('getCartesianSeriesColor', () => {
+  it('counts only value fields for the classic palette, as core setClassicPaletteIdxs', () => {
+    const frames = applyGrafanaFieldDefaults([
+      toDataFrame({
+        fields: [
+          { name: 'label', type: FieldType.string, values: ['a'] },
+          {
+            name: 'A',
+            type: FieldType.number,
+            values: [1],
+            config: { color: { mode: FieldColorModeId.PaletteClassic } },
+          },
+          {
+            name: 'B',
+            type: FieldType.number,
+            values: [2],
+            config: { color: { mode: FieldColorModeId.PaletteClassic } },
+          },
+        ],
+      }),
+    ]);
+    const [, a, b] = frames[0].fields;
+    // Grafana counts the label column, so A has series index 1.
+    expect(a.state?.seriesIndex).toBe(1);
+    expect(getCartesianSeriesColor(a, frames, theme)).toBe(getPaletteColorByIndex(0, theme));
+    expect(getCartesianSeriesColor(b, frames, theme)).toBe(getPaletteColorByIndex(1, theme));
   });
 });

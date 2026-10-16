@@ -1,0 +1,85 @@
+import { DataTopic, FieldType, toDataFrame } from '@grafana/data';
+import { render } from '@testing-library/react';
+import { normalizeCanvasEvents, SERIES_ZLEVEL } from 'test/canvas';
+import { getCanvasEvents, getComponent, height, width } from 'test/panel';
+
+// Canvas baselines of dashboard annotations on the cartesian panel: a dashed line for a point,
+// and a band with a dashed line at each edge for a region (core AnnotationsPlugin). The line and
+// bar series use the time axis; candlestick uses its category axis of times.
+// ECharts draws the marks on the default layer (zlevel 0), with the grid, so that layer is the
+// baseline and the series layer is context. The claims are in `annotations.integration.test.tsx`.
+
+const times = [1783137094497, 1783140694497, 1783144294497, 1783147894497];
+
+const seriesFrame = toDataFrame({
+  fields: [
+    { name: 'time', type: FieldType.time, values: times },
+    { name: 'cpu', type: FieldType.number, values: [10, 20, 30, 10] },
+  ],
+});
+
+// The frame shape that Grafana's annotation layer gives the panel (`PanelData.annotations`).
+const annotationFrame = toDataFrame({
+  meta: { dataTopic: DataTopic.Annotations },
+  fields: [
+    { name: 'time', type: FieldType.time, values: [1783139000000, 1783143000000] },
+    { name: 'timeEnd', type: FieldType.time, values: [null, 1783145500000] },
+    { name: 'isRegion', type: FieldType.boolean, values: [false, true] },
+    { name: 'color', type: FieldType.string, values: ['red', 'rgba(0, 211, 255, 1)'] },
+    { name: 'text', type: FieldType.string, values: ['Deploy', 'Maintenance'] },
+  ],
+});
+
+// OHLC rows at the same times as `seriesFrame`.
+const ohlcFrame = toDataFrame({
+  name: 'BTC',
+  fields: [
+    { name: 'time', type: FieldType.time, values: times },
+    { name: 'open', type: FieldType.number, values: [10, 18, 22, 15] },
+    { name: 'high', type: FieldType.number, values: [20, 25, 28, 24] },
+    { name: 'low', type: FieldType.number, values: [5, 12, 18, 11] },
+    { name: 'close', type: FieldType.number, values: [18, 22, 15, 21] },
+  ],
+});
+
+// A point between the first two candles (nearest: candle 1), and a region from just before
+// candle 2 to candle 3.
+const candleAnnotationFrame = toDataFrame({
+  meta: { dataTopic: DataTopic.Annotations },
+  fields: [
+    { name: 'time', type: FieldType.time, values: [1783139000000, times[2] - 600000] },
+    { name: 'timeEnd', type: FieldType.time, values: [null, times[3]] },
+    { name: 'isRegion', type: FieldType.boolean, values: [false, true] },
+    { name: 'color', type: FieldType.string, values: ['red', 'rgba(0, 211, 255, 1)'] },
+  ],
+});
+
+const renderOptions = {
+  zLevel: { series: SERIES_ZLEVEL },
+  animation: { enabled: false },
+  editorMode: 'advanced' as const,
+};
+
+describe('cartesian annotations', () => {
+  it('draws a point as a dashed line and a region as a band between two dashed lines', async () => {
+    const { container } = render(
+      getComponent([seriesFrame], 'line', renderOptions, { annotations: [annotationFrame] })
+    );
+    const { defaultEvents, seriesEvents } = await getCanvasEvents(container);
+    expect(normalizeCanvasEvents(defaultEvents)).toMatchCanvasSnapshot(seriesEvents, { width, height });
+  });
+
+  it('draws the marks behind bars on the time axis', async () => {
+    const { container } = render(getComponent([seriesFrame], 'bar', renderOptions, { annotations: [annotationFrame] }));
+    const { defaultEvents, seriesEvents } = await getCanvasEvents(container);
+    expect(normalizeCanvasEvents(defaultEvents)).toMatchCanvasSnapshot(seriesEvents, { width, height });
+  });
+
+  it('draws the marks at the nearest candles on the candlestick axis', async () => {
+    const { container } = render(
+      getComponent([ohlcFrame], 'candlestick', renderOptions, { annotations: [candleAnnotationFrame] })
+    );
+    const { defaultEvents, seriesEvents } = await getCanvasEvents(container);
+    expect(normalizeCanvasEvents(defaultEvents)).toMatchCanvasSnapshot(seriesEvents, { width, height });
+  });
+});

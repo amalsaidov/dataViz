@@ -31,10 +31,19 @@ const canvasOptions = (extra: Partial<PanelOptions> = {}): Partial<PanelOptions>
 const renderParallel = async (
   frames: Parameters<typeof getComponent>[0],
   options: Partial<PanelOptions> = {},
-  fieldConfig?: FieldConfigSource
+  fieldConfig?: FieldConfigSource,
+  panelWidth = width
 ) => {
   const { container } = render(
-    getComponent(frames, 'parallel', canvasOptions(options), undefined, undefined, 'multivariate', fieldConfig)
+    getComponent(
+      frames,
+      'parallel',
+      canvasOptions(options),
+      undefined,
+      { width: panelWidth },
+      'multivariate',
+      fieldConfig
+    )
   );
   return getSeriesCanvasEvents(container);
 };
@@ -129,6 +138,41 @@ describe('multivariate (parallel) canvas renders', () => {
 
       expect(normalizeCanvasEvents(seriesEvents)).toMatchCanvasSnapshot(defaultEvents, {
         width,
+        height,
+      });
+    });
+  });
+
+  // Issue #782: long axis names in a narrow panel stay inside the canvas.
+  describe('narrow panel, long axis names', () => {
+    const narrowWidth = 240;
+    const hostsFrame = toDataFrame({
+      fields: [
+        { name: 'resource', type: FieldType.string, values: ['CPU %', 'Memory %', 'Disk %', 'Network Mbit/s'] },
+        { name: 'web-01', type: FieldType.number, values: [62, 71, 34, 410] },
+        { name: 'db-01', type: FieldType.number, values: [81, 88, 77, 220] },
+      ],
+    });
+
+    it('horizontal', async () => {
+      const { defaultEvents, seriesEvents } = await renderParallel([hostsFrame], {}, undefined, narrowWidth);
+
+      expect(normalizeCanvasEvents(seriesEvents)).toMatchCanvasSnapshot(defaultEvents, {
+        width: narrowWidth,
+        height,
+      });
+    });
+
+    it('vertical', async () => {
+      const { defaultEvents, seriesEvents } = await renderParallel(
+        [hostsFrame],
+        { parallelLayout: 'vertical' },
+        undefined,
+        narrowWidth
+      );
+
+      expect(normalizeCanvasEvents(seriesEvents)).toMatchCanvasSnapshot(defaultEvents, {
+        width: narrowWidth,
         height,
       });
     });

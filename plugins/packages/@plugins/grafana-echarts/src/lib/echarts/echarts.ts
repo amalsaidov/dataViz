@@ -117,6 +117,8 @@ registerEChartsModules([
   VisualMapContinuousComponent, // heatmap color gradient
   MarkLineComponent, // threshold lines on cartesian series
   MarkAreaComponent, // threshold filled regions on cartesian series
+  // Not here: `GeoComponent`. The geo panel registers it with its basemap (`lib/echarts/geo/basemap.ts`),
+  // because its GeoJSON parser has a `new Function` call that the standalone viz bundle must not contain.
   // Features
   LegacyGridContainLabel, // makes `grid.containLabel` work in ECharts 6
   LabelLayout, // the stage `series.labelLayout` (hideOverlap) needs — see the import

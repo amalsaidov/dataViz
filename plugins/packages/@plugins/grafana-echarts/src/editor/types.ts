@@ -1,4 +1,10 @@
-import { type AxisPlacement, type GraphFieldConfig, type HideableFieldConfig } from '@grafana/schema';
+import {
+  type AxisPlacement,
+  type GraphFieldConfig,
+  type GraphTransform,
+  type HideableFieldConfig,
+  type LineInterpolation,
+} from '@grafana/schema';
 
 export type SeriesType =
   | 'line'
@@ -48,12 +54,19 @@ export type HeatmapSeriesType = Extract<SeriesType, 'heatmap'>;
 export type HierarchySeriesType = Extract<SeriesType, 'treemap' | 'sunburst'>;
 /** Funnel render type of the part-to-whole family. Reuses the pie slice model. */
 export type FunnelSeriesType = Extract<SeriesType, 'funnel'>;
+/** The routing token of the geo family. */
+export type GeoSeriesType = Extract<SeriesType, 'map'>;
 /**
  * Single-axis stream charts. `themeRiver` is the only ECharts series that
  * *requires* the `singleAxis` coordinate system (its `dependencies` are
  * `['singleAxis']`), and the only member today. See `data-plane/stream.md`.
  */
 export type StreamSeriesType = Extract<SeriesType, 'themeRiver'>;
+/**
+ * Timeline charts (state timeline): bars of states over time, drawn as a `custom`
+ * series (the ECharts Gantt pattern). See `data-plane/timeline.md`.
+ */
+export type TimelineSeriesType = Extract<SeriesType, 'custom'>;
 /**
  * Render variants of the part-to-whole family, selected per panel via the
  * panel-level `seriesType`: `pie` (radial) and `funnel` (stacked trapezoids).
@@ -89,9 +102,9 @@ export type ParallelLayout = 'horizontal' | 'vertical';
 
 /**
  * Cartesian "Show values" mode (Bar-chart parity): whether per-point value labels
- * render. `always` draws them; `never` hides them; `auto` currently resolves to
- * hidden (reserved for a future fit-based heuristic). Unset panels render no
- * labels, so existing charts are unchanged. See `getCartesianValueLabel`.
+ * render. `always` draws them on every series; `never` hides them; `auto` draws
+ * them on bar series only and hides the labels that overlap, as core Bar chart
+ * does. See `getCartesianValueLabel`.
  */
 export type CartesianShowValues = 'auto' | 'always' | 'never';
 
@@ -279,9 +292,29 @@ export interface EChartsFieldConfig extends HideableFieldConfig {
   // Per-field override for stacking, honored only when the field renders as
   // `bar`. Overrides the panel-level `stackSeries` default.
   stackSeries?: boolean;
+  // Core `custom.stacking.group`: fields stack only with the fields of the same group. Default `A`.
+  stackGroup?: string;
   // Per-field y-axis placement. Fields are grouped onto one y-axis per distinct
   // unit; this controls which side that unit's axis renders on (or hides it).
   // Only `Left`, `Right`, `Hidden`, and `Auto` are meaningful for a y-axis.
   axisPlacement?: AxisPlacement;
+  // Core "Transform". The cartesian family draws a `negative-Y` field below zero.
+  transform?: GraphTransform;
+  // Core "Connect null values" of line series: `true`, `false`, or the longest gap (x units, ms on a
+  // time axis) to connect over. See `lib/echarts/converters/spanNulls.ts`.
+  spanNulls?: boolean | number;
+  // Core "Line interpolation" of line series. See `getLineInterpolation` in `lib/echarts/options/cartesian.ts`.
+  lineInterpolation?: LineInterpolation;
 }
 export interface EChartsGraphFieldConfig extends GraphFieldConfig, EChartsFieldConfig {}
+/** Field config of the timeline family: core's state timeline `custom.*` keys. */
+export interface EChartsTimelineFieldConfig extends EChartsFieldConfig {
+  /** Bar border width, in pixels. */
+  lineWidth?: number;
+  /** Bar fill opacity, 0 to 100. */
+  fillOpacity?: number;
+  /** "Connect null values": `true`, or the longest gap in milliseconds that a state spans. */
+  spanNulls?: boolean | number;
+  /** "Disconnect values": a gap is inserted where the time between rows is more than this, in milliseconds. */
+  insertNulls?: boolean | number;
+}

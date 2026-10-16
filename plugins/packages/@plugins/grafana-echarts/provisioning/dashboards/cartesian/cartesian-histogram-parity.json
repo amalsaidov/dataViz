@@ -1,0 +1,1785 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Core Histogram (left) beside the ECharts cartesian panel in Histogram mode (right), with the same fixed data and options. Cases from the gdev Histogram dashboard (devenv/dev-dashboards/panel-histogram/histogram_tests.json).",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Two values, one bucket for each, 8 empty buckets between them.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n0\n9",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: [0,9] bucket size 1",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Two values, one bucket for each, 8 empty buckets between them.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true,
+        "bucketSize": 1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n0\n9",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: [0,9] bucket size 1",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "The automatic bucket size of core buildHistogram.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n1\n3\n9",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: [1,3,9] automatic bucket size",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "The automatic bucket size of core buildHistogram.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n1\n3\n9",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: [1,3,9] automatic bucket size",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A pre-bucketed frame: the buckets of the data, with no second bucketing.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "xMin,xMax,count1,abcd\n1,2,10,123\n2,3,20,265\n3,4,30,73\n4,5,10,24",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: Explicit xMin, xMax",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A pre-bucketed frame: the buckets of the data, with no second bucketing.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "xMin,xMax,count1,abcd\n1,2,10,123\n2,3,20,265\n3,4,30,73\n4,5,10,24",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: Explicit xMin, xMax",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "filterFieldsByName selects Height before the buckets. Bucket size 1, unit cm.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {},
+          "unit": "lengthcm"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_file",
+          "csvFileName": "weight_height.csv",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: People height distribution",
+      "type": "histogram",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": ["Height"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "filterFieldsByName selects Height before the buckets. Bucket size 1, unit cm.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {},
+          "unit": "lengthcm"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true,
+        "bucketSize": 1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_file",
+          "csvFileName": "weight_height.csv",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: People height distribution",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": ["Height"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Height and Weight in one panel, with a bucket offset.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 5,
+        "bucketOffset": 2
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_file",
+          "csvFileName": "weight_height.csv",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: Two series, bucket size 5, offset 2",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Height and Weight in one panel, with a bucket offset.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true,
+        "bucketSize": 5,
+        "bucketOffset": 2
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_file",
+          "csvFileName": "weight_height.csv",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: Two series, bucket size 5, offset 2",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Combine series: one Count series for all numeric fields.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 5,
+        "combine": true
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_file",
+          "csvFileName": "weight_height.csv",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: Two series, combined",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Combine series: one Count series for all numeric fields.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true,
+        "bucketSize": 5,
+        "combine": true
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_file",
+          "csvFileName": "weight_height.csv",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: Two series, combined",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Two overlapping series, stacked.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "a,b\n1,2\n2,3\n3,3\n4,5\n5,5\n5,6\n6,7\n7,8",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: Stacking Normal",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Two overlapping series, stacked.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 48
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true,
+        "bucketSize": 1,
+        "stacking": "normal"
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "a,b\n1,2\n2,3\n3,3\n4,5\n5,5\n5,6\n6,7\n7,8",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: Stacking Normal",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A negative bucket size. Core and ECharts use the automatic size (#519).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 56
+      },
+      "id": 15,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": -1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n1\n3\n9",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: bucket size -1 (automatic size)",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A negative bucket size. Core and ECharts use the automatic size (#519).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 56
+      },
+      "id": 16,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true,
+        "bucketSize": -1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n1\n3\n9",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: bucket size -1 (automatic size)",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A negative bucket count. Core uses the smallest bucket size that fits the data. ECharts uses the default count (#519).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 64
+      },
+      "id": 17,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketCount": -1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n1\n2\n3\n17\n40",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: bucket count -1",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A negative bucket count. Core uses the smallest bucket size that fits the data. ECharts uses the default count (#519).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 64
+      },
+      "id": 18,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true,
+        "bucketCount": -1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n1\n2\n3\n17\n40",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: bucket count -1",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A heatmap-rows frame with one field for each le bucket. The buckets have names, so they go on an ordinal x axis.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 72
+      },
+      "id": 19,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"refId\":\"A\",\"meta\":{\"type\":\"heatmap-rows\"},\"fields\":[{\"name\":\"time\",\"type\":\"time\"},{\"name\":\"0.005\",\"type\":\"number\"},{\"name\":\"0.01\",\"type\":\"number\"},{\"name\":\"0.1\",\"type\":\"number\"},{\"name\":\"1\",\"type\":\"number\"},{\"name\":\"+Inf\",\"type\":\"number\"}]},\"data\":{\"values\":[[1783137600000,1783137660000,1783137720000],[2,3,1],[5,4,6],[9,12,10],[3,2,4],[1,0,1]]}}]"
+        }
+      ],
+      "title": "Core: heatmap-rows buckets with names (le)",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "A heatmap-rows frame with one field for each le bucket. The buckets have names, so they go on an ordinal x axis.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 72
+      },
+      "id": 20,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"schema\":{\"refId\":\"A\",\"meta\":{\"type\":\"heatmap-rows\"},\"fields\":[{\"name\":\"time\",\"type\":\"time\"},{\"name\":\"0.005\",\"type\":\"number\"},{\"name\":\"0.01\",\"type\":\"number\"},{\"name\":\"0.1\",\"type\":\"number\"},{\"name\":\"1\",\"type\":\"number\"},{\"name\":\"+Inf\",\"type\":\"number\"}]},\"data\":{\"values\":[[1783137600000,1783137660000,1783137720000],[2,3,1],[5,4,6],[9,12,10],[3,2,4],[1,0,1]]}}]"
+        }
+      ],
+      "title": "ECharts: heatmap-rows buckets with names (le)",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "The field min and max set the x range, rounded to the bucket size: 62 to 72. Bucket size 1, unit cm.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {},
+          "unit": "lengthcm",
+          "min": 61.5,
+          "max": 72.5
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 80
+      },
+      "id": 21,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_file",
+          "csvFileName": "weight_height.csv",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: Field min 61.5 and max 72.5 (x range)",
+      "type": "histogram",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": ["Height"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "The field min and max set the x range, rounded to the bucket size: 62 to 72. Bucket size 1, unit cm.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {},
+          "unit": "lengthcm",
+          "min": 61.5,
+          "max": 72.5
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 80
+      },
+      "id": 22,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 1,
+        "histogram": true
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_file",
+          "csvFileName": "weight_height.csv",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: Field min 61.5 and max 72.5 (x range)",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": ["Height"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "The legend calcs reduce the raw values of each field, not the bucket counts. Bucket size 5.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 88
+      },
+      "id": 23,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["min", "max", "mean", "count"]
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 5
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_file",
+          "csvFileName": "weight_height.csv",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: Legend calcs of the raw values",
+      "type": "histogram"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "The legend calcs reduce the raw values of each field, not the bucket counts. Bucket size 5.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 88
+      },
+      "id": 24,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["min", "max", "mean", "count"]
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 5,
+        "histogram": true
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_file",
+          "csvFileName": "weight_height.csv",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: Legend calcs of the raw values",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "With Combine series, the legend calcs reduce the bucket counts of the Count series.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 96
+      },
+      "id": 25,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["max", "sum"]
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 5,
+        "combine": true
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_file",
+          "csvFileName": "weight_height.csv",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: Legend calcs, combined",
+      "type": "histogram"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "With Combine series, the legend calcs reduce the bucket counts of the Count series.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 96
+      },
+      "id": 26,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["max", "sum"]
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 5,
+        "combine": true,
+        "histogram": true
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_file",
+          "csvFileName": "weight_height.csv",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: Legend calcs, combined",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "The fields a and b stack in group A. An override puts c in group B, so c starts at 0.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "c"
+            },
+            "properties": [
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "normal",
+                  "group": "B"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 104
+      },
+      "id": 27,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "a,b,c\n1,2,1\n2,3,2\n3,3,2\n4,5,3\n5,5,4\n5,6,4\n6,7,5\n7,8,6",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: Stacking groups A and B (field settings)",
+      "type": "histogram"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "The fields a and b stack in group A. An override puts c in group B, so c starts at 0.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "c"
+            },
+            "properties": [
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "normal",
+                  "group": "B"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 104
+      },
+      "id": 28,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 1,
+        "histogram": true
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "a,b,c\n1,2,1\n2,3,2\n3,3,2\n4,5,3\n5,5,4\n5,6,4\n6,7,5\n7,8,6",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: Stacking groups A and B (field settings)",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Gradient mode Opacity for all fields. An override gives b a fill opacity of 30 and a line width of 3.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "gradientMode": "opacity",
+            "fillOpacity": 80,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "b"
+            },
+            "properties": [
+              {
+                "id": "custom.fillOpacity",
+                "value": 30
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 112
+      },
+      "id": 29,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "a,b,c\n1,2,1\n2,3,2\n3,3,2\n4,5,3\n5,5,4\n5,6,4\n6,7,5\n7,8,6",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: Gradient mode Opacity, fill opacity and line width overrides",
+      "type": "histogram"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Gradient mode Opacity for all fields. An override gives b a fill opacity of 30 and a line width of 3.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "gradientMode": "opacity",
+            "fillOpacity": 80,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "b"
+            },
+            "properties": [
+              {
+                "id": "custom.fillOpacity",
+                "value": 30
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 112
+      },
+      "id": 30,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 1,
+        "histogram": true
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "a,b,c\n1,2,1\n2,3,2\n3,3,2\n4,5,3\n5,5,4\n5,6,4\n6,7,5\n7,8,6",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: Gradient mode Opacity, fill opacity and line width overrides",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Gradient mode Hue, with the three fields stacked in one group.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "gradientMode": "hue",
+            "fillOpacity": 60,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 120
+      },
+      "id": 31,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 1
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "a,b,c\n1,2,1\n2,3,2\n3,3,2\n4,5,3\n5,5,4\n5,6,4\n6,7,5\n7,8,6",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: Gradient mode Hue, stacked",
+      "type": "histogram"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Gradient mode Hue, with the three fields stacked in one group.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "gradientMode": "hue",
+            "fillOpacity": 60,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 120
+      },
+      "id": 32,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "bucketSize": 1,
+        "histogram": true
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "a,b,c\n1,2,1\n2,3,2\n3,3,2\n4,5,3\n5,5,4\n5,6,4\n6,7,5\n7,8,6",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: Gradient mode Hue, stacked",
+      "type": "grafana-echartscartesian-panel"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["echarts", "cartesian", "histogram", "parity"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "ECharts Cartesian \u2014 histogram parity",
+  "uid": "cart-histogram-parity-0400",
+  "version": 1,
+  "weekStart": ""
+}

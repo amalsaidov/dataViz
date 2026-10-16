@@ -1,6 +1,7 @@
 import { createTheme, dateTime, type TimeRange, type ValueFormatter } from '@grafana/data';
 import { seriesTypePath } from 'editor/constants';
 import { type SeriesType } from 'editor/types';
+import { supportedChartSeriesTypes } from 'lib/echarts/charts/registry';
 import { type ChartContext } from 'lib/echarts/charts/types';
 import { type HeatmapLayout } from 'lib/echarts/options/types';
 import { type PanelOptions } from 'types';
@@ -64,11 +65,27 @@ describe('panelTypeToAxis', () => {
     expect(panelTypeToAxis(makeContext('radar'))).toBe('category');
   });
 
+  // A routed series type with no axis mapping crashes its panel (the geo `map` type did, #362). Candlestick
+  // without a time field throws on purpose (see below), so this test gives a time field.
+  it.each(supportedChartSeriesTypes)('maps the routed series type %s to an axis', (type) => {
+    expect(() => panelTypeToAxis(makeContext(type))).not.toThrow();
+  });
+
+  it('maps the geo family to a category axis, with or without a time field', () => {
+    expect(panelTypeToAxis(makeContext('map'))).toBe('category');
+    expect(panelTypeToAxis(makeContext('map'), false)).toBe('category');
+  });
+
   it('keeps the stream family on a time axis, with or without a time field', () => {
     // The `singleAxis` river is time-ordered by contract; a response with no time
     // field yields no layers at all rather than falling back to a category axis.
     expect(panelTypeToAxis(makeContext('themeRiver'))).toBe('time');
     expect(panelTypeToAxis(makeContext('themeRiver'), false)).toBe('time');
+  });
+
+  it('keeps the timeline family on a time axis, with or without a time field', () => {
+    expect(panelTypeToAxis(makeContext('custom'))).toBe('time');
+    expect(panelTypeToAxis(makeContext('custom'), false)).toBe('time');
   });
 
   it('routes multi-value types by axis support: candlestick needs a time field, boxplot falls back to category', () => {

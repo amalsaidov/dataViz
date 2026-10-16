@@ -2,11 +2,19 @@ import { debug, LOG_LEVELS } from 'development';
 import { type ECElementEvent } from 'echarts/core';
 import { type EChartsType } from 'lib/echarts/echarts';
 
+import { isAnnotationGesture } from 'lib/echarts/annotationGestures';
+import { ANNOTATION_MARKER_SERIES_ID } from 'lib/echarts/options/annotationMarkers';
 import { findHoveredPoint } from 'lib/echarts/tooltip/proximity';
+import { treemapDrillDownNodeId } from 'lib/echarts/treemapDrillDown';
 import { type EChartsTooltipTrigger, type TooltipModel, type TooltipSink } from 'lib/echarts/tooltip/types';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { TOOLTIP_MARKER_ATTR } from './constants';
-import { type EChartsTooltipController, type EChartsTooltipOptions, type EChartsTooltipState } from './types';
+import {
+  type EChartsTooltipController,
+  type EChartsTooltipOptions,
+  type EChartsTooltipState,
+  type TooltipAnchor,
+} from './types';
 
 import { revealEdgeLabelsFor } from 'lib/echarts/relations/edgeLabels/reveal';
 /**
@@ -26,6 +34,27 @@ const isSameTarget = (a: TooltipTarget | null, b: TooltipTarget | null): boolean
  */
 const isEdgeTarget = (target: TooltipTarget | null): boolean => target?.dataType === 'edge';
 
+/** Whether a chart event comes from the annotation markers (lib/echarts/options/annotationMarkers.ts). */
+const isAnnotationMarker = (params?: ECElementEvent): boolean => params?.seriesId === ANNOTATION_MARKER_SERIES_ID;
+
+/**
+ * The box of the hovered marker element in window coordinates: its zrender bounding rect in the
+ * global transform of the element, moved by the chart container.
+ * https://ecomfe.github.io/zrender-doc/public/api.html#zrenderelement
+ */
+function markerAnchor(params: ECElementEvent, container: HTMLElement | null): TooltipAnchor | null {
+  const element = params.event?.target;
+  if (element == null || container == null) {
+    return null;
+  }
+  const rect = element.getBoundingRect().clone();
+  if (element.transform) {
+    rect.applyTransform(element.transform);
+  }
+  const origin = container.getBoundingClientRect();
+  return { x: origin.left + rect.x, y: origin.top + rect.y, width: rect.width, height: rect.height };
+}
+
 /**
  * How long (ms) an item-triggered tooltip lingers after the cursor leaves its
  * element before hiding. A short grace period prevents a flicker-to-hidden when
@@ -43,6 +72,7 @@ const HIDE_DELAY_MS = 120;
 const HIDDEN: EChartsTooltipState = {
   model: null,
   position: null,
+  anchor: null,
   visible: false,
   pinned: false,
   pinnedItem: null,
@@ -258,7 +288,11 @@ export function useEChartsTooltip(
   // point has to re-pin onto that point — which needs where the cursor actually
   // is now, not where the frozen pin sits.
   const livePositionRef = useRef<EChartsTooltipState['position']>(null);
+  // The box of the hovered annotation marker, also while pinned, so a click can re-pin onto it.
+  const liveAnchorRef = useRef<TooltipAnchor | null>(null);
   const liveHitRef = useRef<TooltipTarget | null>(null);
+  // Whether the hovered mark is a treemap parent, whose click drills down instead of pinning.
+  const drillDownHoverRef = useRef(false);
 
   // The mark the cursor is on right now (`null` for none), written by the hover handlers
   // and read once the whole event has been dispatched — see `settleFocus`.
@@ -375,7 +409,7 @@ export function useEChartsTooltip(
       // outside click) with no chart event behind it.
       revealEdgeLabelsFor(chart.getZr(), null);
     }
-    update({ pinned: false, pinnedItem: null, visible: false, model: null });
+    update({ pinned: false, pinnedItem: null, visible: false, model: null, anchor: null });
   }, [cancelHide, chart, focusPoint, latestRef, update]);
 
   useEffect(() => {
@@ -525,6 +559,9 @@ export function useEChartsTooltip(
 
       if (hit == null) {
         focusPoint(null);
+        // An annotation marker is under the plot, so no point is hit there. Its item tooltip
+        // still shows: ECharts runs it after this handler (this hook binds before the first
+        // `setOption`), so its `sink` comes after the hide below.
         if (axisTriggered) {
           return;
         }
@@ -580,14 +617,24 @@ export function useEChartsTooltip(
      * hide for item-triggered tooltips. A no-op for axis tooltips and in proximity
      * mode, where `globalout` and `onMove` respectively own hiding instead.
      */
-    const onMouseOut = () => {
+    const onMouseOut = (params?: ECElementEvent) => {
+      drillDownHoverRef.current = false;
       // Nothing is hovered *yet*; a move onto an adjacent mark reports its `mouseover`
       // in this same dispatch, and `settleFocus` reads the ref once both have run.
       hoveredRef.current = null;
       scheduleSettle();
+      if (isAnnotationMarker(params)) {
+        liveAnchorRef.current = null;
+      }
       if (latestRef.current.pinned) {
         // The pin owns the emphasis, and ECharts has just cleared it — see `settleFocus`.
         // Everything below is hide behaviour, which a pinned tooltip has none of.
+        return;
+      }
+      // A marker tooltip hides after the delay in each mode. A hover of a data point in
+      // the same dispatch shows its own tooltip and cancels the hide.
+      if (isAnnotationMarker(params)) {
+        scheduleHide();
         return;
       }
       // Without proximity, ECharts' own element hit-testing owns which item is
@@ -607,6 +654,10 @@ export function useEChartsTooltip(
       if (inProximityMode()) {
         return;
       }
+      scheduleHide();
+    };
+
+    const scheduleHide = () => {
       cancelHide();
       hideTimerRef.current = setTimeout(() => {
         hideTimerRef.current = null;
@@ -627,11 +678,19 @@ export function useEChartsTooltip(
         dataIndex: params.dataIndex,
         dataType: params.dataType,
       };
+      // A click on a treemap parent drills down (`useTreemapDrillDown`) and does not pin.
+      drillDownHoverRef.current = treemapDrillDownNodeId(params) !== undefined;
       scheduleSettle();
+      if (isAnnotationMarker(params)) {
+        liveAnchorRef.current = markerAnchor(params, containerRef.current);
+      }
       if (latestRef.current.pinned) {
         return;
       }
       cancelHide();
+      if (isAnnotationMarker(params)) {
+        update({ anchor: liveAnchorRef.current });
+      }
       // Native hit-testing families (bars, and anything with proximity off) get
       // their active/bold row from the element actually under the cursor, so the
       // hovered item — not the vertically-nearest one — is the one emphasised.
@@ -670,7 +729,7 @@ export function useEChartsTooltip(
       // The frozen position belongs to the old pin; the cursor is what the new
       // one should sit beside.
       if (livePositionRef.current != null) {
-        update({ position: livePositionRef.current });
+        update({ position: livePositionRef.current, anchor: liveAnchorRef.current });
       }
 
       if (target?.seriesIndex != null && !chart.isDisposed()) {
@@ -718,6 +777,10 @@ export function useEChartsTooltip(
      * it only contributes the `seriesIndex`/`dataIndex` ZRender could not report.
      */
     const onChartClick = (params: ECElementEvent) => {
+      // A ctrl/cmd click adds an annotation (`useAnnotationGestures`) and does not pin, as core.
+      if (isAnnotationGesture(params.event?.event) || treemapDrillDownNodeId(params) !== undefined) {
+        return;
+      }
       const cur = latestRef.current;
       // The ZRender click runs first and may already have pinned this same user
       // click, from the proximity-focused point — which outranks whichever
@@ -735,7 +798,10 @@ export function useEChartsTooltip(
       pinWith({ seriesIndex: params.seriesIndex, dataIndex: params.dataIndex, dataType: params.dataType });
     };
 
-    const onZrClick = () => {
+    const onZrClick = (event?: { event?: Pick<MouseEvent, 'ctrlKey' | 'metaKey'> }) => {
+      if (isAnnotationGesture(event?.event) || drillDownHoverRef.current) {
+        return;
+      }
       // Both clicks fire for a click on an element and the order is not
       // guaranteed. If the element handler already pinned this same user click,
       // leave it alone: it knows the `seriesIndex`/`dataIndex`/`dataType` ZRender

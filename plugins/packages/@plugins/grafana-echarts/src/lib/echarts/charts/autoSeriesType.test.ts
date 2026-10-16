@@ -94,6 +94,16 @@ describe('resolveAutoSeriesType', () => {
       expect(resolveAutoSeriesType('stream', [timeNumberFrame()])).toBe('themeRiver');
       expect(resolveAutoSeriesType('stream', [])).toBe('themeRiver');
     });
+
+    it('timeline stays custom', () => {
+      expect(resolveAutoSeriesType('timeline', [timeNumberFrame()])).toBe('custom');
+      expect(resolveAutoSeriesType('timeline', [])).toBe('custom');
+    });
+
+    it('status history stays custom, the same chart module as the timeline', () => {
+      expect(resolveAutoSeriesType('status-history', [timeNumberFrame()])).toBe('custom');
+      expect(resolveAutoSeriesType('status-history', [])).toBe('custom');
+    });
   });
 });
 

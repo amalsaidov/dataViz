@@ -4,7 +4,7 @@ import { type ComposeOption } from 'echarts';
 import type { XAXisOption } from 'echarts/types/src/coord/cartesian/AxisModel';
 import { type EChartsType } from 'lib/echarts/echarts';
 import { type BrushEndEvent, brushEndToTimeRange, CLEAR_TIME_BRUSH_ACTION } from 'lib/echarts/timeBrush';
-import { useEffect, useRef } from 'react';
+import { type RefObject, useEffect, useRef } from 'react';
 
 /**
  * Translate a completed time-axis drag-select into a dashboard time-range change.
@@ -12,10 +12,14 @@ import { useEffect, useRef } from 'react';
  * the handler reads the latest setter through a ref so a new `onChangeTimeRange`
  * prop does not re-bind the listener. Grafana then refetches and the panel
  * re-renders with the new range pinned on the axis.
+ *
+ * `annotationGestureRef` is true when the drag is a ctrl/cmd drag (`useAnnotationGestures`).
+ * As core, such a drag adds an annotation and does not zoom.
  */
 export function useBrushTimeZoom(
   chart: EChartsType | null,
-  onChangeTimeRange: (timeRange: AbsoluteTimeRange) => void
+  onChangeTimeRange: (timeRange: AbsoluteTimeRange) => void,
+  annotationGestureRef?: RefObject<boolean>
 ): void {
   const onChangeTimeRangeRef = useRef(onChangeTimeRange);
   useEffect(() => {
@@ -43,7 +47,7 @@ export function useBrushTimeZoom(
       const range = brushEndToTimeRange(event, option.xAxis[0]);
       // Clear the selection highlight so it does not linger through the refetch.
       chart.dispatchAction(CLEAR_TIME_BRUSH_ACTION);
-      if (range) {
+      if (range && annotationGestureRef?.current !== true) {
         onChangeTimeRangeRef.current(range);
       }
     };
@@ -60,5 +64,5 @@ export function useBrushTimeZoom(
         chart.off('brushEnd', handleBrushEnd);
       }
     };
-  }, [chart]);
+  }, [chart, annotationGestureRef]);
 }

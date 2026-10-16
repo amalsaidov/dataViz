@@ -1,0 +1,722 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "spanNulls false. At 00:45 a is null and b has a value: a adds 0, so it draws at 0. At 01:00 b adds 0 and draws on a. Each row where both lines are null breaks both lines.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "seriesType": "line",
+        "stacking": "normal"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000, 1767236400000, 1767237300000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, null, 25, 20, null, null, 15, 20, null, null, null, 25]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, null, 7, null, null, 8, 6, null, null, null, 9]}]}]"
+        }
+      ],
+      "title": "ECharts: Never (default)",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "spanNulls false. At 00:45 a is null and b has a value: a adds 0, so it draws at 0. At 01:00 b adds 0 and draws on a. Each row where both lines are null breaks both lines.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "spanNulls": false,
+            "drawStyle": "line",
+            "showPoints": "always",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000, 1767236400000, 1767237300000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, null, 25, 20, null, null, 15, 20, null, null, null, 25]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, null, 7, null, null, 8, 6, null, null, null, 9]}]}]"
+        }
+      ],
+      "title": "Core: Never (default)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "spanNulls true: each line connects over the rows where both lines are null.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "seriesType": "line",
+        "stacking": "normal"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000, 1767236400000, 1767237300000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, null, 25, 20, null, null, 15, 20, null, null, null, 25]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, null, 7, null, null, 8, 6, null, null, null, 9]}]}]"
+        }
+      ],
+      "title": "ECharts: Always",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "spanNulls true: each line connects over the rows where both lines are null.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "spanNulls": true,
+            "drawStyle": "line",
+            "showPoints": "always",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000, 1767236400000, 1767237300000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, null, 25, 20, null, null, 15, 20, null, null, null, 25]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, null, 7, null, null, 8, 6, null, null, null, 9]}]}]"
+        }
+      ],
+      "title": "Core: Always",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "spanNulls 1h: the 45 min gap at 01:30 connects, the 60 min gap at 02:45 breaks (core compares with <). Fill opacity 30 draws stacked areas.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "spanNulls": 3600000
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "seriesType": "line",
+        "stacking": "normal",
+        "fillOpacity": 30
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000, 1767236400000, 1767237300000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, null, 25, 20, null, null, 15, 20, null, null, null, 25]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, null, 7, null, null, 8, 6, null, null, null, 9]}]}]"
+        }
+      ],
+      "title": "ECharts: Threshold 1h, area",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "spanNulls 1h: the 45 min gap at 01:30 connects, the 60 min gap at 02:45 breaks (core compares with <). Fill opacity 30 draws stacked areas.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "spanNulls": 3600000,
+            "drawStyle": "line",
+            "showPoints": "always",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "fillOpacity": 30
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000, 1767236400000, 1767237300000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, null, 25, 20, null, null, 15, 20, null, null, null, 25]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, null, 7, null, null, 8, 6, null, null, null, 9]}]}]"
+        }
+      ],
+      "title": "Core: Threshold 1h, area",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Two frames 7.5 min apart. The stack joins them on time; a row that a frame does not have adds 0 in that line.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "seriesType": "line",
+        "stacking": "normal"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, 18, 25, 20, 22, 15, 20, 24, 18, 22]}]}]"
+        },
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "B",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767226050000, 1767226950000, 1767227850000, 1767228750000, 1767229650000, 1767230550000, 1767231450000, 1767232350000, 1767233250000, 1767234150000, 1767235050000, 1767235950000]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, 7, 7, 8, 8, 6, 9, 7, 5]}]}]"
+        }
+      ],
+      "title": "ECharts: Two queries, unequal timestamps",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Two frames 7.5 min apart. The stack joins them on time; a row that a frame does not have adds 0 in that line.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "showPoints": "always",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, 18, 25, 20, 22, 15, 20, 24, 18, 22]}]}]"
+        },
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "B",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767226050000, 1767226950000, 1767227850000, 1767228750000, 1767229650000, 1767230550000, 1767231450000, 1767232350000, 1767233250000, 1767234150000, 1767235050000, 1767235950000]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, 7, 7, 8, 8, 6, 9, 7, 5]}]}]"
+        }
+      ],
+      "title": "Core: Two queries, unequal timestamps",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Stacking 100%: each line draws its share of the line total.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "seriesType": "line",
+        "stacking": "percent"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000, 1767236400000, 1767237300000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, null, 25, 20, null, null, 15, 20, null, null, null, 25]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, null, 7, null, null, 8, 6, null, null, null, 9]}]}]"
+        }
+      ],
+      "title": "ECharts: 100%",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Stacking 100%: each line draws its share of the line total.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "showPoints": "always",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "percent",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000, 1767236400000, 1767237300000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, null, 25, 20, null, null, 15, 20, null, null, null, 25]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, null, 7, null, null, 8, 6, null, null, null, 9]}]}]"
+        }
+      ],
+      "title": "Core: 100%",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "spanNulls 1h on b, Never on a (override). At 01:30 each line is null for 45 min: a breaks, and b connects over the gap on the stack. The 60 min gap at 02:45 breaks both.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "spanNulls": 3600000
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "a"
+            },
+            "properties": [
+              {
+                "id": "custom.spanNulls",
+                "value": false
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "seriesType": "line",
+        "stacking": "normal"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000, 1767236400000, 1767237300000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, null, 25, 20, null, null, 15, 20, null, null, null, 25]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, null, 7, null, null, 8, 6, null, null, null, 9]}]}]"
+        }
+      ],
+      "title": "ECharts: Threshold 1h on the upper line only",
+      "type": "grafana-echartscartesian-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "spanNulls 1h on b, Never on a (override). At 01:30 each line is null for 45 min: a breaks, and b connects over the gap on the stack. The 60 min gap at 02:45 breaks both.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "spanNulls": 3600000,
+            "drawStyle": "line",
+            "showPoints": "always",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "a"
+            },
+            "properties": [
+              {
+                "id": "custom.spanNulls",
+                "value": false
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "raw_frame",
+          "rawFrameContent": "[{\"fields\": [{\"name\": \"time\", \"type\": \"time\", \"values\": [1767225600000, 1767226500000, 1767227400000, 1767228300000, 1767229200000, 1767230100000, 1767231000000, 1767231900000, 1767232800000, 1767233700000, 1767234600000, 1767235500000, 1767236400000, 1767237300000]}, {\"name\": \"a\", \"type\": \"number\", \"values\": [10, 15, 20, null, 25, 20, null, null, 15, 20, null, null, null, 25]}, {\"name\": \"b\", \"type\": \"number\", \"values\": [5, 8, 6, 9, null, 7, null, null, 8, 6, null, null, null, 9]}]}]"
+        }
+      ],
+      "title": "Core: Threshold 1h on the upper line only",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["echarts", "cartesian", "parity"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "2026-01-01T00:00:00.000Z",
+    "to": "2026-01-01T03:30:00.000Z"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "ECharts Cartesian \u2014 stacked lines and areas",
+  "uid": "b2c3d4e5-0419-4419-8419-cartstack419",
+  "version": 1,
+  "weekStart": ""
+}

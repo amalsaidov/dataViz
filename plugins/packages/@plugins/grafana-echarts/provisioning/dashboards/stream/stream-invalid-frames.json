@@ -1,0 +1,102 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "https://github.com/grafana-experimental/grafana-beyond/issues/929",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {},
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "a,b\n1,2\n3,4"
+        }
+      ],
+      "transformations": [],
+      "title": "ECharts: No time field",
+      "type": "grafana-echartsstream-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "https://github.com/grafana-experimental/grafana-beyond/issues/929",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {},
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "time,a,b\n2024-01-01T00:00:00Z,1,2"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "time",
+                "destinationType": "time"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ],
+      "title": "ECharts: One time point",
+      "type": "grafana-echartsstream-panel"
+    }
+  ],
+  "schemaVersion": 41,
+  "tags": ["stream", "invalid-frame"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "2024-01-01T00:00:00.000Z",
+    "to": "2024-01-01T00:20:00.000Z"
+  },
+  "timezone": "utc",
+  "title": "Stream: invalid frames",
+  "uid": "stream-invalid-frames",
+  "version": 1
+}

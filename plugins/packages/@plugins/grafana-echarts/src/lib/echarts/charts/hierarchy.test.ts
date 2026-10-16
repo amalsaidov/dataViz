@@ -8,6 +8,8 @@ import {
   toDataFrame,
   type ValueFormatter,
 } from '@grafana/data';
+import { SeriesVisibilityChangeMode } from '@grafana/ui';
+import { toggleSeriesVisibilityConfig } from 'lib/grafana/fields/seriesConfig';
 import { seriesTypePath } from 'editor/constants';
 import { type ChartContext } from 'lib/echarts/charts/types';
 import { getPaletteColorByIndex } from 'lib/echarts/style';
@@ -73,5 +75,25 @@ describe('hierarchyChartModule.buildLegendItems colors', () => {
     expect(items.find((item) => item.label === 'Admin')?.color).toBe('#123456');
     expect(items.find((item) => item.label === 'Sales')?.color).toBe(getPaletteColorByIndex(0, theme));
     expect(items.find((item) => item.label === 'IT')?.color).toBe(getPaletteColorByIndex(2, theme));
+  });
+});
+
+describe('hierarchyChartModule.buildLegendItems visibility', () => {
+  it('disables the legend item of a root that the legend toggle hides (#955)', () => {
+    // A ctrl-click on the `Admin` legend item.
+    const fieldConfig = toggleSeriesVisibilityConfig(
+      { defaults: {}, overrides: [] },
+      'Admin',
+      SeriesVisibilityChangeMode.AppendToSelection,
+      ['Sales', 'Admin', 'IT']
+    );
+
+    const items = hierarchyChartModule.buildLegendItems(ctx(fieldConfig), []);
+
+    expect(items.map((item) => [item.label, item.disabled])).toEqual([
+      ['Sales', false],
+      ['Admin', true],
+      ['IT', false],
+    ]);
   });
 });

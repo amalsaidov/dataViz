@@ -11,16 +11,31 @@ const LEFT_GRID_PADDING = 20;
 // @todo need more dynamic way of reserving width for axis labels, long values keep getting truncated!
 export function getCartesianGrid(
   legend?: VizLegendOptions,
-  // Extra px reserved on each side for stacked (offset) y-axes beyond the first;
-  // `containLabel` only accounts for the innermost axis on each side.
-  extraAxisSpacing?: { left?: number; right?: number }
+  // Extra px reserved on each side for stacked (offset) axes beyond the first,
+  // axis names and bar value labels; `containLabel` only accounts for the
+  // innermost axis labels on each side.
+  extraAxisSpacing?: { left?: number; right?: number; top?: number; bottom?: number }
 ): GridOption {
   const right = (legend?.placement === 'right' ? LEGEND_GRID_PADDING : 0) + (extraAxisSpacing?.right ?? 0);
-  const bottom = legend?.placement === 'bottom' ? LEGEND_GRID_PADDING : 0;
+  const bottom = (legend?.placement === 'bottom' ? LEGEND_GRID_PADDING : 0) + (extraAxisSpacing?.bottom ?? 0);
   const left = DEFAULT_GRID_PADDING + (extraAxisSpacing?.left ?? 0);
+  const top = DEFAULT_GRID_PADDING + (extraAxisSpacing?.top ?? 0);
 
   // @todo outerBounds might be solution instead of using deprecated containLabel
-  return { top: DEFAULT_GRID_PADDING, left, right, bottom, containLabel: true };
+  return { top, left, right, bottom, containLabel: true };
+}
+
+/**
+ * The grid of the time cartesian chart. As the core Time series panel, it keeps all axis labels and axis names
+ * (also of offset axes) inside the panel, and keeps room at the right edge for the points on the last time (#565).
+ * `outerBoundsMode: 'same'` with `outerBoundsContain: 'all'` shrinks the grid to hold the axis names, which
+ * `containLabel` does not do.
+ * https://echarts.apache.org/en/option.html#grid.outerBoundsMode
+ * https://echarts.apache.org/en/option.html#grid.outerBoundsContain
+ */
+export function getTimeCartesianGrid(legend: VizLegendOptions | undefined, top: number): GridOption {
+  const grid = getCartesianGrid(legend, { top, right: DEFAULT_GRID_PADDING });
+  return { ...grid, containLabel: false, outerBoundsMode: 'same', outerBoundsContain: 'all' };
 }
 
 /**

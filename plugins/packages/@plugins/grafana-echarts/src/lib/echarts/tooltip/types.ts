@@ -1,6 +1,7 @@
 import { type Field, type GrafanaTheme2, type ValueFormatter } from '@grafana/data';
 import { type VizTooltipOptions } from '@grafana/schema';
 import { type TooltipOption } from 'echarts/types/dist/shared';
+import { type TimelineMode } from 'lib/grafana/timeline/types';
 
 /**
  * ECharts tooltip trigger: cartesian time series share an x axis; pie/radar hover per item.
@@ -78,6 +79,24 @@ export interface TooltipModel {
    * for the overlay to ask. See `markFilterable`.
    */
   filters?: TooltipFilters;
+  /**
+   * The hovered annotation marker. When set, the overlay shows the annotation (as core's
+   * `AnnotationTooltip`) under the header, in place of the rows. The header has the time.
+   */
+  annotation?: AnnotationTooltipContent;
+}
+
+/**
+ * What the tooltip of an annotation marker shows under the time, as core's `AnnotationTooltip`:
+ * the title and the text, the tags, and the data links. `title` and `text` are the raw strings of
+ * the event; the overlay sanitizes them as HTML.
+ */
+export interface AnnotationTooltipContent {
+  title?: string;
+  text?: string;
+  tags: string[];
+  /** The fields of the annotation frame with data links, at the row of the event. */
+  sources?: TooltipSource[];
 }
 
 /**
@@ -230,6 +249,8 @@ export interface TooltipModelOptions {
  * preserves unknown data props.
  */
 export interface HierarchyTreeItem {
+  /** Unique path id, so a treemap drill down finds the node (see `treemapDrillDownNodeId`). */
+  id?: string;
   name: string;
   value?: number;
   self?: number;
@@ -268,5 +289,14 @@ export interface BinnedHeatmapTooltipContext {
   timeZone: string;
   formatValue: ValueFormatter;
   /** Receives the hovered cell's content model; rendered by the React overlay. */
+  tooltipSink?: TooltipSink;
+}
+
+/** What the timeline bar tooltip needs besides the hovered item. */
+export interface TimelineTooltipContext {
+  timeZone: string;
+  /** `samples` (status history) shows the sample time only, with no duration. */
+  mode?: TimelineMode;
+  /** Receives the hovered bar's content model; rendered by the React overlay. */
   tooltipSink?: TooltipSink;
 }

@@ -54,6 +54,22 @@ describe('applyTooltipRowOptions', () => {
 });
 
 describe('buildTooltipModel', () => {
+  it('drops the row of a series with hideFrom.tooltip, as core', () => {
+    const hidden = toDataFrame({
+      fields: [{ name: 'B', type: FieldType.number, values: [1], config: { custom: { hideFrom: { tooltip: true } } } }],
+    }).fields[0];
+    const shown = toDataFrame({ fields: [{ name: 'A', type: FieldType.number, values: [1] }] }).fields[0];
+    const model = buildTooltipModel(
+      asParams([
+        { seriesName: 'A', seriesIndex: 0, value: 10 },
+        { seriesName: 'B', seriesIndex: 1, value: 30 },
+      ]),
+      resolveValue,
+      { resolveField: ({ seriesIndex }) => ({ field: seriesIndex === 0 ? shown : hidden, rowIndex: 0 }) }
+    );
+    expect(model.rows.map((row) => row.label)).toEqual(['A']);
+  });
+
   it('builds a single-item model with the item name as the header value (core composition)', () => {
     const model = buildTooltipModel(asParams({ seriesName: 'A', name: 'x', value: 5 }), resolveValue);
     // The x value goes in `header.value` with an empty label, like core's

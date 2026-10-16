@@ -1,4 +1,4 @@
-import { type PanelOptionsEditorBuilder } from '@grafana/data';
+import { type PanelOptionsEditorBuilder, type SelectFieldConfigSettings } from '@grafana/data';
 import {
   ANIMATION_ENABLED_DEFAULT,
   animationEnabledPath,
@@ -11,14 +11,16 @@ import {
   performanceShowPointsName,
   performanceShowPointsPath,
 } from 'editor/constants';
+import { cartesianGraphStylesCategoryName } from 'editor/cartesian';
 import { type PerformanceMode } from 'editor/types';
-import { addAdvancedBooleanSwitch, addAdvancedRadio } from 'lib/grafana/editor/common/advanced-options';
+import { addAdvancedBooleanSwitch, type ExtraShowIf } from 'lib/grafana/editor/common/advanced-options';
 import { type PanelOptions } from 'types';
 
 /**
- * Register the Advanced "Performance" options for the cartesian time-series fast
- * path (in the shared "Advanced" category, gated behind Advanced editor mode by
- * the `addAdvanced*` helpers). These override the density-based auto behavior
+ * Register the "Performance" options for the cartesian time-series fast path.
+ * Show points has core parity, so it is Default tier in "Graph styles". Downsampling
+ * and Animation are ECharts-only, so the `addAdvanced*` helpers put them in the
+ * Advanced tier and category. These override the density-based auto behavior
  * resolved in `lib/echarts/performance/resolvers.ts`:
  *
  * - **Show points** (`performance.showPoints`, default Auto): per-series
@@ -35,14 +37,20 @@ import { type PanelOptions } from 'types';
  *   could not fire before the render that needed them (see `resolveAnimation`) —
  *   so animation is simply off unless asked for. Because off *is* the default, a
  *   plain switch is now unambiguous: what it shows is what the chart does.
+ *
+ * `lineShowIf` hides Show points and Downsampling when no line series reads them. The caller gives it, so `common/`
+ * does not import family code.
  */
-export function addPerformanceOptions(builder: PanelOptionsEditorBuilder<PanelOptions>) {
-  addAdvancedRadio<PerformanceMode>(builder, {
+export function addPerformanceOptions(builder: PanelOptionsEditorBuilder<PanelOptions>, lineShowIf?: ExtraShowIf) {
+  // Core Time series "Show points" (`custom.showPoints`, contract #130), so Default tier.
+  builder.addRadio<PerformanceMode, SelectFieldConfigSettings<PerformanceMode>>({
+    category: [cartesianGraphStylesCategoryName],
     path: performanceShowPointsPath,
     name: performanceShowPointsName,
     description: 'Point markers on line series. Auto hides them once the chart has many points in total',
     defaultValue: PERFORMANCE_SHOW_POINTS_DEFAULT,
     settings: { options: performanceModeOptions },
+    showIf: lineShowIf,
   });
 
   addAdvancedBooleanSwitch(builder, {
@@ -50,6 +58,7 @@ export function addPerformanceOptions(builder: PanelOptionsEditorBuilder<PanelOp
     name: performanceDownsamplingName,
     description: 'Sample dense line series toward pixel resolution (LTTB) to cut drawn points',
     defaultValue: PERFORMANCE_DOWNSAMPLING_DEFAULT,
+    showIf: lineShowIf,
   });
 
   addAdvancedBooleanSwitch(builder, {

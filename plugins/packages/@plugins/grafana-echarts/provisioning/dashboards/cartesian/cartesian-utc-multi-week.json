@@ -1,0 +1,106 @@
+{
+  "title": "Cartesian UTC multi-week axis",
+  "uid": "cartesian-utc-multi-week",
+  "schemaVersion": 39,
+  "timezone": "utc",
+  "description": "#770: a 3-week range on a UTC dashboard. The x-axis labels show dates (MM/DD), as in the core panel.",
+  "time": {
+    "from": "now-21d",
+    "to": "now"
+  },
+  "tags": ["cartesian"],
+  "editable": true,
+  "panels": [
+    {
+      "id": 1,
+      "type": "grafana-echartscartesian-panel",
+      "title": "ECharts line, UTC, 3 weeks",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "random_walk",
+          "seriesCount": 2
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        },
+        "seriesType": "line"
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Core time series, UTC, 3 weeks",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "random_walk",
+          "seriesCount": 2
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    }
+  ]
+}

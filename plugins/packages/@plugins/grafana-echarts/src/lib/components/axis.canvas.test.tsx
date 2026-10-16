@@ -1,5 +1,5 @@
 import { type DataFrame, DataFrameType, type Field, FieldType, toDataFrame } from '@grafana/data';
-import { AxisPlacement } from '@grafana/schema';
+import { AxisPlacement, ScaleDistribution } from '@grafana/schema';
 import { render } from '@testing-library/react';
 import { type SeriesType } from 'editor/types';
 import { AXIS_ZLEVEL, normalizeCanvasEvents, SERIES_ZLEVEL } from 'test/canvas';
@@ -146,6 +146,31 @@ describe('Panel canvas axis renders', () => {
     });
   });
 
+  // A log 2 axis ignores "Soft max", as core `uPlot.rangeLog`: the axis stops at the data max 4, not at 10 (#564).
+  it('log axis ignores the soft max', async () => {
+    const frame = toDataFrame({
+      fields: [
+        generateTimeField(times),
+        {
+          ...generateNumberField('cpu', [1, 2, 3, 4]),
+          config: {
+            displayName: 'cpu',
+            custom: { scaleDistribution: { type: ScaleDistribution.Log, log: 2 }, axisSoftMax: 10 },
+          },
+        },
+      ],
+    });
+
+    const { container } = render(getComponent([frame], 'line', { zLevel, animation: { enabled: false } }));
+
+    const { defaultEvents, seriesEvents, axisEvents } = await getAxisCanvasEvents(container);
+
+    expect(normalizeCanvasEvents(axisEvents)).toMatchCanvasSnapshot([...defaultEvents, ...seriesEvents], {
+      width,
+      height,
+    });
+  });
+
   // Two series with distinct units get one y-axis each; the per-field
   // `axisPlacement` override decides the side (or hides the axis). Verifies the
   // Phase 2 multi-axis layout across the placement combinations.
@@ -178,6 +203,22 @@ describe('Panel canvas axis renders', () => {
         width,
         height,
       });
+    });
+  });
+
+  // A named right axis and points on the last time (#565): the name and the whole last point stay in the panel.
+  it('right axis name and edge points', async () => {
+    const field = generateNumberField('requests', [1, 3, 2, 4], undefined, AxisPlacement.Right);
+    field.config.custom = { ...field.config.custom, axisLabel: 'Requests', showPoints: 'always', pointSize: 8 };
+    const frame = toDataFrame({ fields: [generateTimeField(times), field] });
+
+    const { container } = render(getComponent([frame], 'line', { zLevel, animation: { enabled: false } }));
+
+    const { defaultEvents, seriesEvents, axisEvents } = await getAxisCanvasEvents(container);
+
+    expect(normalizeCanvasEvents([...axisEvents, ...seriesEvents])).toMatchCanvasSnapshot(defaultEvents, {
+      width,
+      height,
     });
   });
 

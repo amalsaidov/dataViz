@@ -11,7 +11,7 @@ import {
 } from '@grafana/ui';
 import { partToWholeSeriesTypes } from 'editor/pie';
 import { type SeriesType } from 'editor/types';
-import { isMultiValueSeriesType, isRelationsSeriesType } from 'lib/echarts/charts/narrowing';
+import { isHierarchySeriesType, isMultiValueSeriesType, isRelationsSeriesType } from 'lib/echarts/charts/narrowing';
 import { type ChartContext, type ChartModule } from 'lib/echarts/charts/types';
 import React, { useCallback, useMemo } from 'react';
 import { useLegendItems } from './useLegendItems';
@@ -79,14 +79,15 @@ export function useLegend({
     [panelContext, eventBus, onSeriesColorChange, onToggleSeriesVisibility]
   );
 
-  // Part-to-whole slices (pie/funnel), candlestick/boxplot series and relations
-  // nodes map to legend items individually (not 1:1 with fields), so each click
+  // Part-to-whole slices (pie/funnel), hierarchy roots (treemap/sunburst),
+  // candlestick/boxplot series and relations nodes map to legend items individually (not 1:1 with fields), so each click
   // toggles that one item (Hide behavior) rather than the isolate-others default
   // used by per-field families. For relations specifically, isolating a node would
   // leave a graph of one node and no links, which says nothing — hiding it and its
   // links is the useful operation.
   const seriesVisibilityChangeBehavior =
     partToWholeSeriesTypes.includes(seriesType) ||
+    isHierarchySeriesType(seriesType) ||
     isMultiValueSeriesType(seriesType) ||
     isRelationsSeriesType(seriesType)
       ? SeriesVisibilityChangeBehavior.Hide
@@ -105,11 +106,12 @@ export function useLegend({
             sortDesc={resolvedLegend.sortDesc}
             isSortable={true}
             limit={resolvedLegend.limit}
+            readonly={chartModule.legendReadonly}
           />
         </PanelContextProvider>
       </VizLayout.Legend>
     ),
-    [legendContextValue, items, resolvedLegend, seriesVisibilityChangeBehavior]
+    [legendContextValue, items, resolvedLegend, seriesVisibilityChangeBehavior, chartModule.legendReadonly]
   );
 
   return { items, renderLegend };

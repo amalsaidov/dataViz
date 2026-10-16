@@ -1,4 +1,10 @@
-import { type DataFrame, type Field, getFieldDisplayName, type GrafanaTheme2 } from '@grafana/data';
+import {
+  type DataFrame,
+  type Field,
+  getFieldDisplayName,
+  type GrafanaTheme2,
+  outerJoinDataFrames,
+} from '@grafana/data';
 import { type EChartsFieldConfig } from 'editor/types';
 import { getSeriesColor } from 'lib/echarts/style';
 import { isNumberField, isStringField, isTimeField } from 'lib/grafana/narrowing';
@@ -128,4 +134,45 @@ export function collectTimeSeriesFields(series: DataFrame[]): Field[] {
     fields.push(field);
   });
   return fields;
+}
+
+/**
+ * The stacked fields of all frames joined into one frame on their time field.
+ * ECharts stacks bars by data index on a time axis, so stacked series from
+ * frames with different timestamps must share one index first. Core Bar chart
+ * joins the same way (`prepSeries`). The other fields stay in their own frames,
+ * on their own timestamps, so a line overlay gets no null at each timestamp of
+ * another query and stays continuous, as in core. The joined frame takes the
+ * place of the first stacked frame, so the series keep the query order. With
+ * stacked fields in fewer than two frames, the frames pass through unchanged.
+ * https://echarts.apache.org/en/option.html#series-bar.stack
+ */
+export function joinStackedFieldsOnTime<V, C>(
+  frames: Array<FieldTypedDataFrame<V, C>>,
+  isStacked: (field: Field) => boolean
+): Array<FieldTypedDataFrame<V, C>> {
+  const stackedParts: Array<FieldTypedDataFrame<V, C>> = [];
+  // The frames in query order; `null` holds the place of the joined frame, at the first stacked frame.
+  const ordered: Array<FieldTypedDataFrame<V, C> | null> = [];
+  for (const frame of frames) {
+    const timeField = frame.fields.find(isTimeField);
+    const stacked = timeField ? frame.fields.filter((field) => isNumberField(field) && isStacked(field)) : [];
+    if (!timeField || stacked.length === 0) {
+      ordered.push(frame);
+      continue;
+    }
+    if (stackedParts.length === 0) {
+      ordered.push(null);
+    }
+    stackedParts.push({ ...frame, fields: [timeField, ...stacked] });
+    const others = frame.fields.filter((field) => !stacked.includes(field));
+    if (others.some((field) => field !== timeField && isNumberField(field))) {
+      ordered.push({ ...frame, fields: others });
+    }
+  }
+  if (stackedParts.length < 2) {
+    return frames;
+  }
+  const joined = outerJoinDataFrames({ frames: stackedParts, keepDisplayNames: true });
+  return joined ? ordered.map((frame) => frame ?? joined) : frames;
 }

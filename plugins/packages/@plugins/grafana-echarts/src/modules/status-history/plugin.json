@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "panel",
+  "suggestions": true,
+  "name": "ECharts Status history",
+  "id": "grafana-echartsstatushistory-panel",
+  "info": {
+    "keywords": ["panel", "echarts", "status history", "status", "timeline", "custom"],
+    "description": "Status history ECharts panel: one cell per sample, one lane per field.",
+    "author": {
+      "name": "Grafana"
+    },
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=13.1.0",
+    "plugins": []
+  }
+}

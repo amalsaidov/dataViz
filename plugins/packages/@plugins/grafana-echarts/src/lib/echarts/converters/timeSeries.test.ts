@@ -217,8 +217,14 @@ describe('timeSeriesToEChartsOption', () => {
       expect(result.every((series) => (series as LineSeriesOption).stack === undefined)).toBe(true);
     });
 
-    it('never stacks non-bar series even when stacking is on', () => {
+    it('stacks line series in their own group, as core Time series', () => {
       const result = runSeries([wideFrame()], 'line', { stackSeries: true });
+
+      expect(result.every((series) => (series as LineSeriesOption).stack === 'total-line')).toBe(true);
+    });
+
+    it('never stacks scatter series even when stacking is on', () => {
+      const result = runSeries([wideFrame()], 'scatter', { stackSeries: true });
 
       expect(result.every((series) => (series as LineSeriesOption).stack === undefined)).toBe(true);
     });
@@ -238,7 +244,7 @@ describe('timeSeriesToEChartsOption', () => {
       expect((result[1] as LineSeriesOption).stack).toBeUndefined();
     });
 
-    it('only stacks a field whose type override renders it as bar', () => {
+    it('stacks bar and line fields in different groups', () => {
       const frame = toDataFrame({
         fields: [
           { name: 'time', type: FieldType.time, values: [1, 2] },
@@ -247,12 +253,70 @@ describe('timeSeriesToEChartsOption', () => {
         ],
       });
 
-      // Panel default is line; only the bar-overridden field stacks.
+      // A bar does not stack on a line: core keys each stack group by its draw style.
       const result = runSeries([frame], 'line', { stackSeries: true });
 
       expect(result[0]).toMatchObject({ name: 'asBar', type: 'bar', stack: 'total' });
-      expect(result[1]).toMatchObject({ name: 'asLine', type: 'line' });
-      expect((result[1] as LineSeriesOption).stack).toBeUndefined();
+      expect(result[1]).toMatchObject({ name: 'asLine', type: 'line', stack: 'total-line' });
+    });
+
+    const groupFrame = () =>
+      toDataFrame({
+        fields: [
+          { name: 'time', type: FieldType.time, values: [1, 2] },
+          { name: 'a', type: FieldType.number, values: [1, 3] },
+          { name: 'b', type: FieldType.number, values: [3, 1], config: { custom: { stackGroup: 'A' } } },
+          { name: 'c', type: FieldType.number, values: [2, 2], config: { custom: { stackGroup: 'B' } } },
+          { name: 'd', type: FieldType.number, values: [2, 6], config: { custom: { stackGroup: 'B' } } },
+        ],
+      });
+
+    it('stacks each stack group apart, as the core stacking group', () => {
+      const result = runSeries([groupFrame()], 'line', { stacking: 'normal' as PanelOptions['stacking'] });
+
+      expect(result.map((series) => (series as LineSeriesOption).stack)).toEqual([
+        'total-line',
+        'total-line',
+        'total-line:B',
+        'total-line:B',
+      ]);
+    });
+
+    // A panel that stacks two counts and draws a percent on the right axis: core keys each stack by its scale
+    // (the unit), so the percent does not stack on the counts.
+    it('stacks the fields of each unit apart', () => {
+      const frame = toDataFrame({
+        fields: [
+          { name: 'time', type: FieldType.time, values: [1, 2] },
+          { name: 'new', type: FieldType.number, values: [1000, 2000] },
+          { name: 'recurrent', type: FieldType.number, values: [4000, 3000] },
+          { name: 'pct', type: FieldType.number, values: [0.8, 0.6], config: { unit: 'percentunit' } },
+        ],
+      });
+
+      const result = runSeries([frame], 'line', { stacking: 'normal' as PanelOptions['stacking'] });
+
+      expect(result.map((series) => (series as LineSeriesOption).stack)).toEqual([
+        'total-line',
+        'total-line',
+        'total-line@percentunit',
+      ]);
+    });
+
+    it('takes the percent of each stack group from the total of that group', () => {
+      const result = runSeries([groupFrame()], 'bar', { stacking: 'percent' as PanelOptions['stacking'] });
+      const drawn = result.map((series) =>
+        ((series as LineSeriesOption).data as Array<{ value: number[] } | number[]>).map(
+          (item) => (Array.isArray(item) ? item : item.value)[1]
+        )
+      );
+
+      expect(drawn).toEqual([
+        [0.25, 0.75],
+        [0.75, 0.25],
+        [0.5, 0.25],
+        [0.5, 0.75],
+      ]);
     });
   });
 

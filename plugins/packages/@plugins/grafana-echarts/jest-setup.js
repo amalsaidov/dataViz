@@ -4,6 +4,16 @@ const { TextEncoder, TextDecoder } = require('util');
 
 Object.assign(global, { TextDecoder, TextEncoder });
 
+// jsdom has no `structuredClone`. The browser and Node have it, so the test gives the one of Node.
+// https://developer.mozilla.org/en-US/docs/Web/API/Window/structuredClone
+// The module is loaded one time: a `require` in each call is slow in jest.
+const v8 = require('v8');
+global.structuredClone ??= (value) => v8.deserialize(v8.serialize(value));
+
+// webpack's DefinePlugin sets `__PLUGIN_ID__` in each build (webpack.config.ts). Each panel `module.tsx` reads it
+// when it loads. A test can set its own value.
+global.__PLUGIN_ID__ = 'grafana-echarts-app';
+
 // https://jestjs.io/docs/manual-mocks#mocking-methods-which-are-not-implemented-in-jsdom
 Object.defineProperty(global, 'matchMedia', {
   writable: true,
@@ -70,6 +80,21 @@ global.ResizeObserver = class ResizeObserver {
 // tests so canvas snapshot matchers can compare the emitted draw calls.
 // https://github.com/hustcc/jest-canvas-mock
 require('jest-canvas-mock');
+
+// zrender paints an incremental layer (each cell of a matrix heatmap, and each element of a progressive
+// series) in slices of 15 ms on `platformApi.getTime()`, and paints the remaining elements
+// on the next animation frame. A slow CI runner can end a slice before the last element.
+// Then the capture misses elements, and that frame can run after the test disposes the
+// chart: `Cannot read properties of null (reading 'layerStack')` (#51). A clock that stays
+// at 0 puts each paint in one slice. ECharts runs progressive tasks on the same clock, and
+// they also finish in one frame. Animations and timers use a different clock.
+// https://echarts.apache.org/en/api.html#echarts.setPlatformAPI
+// https://github.com/ecomfe/zrender/blob/master/src/canvas/Painter.ts (_paintPerCursorInRect)
+// https://github.com/apache/echarts/blob/master/src/core/echarts.ts (progressive `remainTime`)
+const zrenderPlatform = require.resolve('zrender/lib/core/platform.js', {
+  paths: [require('path').dirname(require.resolve('echarts/package.json'))],
+});
+require(zrenderPlatform).setPlatformAPI({ getTime: () => 0 });
 
 // Register the `toMatchCanvasSnapshot` matcher for canvas style-regression tests.
 // https://github.com/grafana/jest-canvas-mock-compare

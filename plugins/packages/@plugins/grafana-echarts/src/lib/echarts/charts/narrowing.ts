@@ -6,12 +6,15 @@ import {
   hierarchySeriesTypes,
   supportsTimeAxisSeriesTypes,
 } from 'editor/constants';
+import { geoSeriesTypes } from 'editor/geo';
 import { multivariateSeriesTypes } from 'editor/radar';
 import { streamSeriesTypes } from 'editor/stream';
+import { timelineSeriesTypes } from 'editor/timeline';
 import {
   type CartesianSingleValueSeriesType,
   type CategoricalAxisSeriesType,
   type CategoricalOnlySeriesType,
+  type GeoSeriesType,
   type HeatmapSeriesType,
   type HierarchySeriesType,
   type MultiValueSeriesType,
@@ -19,6 +22,7 @@ import {
   type SeriesType,
   type SeriesTypeOption,
   type StreamSeriesType,
+  type TimelineSeriesType,
   type TimeAxisSupportsSeriesType,
 } from 'editor/types';
 import { relationsSeriesTypes } from 'editor/relations/constants';
@@ -71,8 +75,19 @@ export function isRelationsSeriesType(type: SeriesType): type is RelationsSeries
   return relationsSeriesTypes.some((t) => t === type);
 }
 
+// Geo charts draw markers on the `geo` coordinate system, not on a cartesian grid.
+export function isGeoSeriesType(type: SeriesType): type is GeoSeriesType {
+  return geoSeriesTypes.some((t) => t === type);
+}
+
 // Single-axis stream charts (themeRiver) render on the `singleAxis` coordinate
 // system rather than a cartesian grid.
 export function isStreamSeriesType(type: SeriesType): type is StreamSeriesType {
   return streamSeriesTypes.some((t) => t === type);
+}
+
+// Timeline charts (state timeline) draw bars of states over time with a `custom`
+// series on a time x axis.
+export function isTimelineSeriesType(type: SeriesType): type is TimelineSeriesType {
+  return timelineSeriesTypes.some((t) => t === type);
 }

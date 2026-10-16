@@ -21,14 +21,16 @@ type CrossStyle = NonNullable<NonNullable<TooltipOption['axisPointer']>['crossSt
  */
 export function grafanaTooltipModeToEChartsTrigger(
   axisType: EChartsAxisType,
-  mode: TooltipDisplayMode
+  mode: TooltipDisplayMode,
+  sharedCategoryAxis = false
 ): EChartsTooltipTrigger {
   if (mode === TooltipDisplayMode.None) {
     return 'none';
   }
 
-  // Categorical axes have no shared axis, so only per-item hover works.
-  if (axisType === 'category') {
+  // Most categorical families (pie, radar, relations) have no shared axis, so
+  // only per-item hover works. A cartesian category axis is shared.
+  if (axisType === 'category' && !sharedCategoryAxis) {
     return 'item';
   }
 
@@ -71,6 +73,15 @@ export function getTooltipTrigger(option: ECBasicOption): EChartsTooltipTrigger 
  *  ECharts axisPointer styled to match Core Grafana's uPlot cursor crosshair.
  *  https://echarts.apache.org/en/option.html#tooltip.axisPointer
  */
+/**
+ * Axis pointer of the "All" tooltip on a cartesian category axis: a band over
+ * the hovered category, like the core Bar chart hover.
+ * https://echarts.apache.org/en/option.html#tooltip.axisPointer.type
+ */
+export function getCategoryAxisPointer(): TooltipOption['axisPointer'] {
+  return { show: true, type: 'shadow', label: { show: false }, triggerEmphasis: false };
+}
+
 export function getCrosshairAxisPointer(): TooltipOption['axisPointer'] {
   const lineStyle: CrossStyle = { color: CROSSHAIR_COLOR, width: 1, type: 'dashed' };
   return {
@@ -95,6 +106,19 @@ export function getCrosshairAxisPointer(): TooltipOption['axisPointer'] {
 }
 
 /**
+ * Neutralize every visual aspect of the native box; the React overlay draws the real tooltip.
+ * `pointer-events: none` keeps the empty box from intercepting hover.
+ * https://echarts.apache.org/en/option.html#tooltip.extraCssText
+ */
+export const SILENT_TOOLTIP_CHROME = {
+  backgroundColor: 'transparent',
+  borderColor: 'transparent',
+  borderWidth: 0,
+  padding: 0,
+  extraCssText: 'box-shadow: none; pointer-events: none;',
+} satisfies TooltipOption;
+
+/**
  * A tooltip config that is functionally active but **visually silent**: ECharts
  * still does hover hit-testing, multi-series ("All") aggregation, and draws the
  * crosshair axisPointer, but the HTML box renders nothing (transparent chrome +
@@ -113,7 +137,8 @@ export function getSilentTooltipOption(
   trigger: EChartsTooltipTrigger,
   mode: TooltipDisplayMode,
   produce: (params: TopLevelFormatterParams) => TooltipModel,
-  sink: TooltipSink
+  sink: TooltipSink,
+  axisPointer: TooltipOption['axisPointer'] = getCrosshairAxisPointer()
 ): TooltipOption {
   if (mode === TooltipDisplayMode.None) {
     return { show: false };
@@ -123,18 +148,11 @@ export function getSilentTooltipOption(
   return {
     show: true,
     trigger,
-    axisPointer: getCrosshairAxisPointer(),
+    axisPointer,
     // Emit the hovered content to React and render nothing native. Returning an
     // empty string with transparent chrome makes the native box invisible.
     // https://echarts.apache.org/en/option.html#tooltip.formatter
     formatter: toEmittingFormatter(produce, sink),
-    // Neutralize every visual aspect of the native box; the React overlay draws
-    // the real tooltip. `pointer-events: none` keeps the empty box from
-    // intercepting hover.
-    backgroundColor: 'transparent',
-    borderColor: 'transparent',
-    borderWidth: 0,
-    padding: 0,
-    extraCssText: 'box-shadow: none; pointer-events: none;',
+    ...SILENT_TOOLTIP_CHROME,
   };
 }

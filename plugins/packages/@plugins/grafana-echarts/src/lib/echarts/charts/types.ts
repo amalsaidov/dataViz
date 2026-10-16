@@ -1,4 +1,5 @@
 import {
+  type DataFrame,
   type FieldConfigSource,
   type GrafanaTheme2,
   type InterpolateFunction,
@@ -16,9 +17,11 @@ import {
   type CustomSeriesOption,
   type EffectScatterSeriesOption,
   type FunnelSeriesOption,
+  type GeoComponentOption,
   type GraphSeriesOption,
   type GridComponentOption,
   type HeatmapSeriesOption,
+  type LinesSeriesOption,
   type LegendComponentOption,
   type ParallelComponentOption,
   type ParallelSeriesOption,
@@ -30,6 +33,7 @@ import {
   type SunburstSeriesOption,
   type ThemeRiverSeriesOption,
   type TitleComponentOption,
+  type TooltipComponentOption,
   type TreemapSeriesOption,
   type VisualMapComponentOption,
 } from 'echarts';
@@ -37,7 +41,7 @@ import {
 // renders on) is declared in ECharts' shared types but not re-exported from the
 // `echarts` barrel, so it is imported from there directly (as `ECBasicOption` and
 // `TooltipOption` are elsewhere in this codebase).
-import { type SingleAxisOption } from 'echarts/types/dist/shared';
+import { type SingleAxisOption, type TooltipOption } from 'echarts/types/dist/shared';
 import { type LineSeriesOption } from 'echarts/types/src/chart/line/LineSeries';
 import {
   type CartesianSingleValueSeriesType,
@@ -52,6 +56,8 @@ import {
   type TooltipSink,
   type TooltipValueFormatterResolver,
 } from 'lib/echarts/tooltip/types';
+import { type ChartFamily } from 'lib/echarts/charts/autoSeriesType';
+import { type MarkerLegend } from 'lib/grafana/geo/legend';
 import { type EChartsValueType, type FieldTypedDataFrame } from 'lib/grafana/types';
 import { type PanelOptions } from 'types';
 
@@ -63,6 +69,16 @@ export interface ChartContext<T = SeriesType, C = EChartsFieldConfig, V = EChart
   timeRange: TimeRange;
   options: PanelOptions;
   /**
+   * The annotation frames of the panel (`PanelData.annotations`). Only the cartesian time axis
+   * draws them. https://grafana.com/docs/grafana/latest/dashboards/build-dashboards/annotate-visualizations/
+   */
+  annotations?: DataFrame[];
+  /**
+   * The refIds of the panel queries (`PanelData.request.targets`). Unset when there is no request.
+   * https://github.com/grafana/grafana/blob/main/packages/grafana-data/src/types/panel.ts
+   */
+  queryRefIds?: string[];
+  /**
    * The one timestamp the marks are read at, instead of reducing their rows away — the
    * relations time slider's selection (`ChartTimeSlider`). `null`/absent is the reducing
    * reading, which is every other family and every instant response. Panel-local transient
@@ -70,6 +86,11 @@ export interface ChartContext<T = SeriesType, C = EChartsFieldConfig, V = EChart
    */
   selectedTime?: number | null;
   seriesType: T;
+  /**
+   * The nested plugin's family. Fixed by the plugin's identity, never a saved option.
+   * The timeline chart module reads it to pick status history's Samples mode.
+   */
+  family?: ChartFamily;
   formatValue: ValueFormatter;
   // The panel's field config (defaults + overrides). Row/series families
   // (pie slices, candlestick/boxplot) read legend color/visibility overrides
@@ -154,6 +175,11 @@ export type EChartBinnedHeatmapOption = ComposeOption<
 export type EChartMatrixHeatmapOption = ComposeOption<
   HeatmapSeriesOption | GridComponentOption | VisualMapComponentOption
 >;
+/**
+ * The option the timeline family builds: one `custom` series of state bars on a time
+ * x axis and a lane y axis, in a `grid`.
+ */
+export type EChartTimelineOption = ComposeOption<CustomSeriesOption | GridComponentOption | TooltipComponentOption>;
 export type EChartBarSeriesOption = ComposeOption<BarSeriesOption>;
 export type EChartLineSeriesOption = ComposeOption<LineSeriesOption>;
 export type EChartScatterSeriesOption = ComposeOption<ScatterSeriesOption>;
@@ -188,6 +214,17 @@ export type EChartSunburstSeriesOption = ComposeOption<SunburstSeriesOption>;
 // Relations (graph) renders nodes plus links. The `graph` series ships its own
 // `View` coordinate system, so no coordinate component is composed in.
 export type EChartGraphSeriesOption = ComposeOption<GraphSeriesOption>;
+// Geo renders a `custom` series of each GeoJSON layer, a `scatter` series of markers, a `heatmap` series of each
+// heatmap layer and a `lines` series of each route layer on the basemap `geo` component. Each heatmap has a hidden
+// `visualMap` for its gradient.
+export type EChartGeoOption = ComposeOption<
+  | GeoComponentOption
+  | ScatterSeriesOption
+  | HeatmapSeriesOption
+  | LinesSeriesOption
+  | CustomSeriesOption
+  | VisualMapComponentOption
+>;
 // Relations (sankey) lays the same node/link model out as weighted flow ribbons.
 export type EChartSankeySeriesOption = ComposeOption<SankeySeriesOption>;
 // Relations (chord) lays the same node/link model out as a ring of arcs joined by
@@ -218,9 +255,19 @@ export type EChartCandlestickSeriesOption = ComposeOption<CandlestickSeriesOptio
 export type EChartBoxPlotSeriesOption = ComposeOption<BoxplotSeriesOption>;
 export type EChartEffectScatterSeriesOption = ComposeOption<EffectScatterSeriesOption>;
 
-export type EChartMultiValueCartesianSeriesOption = ComposeOption<CandlestickSeriesOption | BoxplotSeriesOption>;
+// The line series is the annotation overlay (lib/echarts/options/annotations.ts), and the custom
+// series is the annotation markers (lib/echarts/options/annotationMarkers.ts).
+export type EChartMultiValueCartesianSeriesOption = ComposeOption<
+  CandlestickSeriesOption | BoxplotSeriesOption | LineSeriesOption | CustomSeriesOption
+>;
 export type EChartCartesianSeriesOption = ComposeOption<
-  BarSeriesOption | LineSeriesOption | CandlestickSeriesOption | ScatterSeriesOption | EffectScatterSeriesOption
+  // The custom series is the annotation markers (lib/echarts/options/annotationMarkers.ts).
+  | BarSeriesOption
+  | LineSeriesOption
+  | CandlestickSeriesOption
+  | ScatterSeriesOption
+  | EffectScatterSeriesOption
+  | CustomSeriesOption
 >;
 
 // A single cartesian series entry narrowed to the single-series union so arrays assign to a `series` field.
@@ -241,6 +288,8 @@ export type EChartBuildOption =
   | EChartSankeySeriesOption
   | EChartChordSeriesOption
   | EChartStreamSeriesOption
+  | EChartGeoOption
+  | EChartTimelineOption
   | EChartCandlestickSeriesOption
   | EChartBoxPlotSeriesOption
   | EChartEffectScatterSeriesOption
@@ -291,7 +340,16 @@ export interface ChartZoomAction {
   /** The registered action type, e.g. `'graphRoam'` / `'sankeyRoam'`. */
   type: string;
   /** Index of the series that owns the view coordinate system. */
-  seriesIndex: number;
+  seriesIndex?: number;
+  /** The scale of one button click. Without it, `ChartZoomControls` uses its own step. */
+  zoomStep?: number;
+  /** Index of the `geo` component that owns the view, for `'geoRoam'`. */
+  geoIndex?: number;
+  /**
+   * The option that restores the start view for a viz area size. Without it, the reset writes
+   * the identity `zoom` and `center` of the first series.
+   */
+  getResetOption?(size: { width: number; height: number }): EChartBuildOption | undefined;
 }
 
 /** A known data problem that prevents a chart module from drawing a chart. */
@@ -300,6 +358,10 @@ export interface ChartDataIssue {
   reason: string;
   /** Message that tells the user how to fix the problem in the panel no-data view. */
   message: string;
+  /** Show the "needs a time field" view of Grafana (`PanelDataErrorView` prop `needsTimeField`). */
+  needsTimeField?: boolean;
+  /** Show the "needs a number field" view of Grafana (`PanelDataErrorView` prop `needsNumberField`). */
+  needsNumberField?: boolean;
 }
 
 /** How the panel coordinates ECharts resize and option rebuild work. */
@@ -346,9 +408,12 @@ export interface ChartModule {
   /**
    * The roam action the panel's zoom buttons should dispatch for this render, or
    * `undefined` to draw no buttons — see {@link ChartZoomAction}. Optional; a family
-   * that omits it gets no zoom controls, which is every family but relations.
+   * that omits it gets no zoom controls, which is every family but relations and geo.
    */
   getZoomAction?(ctx: ChartContext): ChartZoomAction | undefined;
+
+  /** The legends of the map layers, in the lower left corner of the chart. Only geo implements it. */
+  getMarkerLegends?(ctx: ChartContext): MarkerLegend[];
 
   /**
    * The timestamps this render can be stepped through, or `null` to draw no time slider —
@@ -408,6 +473,14 @@ export interface ChartModule {
   getTooltipDimensions?(ctx: ChartContext): string[] | undefined;
 
   /**
+   * The panel `tooltip` of the family, in place of the one of `buildPanelTooltip`. With `undefined`, the panel
+   * uses the one of `buildPanelTooltip`. The geo family sets it: its tooltip modes are the core Geomap modes.
+   * The timeline family sets it for the "All" mode, which needs one row per lane at the hovered time.
+   * https://echarts.apache.org/en/option.html#tooltip
+   */
+  getTooltipOption?(ctx: ChartContext): TooltipOption | undefined;
+
+  /**
    * The family has no meaningful "All" tooltip, so a persisted
    * `tooltip.mode: multi` is clamped back to Single when building the option.
    * Its editor should also pass `singleOnly` to `addTooltipOptions`; this covers
@@ -418,8 +491,17 @@ export interface ChartModule {
    * so a dashboard saved with `multi` still builds an axis trigger there. Left
    * alone deliberately: setting it would change what those saved dashboards
    * render.
+   *
+   * A function decides for each render: the cartesian histogram mode draws its own
+   * "All" rows in the tooltip of each bar.
    */
-  singleTooltipOnly?: boolean;
+  singleTooltipOnly?: boolean | ((ctx: ChartContext) => boolean);
+  /**
+   * The category axis is a cartesian grid axis with the series side by side (the
+   * cartesian family). Then the "All" tooltip lists every series at the hovered
+   * category, as core Bar chart, instead of the one hovered item.
+   */
+  sharedCategoryAxis?: boolean;
   /**
    * The family renders on a time axis but cannot host the drag-to-zoom brush, so
    * `buildPanelChartOption` omits the `brush` component even though the axis type
@@ -428,6 +510,11 @@ export interface ChartModule {
    * never resolves to a time range.
    */
   disableTimeBrush?: boolean;
+  /**
+   * The legend lists states, not series, so a click must not hide anything. The
+   * panel renders `VizLegend` as `readonly`, as core's state timeline does.
+   */
+  legendReadonly?: boolean;
 }
 
 export type CartesianOption = ComposeOption<

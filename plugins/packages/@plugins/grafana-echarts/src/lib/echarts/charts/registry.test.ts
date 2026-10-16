@@ -8,6 +8,7 @@ import {
   resolveChartModule,
   streamChartModule,
   supportedChartSeriesTypes,
+  timelineChartModule,
 } from 'lib/echarts/charts/registry';
 
 describe('resolveChartModule', () => {
@@ -50,11 +51,15 @@ describe('resolveChartModule', () => {
     expect(resolveChartModule('themeRiver')).toBe(streamChartModule);
   });
 
+  it('routes custom to the timeline module', () => {
+    expect(resolveChartModule('custom')).toBe(timelineChartModule);
+  });
+
   it('throws for unsupported concrete types', () => {
     // gauge is a planned part-to-whole variant, not yet registered.
     expect(() => resolveChartModule('gauge')).toThrow();
     // `lines` is a deliberate deferral, not an oversight: it needs coordinate-pair
-    // polylines, which no Grafana frame carries. See todo/lines.md.
+    // polylines, which no Grafana frame carries. See #29.
     expect(() => resolveChartModule('lines')).toThrow();
   });
 
@@ -72,6 +77,7 @@ describe('resolveChartModule', () => {
         'parallel',
         'graph',
         'themeRiver',
+        'custom',
       ])
     );
   });

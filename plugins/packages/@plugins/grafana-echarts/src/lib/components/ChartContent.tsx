@@ -4,7 +4,9 @@ import React, { useMemo, useRef } from 'react';
 import { ChartNotices } from './ChartNotices';
 import { ChartTimeSlider, TIME_SLIDER_HEIGHT } from './ChartTimeSlider';
 import { ChartZoomControls } from './ChartZoomControls';
+import { GeoMarkersLegend } from './GeoMarkersLegend';
 import { EChart } from './EChart';
+import { useGeoInstanceState } from './hooks/useGeoInstanceState';
 import { useLegend } from './hooks/useLegend';
 import { useLegendHighlight } from './hooks/useLegendHighlight';
 import { type ChartContentProps } from './types';
@@ -41,11 +43,18 @@ export const ChartContent: React.FC<ChartContentProps> = ({
     [chartModule, chartContext, isPreview]
   );
 
+  // The legends of the geo map layers, drawn over the chart. Other families supply none.
+  const markerLegends = useMemo(
+    () => (isPreview ? [] : (chartModule.getMarkerLegends?.(chartContext) ?? [])),
+    [chartModule, chartContext, isPreview]
+  );
+
   // The legend is `VizLayout`'s sibling, not `EChart`'s child, so its hover
   // emphasis reaches the chart through this ref rather than through the chart
   // instance state `EChart` keeps for its own hooks.
   const chartInstanceRef = useRef<EChartsType | null>(null);
   useLegendHighlight(chartInstanceRef, chartModule, chartContext, eventBus, !isPreview);
+  useGeoInstanceState(chartInstanceRef, isPreview ? undefined : chartContext.family);
 
   const { items: legendItems, renderLegend } = useLegend({
     chartModule,
@@ -85,6 +94,7 @@ export const ChartContent: React.FC<ChartContentProps> = ({
                 relationsViewRef={relationsViewRef}
               />
               <ChartNotices notices={notices} />
+              <GeoMarkersLegend legends={markerLegends} />
               <ChartZoomControls
                 action={zoomAction}
                 chartRef={chartInstanceRef}

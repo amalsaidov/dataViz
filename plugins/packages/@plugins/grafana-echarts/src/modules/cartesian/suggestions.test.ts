@@ -171,7 +171,7 @@ describe('cartesianSuggestionsSupplier', () => {
       expect(result).toHaveLength(3);
       expect(result!.map((s) => s.name)).toEqual(['Bar', 'Bar stacked', 'Scatter']);
       expect(result!.map((s) => s.options?.seriesType)).toEqual(['bar', 'bar', 'scatter']);
-      expect(result!.map((s) => s.options?.stackSeries)).toEqual([undefined, true, undefined]);
+      expect(result!.map((s) => s.options?.stacking)).toEqual([undefined, 'normal', undefined]);
       expect(result!.every((s) => s.score === VisualizationSuggestionScore.Good)).toBe(true);
     });
 

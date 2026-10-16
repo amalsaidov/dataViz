@@ -1,8 +1,8 @@
 import { type DataFrame, type Field, type GrafanaTheme2, type TimeRange } from '@grafana/data';
 import { type BoxplotSeriesOption, type CandlestickSeriesOption } from 'echarts';
 import { type EChartsFieldConfig, type MultiValueSeriesType } from 'editor/types';
-import { type ChartContext, type MultiValueCartesianOption } from 'lib/echarts/charts/types';
-import { findCategoricalFrame, resolveCategoriesFromFrame } from 'lib/echarts/converters/frames';
+import { type ChartContext, type ChartDataIssue, type MultiValueCartesianOption } from 'lib/echarts/charts/types';
+import { findCategoricalFrame, framesHaveTimeField, resolveCategoriesFromFrame } from 'lib/echarts/converters/frames';
 import { type CategoryCartesianData } from 'lib/echarts/converters/types';
 import { getSeriesColor } from 'lib/echarts/style';
 import { getSeriesColorOverride } from 'lib/grafana/fields/seriesConfig';
@@ -22,11 +22,9 @@ export const CANDLESTICK_FIELDS = ['open', 'high', 'low', 'close'];
 /** ECharts boxplot data order (also the plugin's positional convention). */
 export const BOXPLOT_FIELDS = ['min', 'q1', 'median', 'q3', 'max'];
 
-/** First numeric field whose name matches `name` (case-insensitive).
- * @todo is this safe?
- */
+/** First numeric field whose name matches `name` (case-insensitive). A field without a name does not match. */
 function findNumericFieldByName(frame: DataFrame, name: string): Field<number> | undefined {
-  return frame.fields.find((field) => isNumberField(field) && field.name.toLowerCase() === name);
+  return frame.fields.find((field) => isNumberField(field) && field.name?.toLowerCase() === name);
 }
 
 /** Whether `frame` has a numeric field for every `name` (case-insensitive). */
@@ -168,6 +166,85 @@ export function resolveMultiValueSources(ctx: ChartContext<MultiValueSeriesType>
   return fields ? { fields, rows: resolveRowIndices(frame, ctx.timeRange) } : null;
 }
 
+/** The fix steps for each candlestick data issue (#931). Rows are numbered from 1. */
+export const CANDLESTICK_ISSUE_MESSAGES = {
+  'candlestick-time-missing': 'A candlestick needs a time field. Add a time field, or select another series type.',
+  'candlestick-fields-missing': (name: string) =>
+    `Field ${name} is missing. A candlestick needs the number fields open, high, low and close. Rename a field with Organize fields, or select another series type.`,
+  'high-below-low': (row: number) => `Row ${row} has high below low. A candlestick needs high at or above low.`,
+};
+
+/**
+ * The data issue of a candlestick, or `undefined` when the data fits. A candlestick needs a time field (it has no
+ * category axis), the numeric fields `open`, `high`, `low` and `close`, and high at or above low in each row. The series type picker can select
+ * candlestick for any data, so the panel shows this issue in place of the chart.
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/candlestick/
+ */
+export function getCandlestickDataIssue(ctx: ChartContext): ChartDataIssue | undefined {
+  if (ctx.seriesType !== 'candlestick') {
+    return undefined;
+  }
+  if (!framesHaveTimeField(ctx.frames)) {
+    return { reason: 'candlestick-time-missing', message: CANDLESTICK_ISSUE_MESSAGES['candlestick-time-missing'] };
+  }
+  const frame = findCategoricalFrame(filterUnsupportedFields(ctx.frames));
+  const missing = CANDLESTICK_FIELDS.find((name) => !frame || !findNumericFieldByName(frame, name));
+  if (!frame || missing) {
+    return {
+      reason: 'candlestick-fields-missing',
+      message: CANDLESTICK_ISSUE_MESSAGES['candlestick-fields-missing'](missing ?? CANDLESTICK_FIELDS[0]),
+    };
+  }
+  const high = findNumericFieldByName(frame, 'high')!.values;
+  const low = findNumericFieldByName(frame, 'low')!.values;
+  const row = high.findIndex((value, i) => value != null && low[i] != null && value < low[i]);
+  if (row !== -1) {
+    return { reason: 'high-below-low', message: CANDLESTICK_ISSUE_MESSAGES['high-below-low'](row + 1) };
+  }
+  return undefined;
+}
+
+/** The fix steps for each boxplot data issue (#932). Rows are numbered from 1. */
+export const BOXPLOT_ISSUE_MESSAGES = {
+  'boxplot-fields-missing': (name: string) =>
+    `Field ${name} is missing. A boxplot needs the number fields min, q1, median, q3 and max. Rename a field with Organize fields, or select another series type.`,
+  'boxplot-out-of-order': (row: number, lower: string, upper: string) =>
+    `Row ${row} has ${lower} above ${upper}. Each row needs min, q1, median, q3 and max in this order.`,
+};
+
+/**
+ * The data issue of a boxplot, or `undefined` when the data fits. A boxplot needs the number fields min, q1,
+ * median, q3 and max (or five number fields). The named fields must be in order in each row.
+ */
+export function getBoxplotDataIssue(ctx: ChartContext): ChartDataIssue | undefined {
+  if (ctx.seriesType !== 'boxplot') {
+    return undefined;
+  }
+  const frame = findCategoricalFrame(filterUnsupportedFields(ctx.frames));
+  if (!frame || !resolveMultiValueFields(frame, 'boxplot')) {
+    const missing = BOXPLOT_FIELDS.find((name) => !frame || !findNumericFieldByName(frame, name)) ?? BOXPLOT_FIELDS[0];
+    return { reason: 'boxplot-fields-missing', message: BOXPLOT_ISSUE_MESSAGES['boxplot-fields-missing'](missing) };
+  }
+  // Only the named fields have an order to check. Five other number fields are drawn as they are.
+  const named = BOXPLOT_FIELDS.map((name) => findNumericFieldByName(frame, name));
+  if (named.some((field) => field === undefined)) {
+    return undefined;
+  }
+  for (let row = 0; row < frame.length; row++) {
+    for (let i = 0; i < named.length - 1; i++) {
+      const lower = named[i]!.values[row];
+      const upper = named[i + 1]!.values[row];
+      if (lower != null && upper != null && lower > upper) {
+        return {
+          reason: 'boxplot-out-of-order',
+          message: BOXPLOT_ISSUE_MESSAGES['boxplot-out-of-order'](row + 1, BOXPLOT_FIELDS[i], BOXPLOT_FIELDS[i + 1]),
+        };
+      }
+    }
+  }
+  return undefined;
+}
+
 /** Frame display name for the single multi-value series, or a type fallback. */
 function seriesName(frame: DataFrame, fallback: string): string {
   return frame.name?.trim() ? frame.name : fallback;
@@ -275,7 +352,7 @@ export function multiValueCartesianToEChartsOption(
   // so honor a fixed-color override read by name here. This colors both the
   // chart and the legend (which reads `itemStyle.color`). Visibility is applied
   // in `buildMultiValueOption` so the legend keeps the item to toggle it back.
-  const colorOverride = getSeriesColorOverride(ctx.fieldConfig, String(built.name ?? ''));
+  const colorOverride = getSeriesColorOverride(ctx.fieldConfig, String(built.name ?? ''), theme);
   if (colorOverride) {
     built.itemStyle = { ...built.itemStyle, color: colorOverride };
   }

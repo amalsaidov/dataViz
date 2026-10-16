@@ -3,7 +3,21 @@
 // `process` itself is undefined in the browser, so any other lookup (e.g. CI, only present
 // under Jest/Node) must be guarded with `typeof` to avoid a runtime ReferenceError.
 const isCI = typeof process !== 'undefined' && Boolean(process.env.CI);
-const CONSOLE_OUTPUT = !isCI && (localStorage.getItem('echarts-debug') ?? process.env.NODE_ENV !== 'production');
+
+/**
+ * Reads a `localStorage` key. Returns `null` when the read throws: an iframe with `sandbox="allow-scripts"` and no
+ * `allow-same-origin` throws a `SecurityError` on each access.
+ * https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage#exceptions
+ */
+function readLocalStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+const CONSOLE_OUTPUT = !isCI && (readLocalStorage('echarts-debug') ?? process.env.NODE_ENV !== 'production');
 
 export enum LOG_LEVELS {
   debug,
@@ -17,7 +31,7 @@ export enum LOG_LEVELS {
  * localStorage.setItem('echarts-debug-level', 'debug')
  */
 function getLogLevelFromLocalStorage(): LOG_LEVELS {
-  const raw = localStorage.getItem('echarts-debug-level');
+  const raw = readLocalStorage('echarts-debug-level');
   if (raw === 'debug' || raw === '0') {
     return LOG_LEVELS.debug;
   }

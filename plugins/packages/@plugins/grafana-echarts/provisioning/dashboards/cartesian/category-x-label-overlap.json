@@ -1,0 +1,336 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Narrow category bar and histogram panels: core (left of each pair) beside the ECharts cartesian panel (right). The x labels do not overlap (#1014).",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "12 long category labels at a narrow width.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "orientation": "vertical",
+        "xTickLabelSpacing": 10
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "host,value\nserver-1.example,1\nserver-2.example,2\nserver-3.example,3\nserver-4.example,4\nserver-5.example,5\nserver-6.example,6\nserver-7.example,7\nserver-8.example,8\nserver-9.example,9\nserver-10.example,10\nserver-11.example,11\nserver-12.example,12",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: bars, label spacing 10",
+      "type": "barchart",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Same data and options. No two x labels overlap.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "orientation": "vertical",
+        "xTickLabelSpacing": 10,
+        "seriesType": "bar"
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "host,value\nserver-1.example,1\nserver-2.example,2\nserver-3.example,3\nserver-4.example,4\nserver-5.example,5\nserver-6.example,6\nserver-7.example,7\nserver-8.example,8\nserver-9.example,9\nserver-10.example,10\nserver-11.example,11\nserver-12.example,12",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: bars, label spacing 10",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "X tick rotation still sets the label angle.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "orientation": "vertical",
+        "xTickLabelRotation": -45
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "host,value\nserver-1.example,1\nserver-2.example,2\nserver-3.example,3\nserver-4.example,4\nserver-5.example,5\nserver-6.example,6\nserver-7.example,7\nserver-8.example,8\nserver-9.example,9\nserver-10.example,10\nserver-11.example,11\nserver-12.example,12",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: bars, rotation -45",
+      "type": "barchart",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Same data and options. X tick rotation still sets the label angle.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "orientation": "vertical",
+        "xTickRotate": -45,
+        "seriesType": "bar"
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "host,value\nserver-1.example,1\nserver-2.example,2\nserver-3.example,3\nserver-4.example,4\nserver-5.example,5\nserver-6.example,6\nserver-7.example,7\nserver-8.example,8\nserver-9.example,9\nserver-10.example,10\nserver-11.example,11\nserver-12.example,12",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: bars, rotation -45",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Long x labels at a narrow width.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {},
+          "unit": "suffix: requests"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n100000\n100250\n100500\n100750\n101000\n101250\n101500\n101750\n102000\n102250\n102500\n102750\n103000\n103250\n103500\n103750\n104000\n104250\n104500\n104750\n105000\n105250\n105500\n105750\n106000\n106250\n106500\n106750\n107000\n107250\n107500\n107750\n108000\n108250\n108500\n108750\n109000\n109250\n109500\n109750",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Core: histogram",
+      "type": "histogram",
+      "transformations": []
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "Same data and options. No two x labels overlap.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {},
+          "unit": "suffix: requests"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "histogram": true
+      },
+      "targets": [
+        {
+          "scenarioId": "csv_content",
+          "csvContent": "value\n100000\n100250\n100500\n100750\n101000\n101250\n101500\n101750\n102000\n102250\n102500\n102750\n103000\n103250\n103500\n103750\n104000\n104250\n104500\n104750\n105000\n105250\n105500\n105750\n106000\n106250\n106500\n106750\n107000\n107250\n107500\n107750\n108000\n108250\n108500\n108750\n109000\n109250\n109500\n109750",
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "ECharts: histogram",
+      "type": "grafana-echartscartesian-panel",
+      "transformations": []
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["echarts", "cartesian", "parity"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "ECharts Cartesian — category x label overlap",
+  "uid": "cart-category-x-overlap",
+  "version": 1,
+  "weekStart": ""
+}

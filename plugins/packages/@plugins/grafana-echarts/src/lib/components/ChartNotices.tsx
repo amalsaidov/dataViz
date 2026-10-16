@@ -1,6 +1,6 @@
 import { css } from '@emotion/css';
 import { type GrafanaTheme2 } from '@grafana/data';
-import { Icon, Tooltip, useStyles2 } from '@grafana/ui';
+import { Icon, Toggletip, Tooltip, useStyles2 } from '@grafana/ui';
 import { type ChartNotice } from 'lib/echarts/charts/types';
 import React from 'react';
 
@@ -29,19 +29,57 @@ export const ChartNotices: React.FC<Props> = ({ notices }) => {
     return null;
   }
 
-  return (
-    <div className={styles.wrapper}>
-      {notices.map((notice) => (
-        <Tooltip key={`${notice.severity}:${notice.text}`} content={notice.text} theme="info">
+  const iconFor = (severity: ChartNotice['severity']) => (
+    <Icon
+      name={severity === 'warning' ? 'exclamation-triangle' : 'info-circle'}
+      size="sm"
+      className={severity === 'warning' ? styles.warning : styles.info}
+    />
+  );
+
+  if (notices.length === 1) {
+    const [notice] = notices;
+    return (
+      <div className={styles.wrapper}>
+        <Tooltip content={notice.text} theme="info">
           {/* `tabIndex` so the notice is reachable (and its tooltip openable) by keyboard. */}
           <span className={styles.item} tabIndex={0} role="note" aria-label={notice.text}>
-            <Icon
-              name={notice.severity === 'warning' ? 'exclamation-triangle' : 'info-circle'}
-              size="sm"
-              className={notice.severity === 'warning' ? styles.warning : styles.info}
-            />
+            {iconFor(notice.severity)}
           </span>
         </Tooltip>
+      </div>
+    );
+  }
+
+  // Two or more notices: one badge that opens the full list on click.
+  // Toggletip: https://developers.grafana.com/ui/latest/index.html?path=/docs/overlays-toggletip--docs
+  const label = `${notices.length} notices`;
+  const list = (
+    <ul className={styles.list} aria-label={label}>
+      {notices.map((notice) => (
+        <li key={`${notice.severity}:${notice.text}`} className={styles.listItem}>
+          {iconFor(notice.severity)}
+          <span>{notice.text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+
+  return (
+    <div className={styles.wrapper}>
+      <Toggletip content={list} placement="bottom-end" closeButton={false}>
+        <button type="button" className={styles.button} aria-label={label}>
+          {iconFor(notices.some((n) => n.severity === 'warning') ? 'warning' : 'info')}
+        </button>
+      </Toggletip>
+      {/* Each text stays readable without a click, for screen readers. */}
+      {notices.map((notice) => (
+        <span
+          key={`${notice.severity}:${notice.text}`}
+          className={styles.srOnly}
+          role="note"
+          aria-label={notice.text}
+        />
       ))}
     </div>
   );
@@ -65,6 +103,35 @@ const getStyles = (theme: GrafanaTheme2) => ({
     pointerEvents: 'auto',
     display: 'inline-flex',
     cursor: 'help',
+  }),
+  button: css({
+    pointerEvents: 'auto',
+    display: 'inline-flex',
+    padding: 0,
+    border: 'none',
+    background: 'none',
+    cursor: 'pointer',
+  }),
+  list: css({
+    listStyle: 'none',
+    margin: 0,
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(0.5),
+  }),
+  listItem: css({
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+  }),
+  // Visually hidden, but in the accessibility tree.
+  srOnly: css({
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    overflow: 'hidden',
+    clipPath: 'inset(50%)',
   }),
   warning: css({
     color: theme.colors.warning.text,

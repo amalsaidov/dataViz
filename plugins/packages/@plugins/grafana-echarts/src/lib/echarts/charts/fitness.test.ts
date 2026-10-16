@@ -19,13 +19,16 @@ import {
   scorePartToWhole,
   scoreScatter,
   scoreStream,
+  scoreTimeline,
 } from 'lib/echarts/charts/fitness';
 import {
   ALL_VALUES_MAX_ROWS,
   CATEGORY_MAX_ROWS,
   MULTIVARIATE_MAX_AXES,
   SLICE_MAX,
+  STATUS_HISTORY_MAX_ROWS,
   STREAM_MAX_LAYERS,
+  TIMELINE_NUMBER_FIELDS_LIMIT,
 } from 'lib/echarts/charts/suggestionLimits';
 
 // These fixtures mirror the per-family suggestions.test.ts cases so the shared
@@ -766,5 +769,53 @@ describe('scoreStream', () => {
 
   it('withholds for an empty response', () => {
     expect(scoreStream(summaryOf())).toBeUndefined();
+  });
+});
+
+describe('scoreTimeline', () => {
+  const stateFrame = (rows: number) =>
+    createDataFrame({
+      fields: [
+        { name: 'time', type: FieldType.time, values: Array.from({ length: rows }, (_, row) => row * 1000) },
+        { name: 'state', type: FieldType.string, values: Array.from({ length: rows }, (_, row) => `s${row % 3}`) },
+      ],
+    });
+
+  it('scores OK for a time field with string states', () => {
+    expect(scoreTimeline(summaryOf(stateFrame(3)))).toBe(VisualizationSuggestionScore.OK);
+  });
+
+  it('scores OK for a time field with number values', () => {
+    expect(scoreTimeline(summaryOf(timeFrame(2, 3)))).toBe(VisualizationSuggestionScore.OK);
+  });
+
+  it('withholds without a time field', () => {
+    expect(scoreTimeline(summaryOf(categoryFrame(1, 3)))).toBeUndefined();
+  });
+
+  it('withholds for an empty response', () => {
+    expect(scoreTimeline(summaryOf())).toBeUndefined();
+  });
+
+  it('withholds at the number field limit, one lane per field', () => {
+    expect(scoreTimeline(summaryOf(timeFrame(TIMELINE_NUMBER_FIELDS_LIMIT - 1, 3)))).toBe(
+      VisualizationSuggestionScore.OK
+    );
+    expect(scoreTimeline(summaryOf(timeFrame(TIMELINE_NUMBER_FIELDS_LIMIT, 3)))).toBeUndefined();
+  });
+
+  it('withholds for logs', () => {
+    const logs = stateFrame(3);
+    logs.meta = { preferredVisualisationType: 'logs' };
+    expect(scoreTimeline(summaryOf(logs))).toBeUndefined();
+  });
+
+  it('applies the status history row ceiling only when given', () => {
+    const tooLong = summaryOf(stateFrame(STATUS_HISTORY_MAX_ROWS + 1));
+    expect(scoreTimeline(summaryOf(stateFrame(STATUS_HISTORY_MAX_ROWS)), STATUS_HISTORY_MAX_ROWS)).toBe(
+      VisualizationSuggestionScore.OK
+    );
+    expect(scoreTimeline(tooLong, STATUS_HISTORY_MAX_ROWS)).toBeUndefined();
+    expect(scoreTimeline(tooLong)).toBe(VisualizationSuggestionScore.OK);
   });
 });

@@ -125,21 +125,17 @@ function computePieSlices(
     const numeric = display.display.numeric;
     const value = typeof numeric === 'number' && Number.isFinite(numeric) ? numeric : undefined;
     // A fixed-color override (matched by display name, then the raw field-name
-    // alias) always wins. Its `fixedColor` is a Grafana color that may be a named
-    // palette token (e.g. `dark-red`) rather than a CSS color, so it must run
-    // through the theme to become renderable — `getColorByName` resolves names and
-    // passes hex/rgb through unchanged.
+    // alias) always wins. It is already a CSS color.
     const override =
-      getSeriesColorOverride(fieldConfig, name) ?? (alias ? getSeriesColorOverride(fieldConfig, alias) : undefined);
+      getSeriesColorOverride(fieldConfig, name, theme) ??
+      (alias ? getSeriesColorOverride(fieldConfig, alias, theme) : undefined);
     return {
       name,
       value,
       // Override, else the display processor's color (the field's Color scheme /
       // palette, already theme-resolved), falling back to the classic palette by
       // slice position so slices stay distinct and stable.
-      color: override
-        ? theme.visualization.getColorByName(override)
-        : display.display.color || getPaletteColorByIndex(index, theme),
+      color: override ?? (display.display.color || getPaletteColorByIndex(index, theme)),
       hidden: hidden.has(name) || (alias !== undefined && isSeriesHiddenByName(fieldConfig, alias)),
       field: toSliceField(display, name, value),
       // The real backing column + row, so the tooltip footer resolves the

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "panel",
+  "suggestions": true,
+  "name": "ECharts Geo",
+  "id": "grafana-echartsgeo-panel",
+  "info": {
+    "keywords": ["panel", "echarts", "geo", "map", "geomap", "markers"],
+    "description": "Geo ECharts panel: markers on a map, placed by coordinates, geohash or place name.",
+    "author": {
+      "name": "Grafana"
+    },
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=13.1.0",
+    "plugins": []
+  }
+}

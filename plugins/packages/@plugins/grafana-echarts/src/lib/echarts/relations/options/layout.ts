@@ -30,13 +30,20 @@ const EDGE_LENGTH_BOUNDS = { min: 30, max: 240 };
 const REPULSION_BOUNDS = { min: 60, max: 960 };
 const GRAVITY_BOUNDS = { min: 0.2, max: 0.5 };
 
+/** The layouts of the graph series. https://echarts.apache.org/en/option.html#series-graph.layout */
+type GraphLayout = 'force' | 'circular' | 'none';
+const isGraphLayout = (layout: string): layout is GraphLayout =>
+  layout === 'force' || layout === 'circular' || layout === 'none';
+
 /**
- * Resolve the graph layout.
+ * Resolve the graph layout. A layout that the graph series does not know (for example `sankey` from a saved panel)
+ * gives `force`, because ECharts gives no edge layout for it and then throws.
  * https://echarts.apache.org/en/option.html#series-graph.layout
  */
 export function getGraphLayout(data: NodeGraphData, options: PanelOptions): 'force' | 'circular' | 'none' {
-  if (options.relationsLayout != null) {
-    return options.relationsLayout;
+  const layout: string | undefined = options.relationsLayout;
+  if (layout != null) {
+    return isGraphLayout(layout) ? layout : 'force';
   }
   const allPinned = data.nodes.length > 0 && data.nodes.every((node) => node.fixedX != null && node.fixedY != null);
   return allPinned ? 'none' : RELATIONS_LAYOUT_DEFAULT;

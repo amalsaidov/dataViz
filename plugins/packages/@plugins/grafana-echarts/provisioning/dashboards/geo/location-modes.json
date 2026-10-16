@@ -1,0 +1,398 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "type": "text",
+      "title": "What to check",
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "mode": "markdown",
+        "content": "Each panel uses a different location mode of the markers layer.\n\nCheck that each panel shows markers at the right places. Auto and Coords show European capitals. Geohash shows five cities on five continents. Lookup shows seven countries."
+      }
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "Auto: lat and lon fields",
+      "description": "Auto finds the `lat` and `lon` fields.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "id": 2,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Layer 1",
+            "config": {
+              "showLegend": false,
+              "style": {
+                "size": {
+                  "fixed": 8,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "fixed": "blue"
+                },
+                "opacity": 0.8,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map",
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,lat,lon,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "Coords: named fields",
+      "description": "Coords mode with the fields `y` (latitude) and `x` (longitude).",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "id": 3,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "europe",
+          "lat": 46,
+          "lon": 14,
+          "zoom": 4
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Layer 1",
+            "config": {
+              "showLegend": false,
+              "style": {
+                "size": {
+                  "fixed": 8,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "fixed": "blue"
+                },
+                "opacity": 0.8,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "coords",
+              "latitude": "y",
+              "longitude": "x"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map",
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,y,x,value,heading\nBerlin,52.52,13.405,90,0\nParis,48.8566,2.3522,70,45\nMadrid,40.4168,-3.7038,50,90\nRome,41.9028,12.4964,30,135\nWarsaw,52.2297,21.0122,10,180\nStockholm,59.3293,18.0686,60,225\nAthens,37.9838,23.7275,80,270\nLisbon,38.7223,-9.1393,20,315"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "Geohash, fit to data",
+      "description": "Geohash mode on the `geohash` field. The view fits the data with 5% padding.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 4,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "fit",
+          "lat": 0,
+          "lon": 0,
+          "zoom": 15,
+          "padding": 5
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Layer 1",
+            "config": {
+              "showLegend": false,
+              "style": {
+                "size": {
+                  "fixed": 8,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "fixed": "blue"
+                },
+                "opacity": 0.8,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "geohash",
+              "geohash": "geohash"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map",
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,geohash\nAalborg,u4pruydqqvj\nSydney,r3gx2f9tt\nSao Paulo,6gyf4bf1\nNew York,dr5regw3p\nNairobi,kzf0tvg5"
+        }
+      ]
+    },
+    {
+      "type": "grafana-echartsgeo-panel",
+      "title": "Lookup: countries gazetteer",
+      "description": "Lookup mode on the `country` field with the countries gazetteer. World view.",
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 5,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "zero",
+          "lat": 0,
+          "lon": 0,
+          "zoom": 1
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Layer 1",
+            "config": {
+              "showLegend": false,
+              "style": {
+                "size": {
+                  "fixed": 8,
+                  "min": 2,
+                  "max": 15
+                },
+                "color": {
+                  "fixed": "blue"
+                },
+                "opacity": 0.8,
+                "symbol": {
+                  "mode": "fixed",
+                  "fixed": "img/icons/marker/circle.svg"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "rotation": {
+                  "fixed": 0,
+                  "mode": "mod",
+                  "min": -360,
+                  "max": 360
+                }
+              }
+            },
+            "location": {
+              "mode": "lookup",
+              "lookup": "country",
+              "gazetteer": "public/gazetteer/countries.json"
+            },
+            "tooltip": true
+          }
+        ],
+        "seriesType": "map",
+        "tooltip": {
+          "mode": "details"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "country,value\nUS,1\nBR,2\nIN,3\nZA,4\nAU,5\nJP,6\nDE,7"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["echarts", "geo"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Geo / Location modes",
+  "uid": "geo-location-modes",
+  "version": 1
+}

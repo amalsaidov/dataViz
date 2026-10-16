@@ -42,7 +42,7 @@ converter.
 - Purely ECharts-side. There is no core panel to reach parity with; any future
   work is about exposing a render-type selector and documenting the five-number
   field convention.
-- The Advanced **Show points** and **Downsampling** options are registered for the
+- The **Show points** and Advanced **Downsampling** options are registered for the
   whole cartesian panel, so they appear here, but they do nothing: boxplot renders
   through `converters/multiValueCartesian.ts`, which has no `showSymbol`/`sampling`
   equivalent to drive. `animation.enabled` does apply. See

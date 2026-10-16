@@ -1,5 +1,7 @@
 import {
+  type DataFrame,
   type Field,
+  FieldType,
   formattedValueToString,
   getDisplayProcessor,
   getFieldSeriesColor,
@@ -28,6 +30,38 @@ export function getSeriesColor(field: Field, theme: GrafanaTheme2): string {
   return theme.visualization.getColorByName('text');
 }
 
+/** Field types that take a classic palette slot in core (`setClassicPaletteIdxs`). */
+const PALETTE_FIELD_TYPES = new Set<FieldType>([FieldType.number, FieldType.boolean, FieldType.enum]);
+
+/**
+ * Series color for a cartesian field, with the classic palette counted over the
+ * value fields only. Grafana's `applyFieldOverrides` gives every non-time field a
+ * `seriesIndex`, so a label column moves each series one palette step. Core Time
+ * series and Bar chart count only number, boolean and enum fields
+ * (`setClassicPaletteIdxs` in `public/app/plugins/panel/timeseries/utils.ts`).
+ * The label columns that come before the field are subtracted from its index, so
+ * the result is the same after hidden value fields are removed from `frames`.
+ */
+export function getCartesianSeriesColor(field: Field, frames: DataFrame[], theme: GrafanaTheme2): string {
+  const seriesIndex = field.state?.seriesIndex;
+  if (seriesIndex == null) {
+    return getSeriesColor(field, theme);
+  }
+  let skipped = 0;
+  for (const frame of frames) {
+    for (const other of frame.fields) {
+      if (other === field) {
+        const state = { ...field.state, seriesIndex: Math.max(0, seriesIndex - skipped) };
+        return getSeriesColor({ ...field, state }, theme);
+      }
+      if (other.type !== FieldType.time && !PALETTE_FIELD_TYPES.has(other.type)) {
+        skipped++;
+      }
+    }
+  }
+  return getSeriesColor(field, theme);
+}
+
 /**
  * Resolve a color from Grafana's classic visualization palette by index,
  * cycling when the index exceeds the palette length.
@@ -54,8 +88,9 @@ export function getValueFormatter(field: Field, theme: GrafanaTheme2, timeZone?:
   // Empty (null/undefined/NaN) values render the field's "No value" text rather
   // than the display processor's empty string, honoring the standard option in
   // tooltips. Axis label usage is unaffected (labels are always numeric).
-  return (value) =>
-    value == null || (typeof value === 'number' && Number.isNaN(value)) ? { text: noValue } : display(value);
+  // `decimals` is the tick decimals of a value axis, as core `UPlotAxisBuilder`.
+  return (value, decimals) =>
+    value == null || (typeof value === 'number' && Number.isNaN(value)) ? { text: noValue } : display(value, decimals);
 }
 
 /**

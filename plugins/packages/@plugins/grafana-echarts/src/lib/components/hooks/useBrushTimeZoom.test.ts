@@ -105,6 +105,21 @@ describe('useBrushTimeZoom', () => {
     expect(handlerCount('brushEnd')).toBe(1);
   });
 
+  it('does not zoom on a ctrl/cmd drag, which adds an annotation, but still clears the highlight', () => {
+    const { chart, emit, dispatched } = createFakeChart();
+    const onChangeTimeRange = jest.fn();
+    const annotationGestureRef = { current: true };
+
+    renderHook(() => useBrushTimeZoom(chart, onChangeTimeRange, annotationGestureRef));
+    emit('brushEnd', brushEnd(1000, 5000));
+    expect(onChangeTimeRange).not.toHaveBeenCalled();
+    expect(dispatched).toEqual([CLEAR_TIME_BRUSH_ACTION]);
+
+    annotationGestureRef.current = false;
+    emit('brushEnd', brushEnd(1000, 5000));
+    expect(onChangeTimeRange).toHaveBeenCalledWith<[AbsoluteTimeRange]>({ from: 1000, to: 5000 });
+  });
+
   it('does nothing before the instance exists', () => {
     expect(() => renderHook(() => useBrushTimeZoom(null, jest.fn()))).not.toThrow();
   });

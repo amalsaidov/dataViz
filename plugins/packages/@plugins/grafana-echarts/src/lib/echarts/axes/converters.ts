@@ -1,14 +1,18 @@
 import {
   isCategoricalAxisSeriesType,
   isCategoricalOnlySeriesType,
+  isGeoSeriesType,
   isHeatmapSeriesType,
   isHierarchySeriesType,
+  isMultiValueSeriesType,
   isMultivariateSeriesType,
   isRelationsSeriesType,
   isStreamSeriesType,
+  isTimelineSeriesType,
   isTimeAxisSupportedForSeriesType,
 } from 'lib/echarts/charts/narrowing';
 import { supportedChartSeriesTypes } from 'lib/echarts/charts/registry';
+import { isHistogramPanel } from 'lib/echarts/converters/histogram';
 import { type ChartContext } from 'lib/echarts/charts/types';
 
 /**
@@ -36,7 +40,10 @@ export type EChartsAxisType = 'value' | 'category' | 'time' | 'log';
  * Look into what the various echart axis types support and when we want to use them and revisit this method
  * Leaving explicit for now under the assumption we will refactor this later.
  */
-export const panelTypeToAxis = (ctx: ChartContext, hasTimeField = true): EChartsAxisType => {
+export const panelTypeToAxis = (
+  ctx: Pick<ChartContext, 'seriesType' | 'options'>,
+  hasTimeField = true
+): EChartsAxisType => {
   const seriesType = ctx.seriesType;
   if (!supportedChartSeriesTypes.includes(seriesType)) {
     throw new Error(`Unsupported axis for series type: ${seriesType}`);
@@ -69,6 +76,12 @@ export const panelTypeToAxis = (ctx: ChartContext, hasTimeField = true): ECharts
     return 'category';
   }
 
+  // The geo family draws on the `geo` coordinate system. Like relations, it resolves to `category`, so the
+  // tooltip uses an item trigger and the panel draws no axis pointer or time brush.
+  if (isGeoSeriesType(seriesType)) {
+    return 'category';
+  }
+
   // The stream family (themeRiver) always renders on a time `singleAxis`: the
   // model is time-ordered by contract, and a response with no time field yields no
   // layers at all (`frameToStream` returns null) rather than a category fallback.
@@ -78,12 +91,26 @@ export const panelTypeToAxis = (ctx: ChartContext, hasTimeField = true): ECharts
     return 'time';
   }
 
+  // The timeline family always draws on a time x axis; a response with no time
+  // field is a data issue (`getDataIssue`), not a category fallback.
+  if (isTimelineSeriesType(seriesType)) {
+    return 'time';
+  }
+
   // Heatmap can support either time or categorical axis so make sure we check the manual setting first
   if (isHeatmapSeriesType(seriesType)) {
     if (ctx.options.heatmapLayout === 'matrix') {
       return 'category';
     }
     return 'time';
+  }
+
+  // The histogram mode of the cartesian panel draws buckets on a value x axis, also for frames with a time field.
+  if (
+    isHistogramPanel(ctx.options) &&
+    (isCategoricalAxisSeriesType(seriesType) || isMultiValueSeriesType(seriesType))
+  ) {
+    return 'value';
   }
 
   // Then if we have a time axis, we use it

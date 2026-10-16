@@ -1,0 +1,106 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "https://github.com/grafana-experimental/grafana-beyond/issues/927",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "seriesType": "treemap"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "level,value,self,label\n0,100,10,total\n2,40,40,draw"
+        }
+      ],
+      "transformations": [],
+      "title": "ECharts: Flame graph level jump",
+      "type": "grafana-echartshierarchy-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-testdata-datasource",
+        "uid": "trlxrdZVk"
+      },
+      "description": "https://github.com/grafana-experimental/grafana-beyond/issues/927",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "seriesType": "treemap"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-testdata-datasource",
+            "uid": "trlxrdZVk"
+          },
+          "refId": "A",
+          "scenarioId": "csv_content",
+          "csvContent": "name,size\na,1\nb,2"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "size",
+                "destinationType": "string"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ],
+      "title": "ECharts: Numbers as text",
+      "type": "grafana-echartshierarchy-panel"
+    }
+  ],
+  "schemaVersion": 41,
+  "tags": ["hierarchy", "invalid-frame"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "2024-01-01T00:00:00.000Z",
+    "to": "2024-01-01T00:20:00.000Z"
+  },
+  "timezone": "utc",
+  "title": "Hierarchy: invalid frames",
+  "uid": "hierarchy-invalid-frames",
+  "version": 1
+}

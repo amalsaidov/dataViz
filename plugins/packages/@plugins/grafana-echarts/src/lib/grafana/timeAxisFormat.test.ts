@@ -1,5 +1,5 @@
 import { dateTime, type TimeRange } from '@grafana/data';
-import { getTimeAxisLabelFormatter } from 'lib/grafana/timeAxisFormat';
+import { getTimeAxisLabelFormatter, isUtcTimeZone } from 'lib/grafana/timeAxisFormat';
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -36,7 +36,7 @@ describe('getTimeAxisLabelFormatter', () => {
       [30 * SECOND, '17:16:30'],
       [6 * HOUR, '17:16'],
       [3 * DAY, '17:16'],
-      [90 * DAY, '17:16'],
+      [90 * DAY, '07/13'],
       [800 * DAY, '2021-07'],
     ])('span %ims formats an intraday tick as %s', (spanMs, expected) => {
       const label = getTimeAxisLabelFormatter(rangeSpanning(EPOCH, spanMs), 'utc')(EPOCH);
@@ -47,6 +47,17 @@ describe('getTimeAxisLabelFormatter', () => {
       const midnight = Date.parse('2021-07-13T00:00:00.000Z');
       const label = getTimeAxisLabelFormatter(rangeSpanning(EPOCH, spanMs), 'utc')(midnight);
       expect(label).toBe('07/13');
+    });
+
+    // Regression #770: ECharts puts ticks at browser-local midnight, which is 04:00 UTC in
+    // New York. A multi-week UTC range must still label each tick with its date.
+    it.each([
+      ['utc', '07/13'],
+      ['Asia/Tokyo', '07/13'],
+    ])('labels an off-midnight tick with the date on a multi-week %s range', (timeZone, expected) => {
+      const localMidnightNewYork = Date.parse('2021-07-13T04:00:00.000Z');
+      const format = getTimeAxisLabelFormatter(rangeSpanning(EPOCH, 21 * DAY), timeZone);
+      expect(format(localMidnightNewYork)).toBe(expected);
     });
 
     it('respects timezone when deciding a day boundary', () => {
@@ -71,5 +82,15 @@ describe('getTimeAxisLabelFormatter', () => {
 
       expect(getTimeAxisLabelFormatter(range, 'utc')('latency-a')).toBe('latency-a');
     });
+  });
+});
+
+describe('isUtcTimeZone', () => {
+  it.each([
+    ['utc', true],
+    ['browser', false],
+    ['America/New_York', false],
+  ])('%s -> %s', (timeZone, expected) => {
+    expect(isUtcTimeZone(timeZone)).toBe(expected);
   });
 });

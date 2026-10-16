@@ -1,3 +1,4 @@
+import { getStreamIssue } from './streamIssue';
 import { type VizLegendItem } from '@grafana/ui';
 import { resolveStreamChartType, STREAM_LAYER_SOURCE_DEFAULT, streamLayerSourcePath } from 'editor/stream';
 import { frameToStream, type StreamData, visibleStreamLayers } from 'lib/echarts/converters/stream';
@@ -40,6 +41,10 @@ function buildStreamData(ctx: ChartContext): StreamData | null {
 export const streamChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
 
+  getDataIssue(ctx) {
+    return getStreamIssue(ctx.frames, () => buildStreamData(ctx), resolveStreamChartType(ctx.options) !== 'bubble');
+  },
+
   /**
    * @todo restore "All" once the axis-mode row model exists. ECharts builds an
    * axis-triggered tooltip from the *global* tooltip model (see `_showAxisTooltip`
@@ -58,7 +63,7 @@ export const streamChartModule: ChartModule = {
    */
   disableTimeBrush: true,
 
-  buildOption(ctx: ChartContext, { isGrafanaLegend }: BaseOptionParts): EChartStreamSeriesOption | null {
+  buildOption(ctx: ChartContext, { isGrafanaLegend, plotWidth }: BaseOptionParts): EChartStreamSeriesOption | null {
     const data = buildStreamData(ctx);
     if (!data) {
       return null;
@@ -74,7 +79,7 @@ export const streamChartModule: ChartModule = {
       const layers = visibleStreamLayers(data);
       return {
         ...streamDefaultOptions,
-        singleAxis: getStreamBubbleAxes(layers, ctx.timeRange, ctx.timeZone, ctx.theme),
+        singleAxis: getStreamBubbleAxes(layers, ctx.timeRange, ctx.timeZone, ctx.theme, plotWidth),
         series: getStreamBubbleSeries(layers, streamCtx),
       };
     }
@@ -89,7 +94,8 @@ export const streamChartModule: ChartModule = {
         ctx.timeRange,
         ctx.timeZone,
         ctx.theme,
-        isGrafanaLegend ? undefined : ctx.options.legend
+        isGrafanaLegend ? undefined : ctx.options.legend,
+        plotWidth
       ),
       series: [getThemeRiverSeries(data, streamCtx)],
     };

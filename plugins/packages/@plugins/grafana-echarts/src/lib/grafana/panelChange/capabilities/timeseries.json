@@ -1,0 +1,219 @@
+{
+  "source": "timeseries",
+  "target": "grafana-echartscartesian-panel",
+  "options": {
+    "legend": {
+      "status": "supported"
+    },
+    "legend.enableFacetedFilter": {
+      "status": "cosmetic",
+      "values": {
+        "false": "supported"
+      },
+      "note": "The legend has no series filter."
+    },
+    "tooltip": {
+      "status": "supported"
+    },
+    "annotations": {
+      "status": "supported"
+    },
+    "annotations.clustering": {
+      "status": "cosmetic",
+      "values": {
+        "0": "supported",
+        "-1": "supported"
+      },
+      "note": "The chart draws each annotation marker."
+    },
+    "timezone": {
+      "status": "cosmetic",
+      "values": {
+        "[]": "supported",
+        "[\"\"]": "supported"
+      },
+      "note": "The time axis uses the time zone of the viz spec."
+    }
+  },
+  "fieldConfig": {
+    "color": {
+      "status": "supported"
+    },
+    "decimals": {
+      "status": "supported"
+    },
+    "displayName": {
+      "status": "supported"
+    },
+    "fieldMinMax": {
+      "status": "supported"
+    },
+    "filterable": {
+      "status": "supported"
+    },
+    "links": {
+      "status": "supported"
+    },
+    "mappings": {
+      "status": "supported"
+    },
+    "max": {
+      "status": "supported"
+    },
+    "min": {
+      "status": "supported"
+    },
+    "noValue": {
+      "status": "supported"
+    },
+    "thresholds": {
+      "status": "supported"
+    },
+    "unit": {
+      "status": "supported"
+    },
+    "custom.axisBorderShow": {
+      "status": "supported"
+    },
+    "custom.axisCenteredZero": {
+      "status": "supported"
+    },
+    "custom.axisColorMode": {
+      "status": "supported"
+    },
+    "custom.axisGridShow": {
+      "status": "supported"
+    },
+    "custom.axisLabel": {
+      "status": "supported"
+    },
+    "custom.axisPlacement": {
+      "status": "supported"
+    },
+    "custom.axisSoftMax": {
+      "status": "supported"
+    },
+    "custom.axisSoftMin": {
+      "status": "supported"
+    },
+    "custom.axisWidth": {
+      "status": "supported"
+    },
+    "custom.hideFrom": {
+      "status": "supported"
+    },
+    "custom.scaleDistribution": {
+      "status": "supported"
+    },
+    "custom.spanNulls": {
+      "status": "supported"
+    },
+    "custom.thresholdsStyle": {
+      "status": "supported"
+    },
+    "custom.transform": {
+      "status": "unsupported",
+      "values": {
+        "negative-Y": "supported"
+      },
+      "note": "Only the transform Negative Y is supported."
+    },
+    "custom.drawStyle": {
+      "status": "supported"
+    },
+    "custom.lineInterpolation": {
+      "status": "supported",
+      "ignoredWhen": {
+        "fieldConfig.defaults.custom.drawStyle": ["bars", "points"]
+      }
+    },
+    "custom.lineWidth": {
+      "status": "supported"
+    },
+    "custom.fillOpacity": {
+      "status": "supported"
+    },
+    "custom.gradientMode": {
+      "status": "cosmetic",
+      "values": {
+        "none": "supported"
+      },
+      "note": "The chart draws no gradient."
+    },
+    "custom.lineStyle.fill": {
+      "status": "supported"
+    },
+    "custom.lineStyle.dash": {
+      "status": "supported"
+    },
+    "custom.fillBelowTo": {
+      "status": "unsupported",
+      "note": "Fill below to is not supported."
+    },
+    "custom.showPoints": {
+      "status": "supported"
+    },
+    "custom.showValues": {
+      "status": "cosmetic",
+      "values": {
+        "false": "supported"
+      },
+      "note": "The chart shows no values on the points."
+    },
+    "custom.pointSize": {
+      "status": "supported"
+    },
+    "custom.barAlignment": {
+      "status": "unsupported",
+      "values": {
+        "0": "supported"
+      },
+      "ignoredWhen": {
+        "fieldConfig.defaults.custom.drawStyle": [null, "line", "points"]
+      },
+      "note": "The chart draws each bar at the center of its time."
+    },
+    "custom.barWidthFactor": {
+      "status": "supported",
+      "overrideStatus": "cosmetic",
+      "ignoredWhen": {
+        "fieldConfig.defaults.custom.drawStyle": [null, "line", "points"]
+      },
+      "note": "The chart draws each bar with the bar width of the panel."
+    },
+    "custom.insertNulls": {
+      "status": "unsupported",
+      "values": {
+        "false": "supported"
+      },
+      "note": "Disconnect values is not supported."
+    },
+    "custom.scaleDistribution.type": {
+      "status": "supported",
+      "values": {
+        "symlog": "cosmetic"
+      },
+      "note": "A symlog axis draws as a linear axis."
+    },
+    "custom.thresholdsStyle.mode": {
+      "status": "supported",
+      "values": {
+        "series": "cosmetic"
+      },
+      "note": "The chart does not color the series by the thresholds."
+    },
+    "custom.stacking.mode": {
+      "status": "unsupported",
+      "values": {
+        "none": "supported",
+        "normal": "supported",
+        "percent": "supported"
+      },
+      "note": "Only the stacking modes Off, Normal and 100% are supported."
+    },
+    "custom.stacking.group": {
+      "status": "supported",
+      "note": "The chart stacks each group apart, as Grafana. Lines and bars stack apart."
+    }
+  }
+}

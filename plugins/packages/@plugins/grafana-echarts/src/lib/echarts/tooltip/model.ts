@@ -2,6 +2,7 @@ import { type ValueFormatter } from '@grafana/data';
 import { SortOrder } from '@grafana/schema';
 import { type CallbackDataParams, type TopLevelFormatterParams } from 'echarts/types/dist/shared';
 import { formatEChartsValue, unwrapEChartsValue } from 'lib/echarts/style';
+import { getFieldConfigFromField } from 'lib/grafana/fields/fieldConfig';
 import {
   type TooltipFieldResolver,
   type TooltipModel,
@@ -205,7 +206,12 @@ export function buildTooltipModel(
     return { header: { label: '', value: headerText }, rows };
   }
 
-  const rows: TooltipRow[] = ordered.map((item) => {
+  const rows: TooltipRow[] = ordered.flatMap((item) => {
+    const source = resolveField?.({ seriesIndex: item.seriesIndex, dataIndex: item.dataIndex });
+    // Core `custom.hideFrom.tooltip`: the series draws, but has no tooltip row.
+    if (source && getFieldConfigFromField(source.field).custom?.hideFrom?.tooltip === true) {
+      return [];
+    }
     // Each row formats with its own field's formatter so per-field unit/decimals
     // overrides are respected.
     const valueFormatter = resolveValueFormatter({ seriesIndex: item.seriesIndex, dataIndex: item.dataIndex });
@@ -215,15 +221,17 @@ export function buildTooltipModel(
       value = `${value} (${item.percent}%)`;
     }
 
-    return {
-      color: tooltipColor(item.color),
-      label: getLabel(item, headerText),
-      value,
-      seriesIndex: item.seriesIndex,
-      // Every row carries its own source so the overlay can surface the clicked
-      // row's data links / ad-hoc filters, mirroring core's hovered-series footer.
-      source: resolveField?.({ seriesIndex: item.seriesIndex, dataIndex: item.dataIndex }),
-    };
+    return [
+      {
+        color: tooltipColor(item.color),
+        label: getLabel(item, headerText),
+        value,
+        seriesIndex: item.seriesIndex,
+        // Every row carries its own source so the overlay can surface the clicked
+        // row's data links / ad-hoc filters, mirroring core's hovered-series footer.
+        source,
+      },
+    ];
   });
 
   // Model-level source only when a single item is focused (Single mode, or one

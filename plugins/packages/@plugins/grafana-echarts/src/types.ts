@@ -1,10 +1,21 @@
 import { type ReduceDataOptions, type StandardOptionConfig } from '@grafana/data';
 import {
+  type HeatmapCalculationOptions,
   type OptionsWithLegend,
   type OptionsWithTooltip,
   type SortOrder,
+  type StackingMode,
+  type TimelineValueAlignment,
+  type VisibilityMode,
+  type VizAnnotations,
   type VizLegendOptions,
+  type VizOrientation,
+  type VizTextDisplayOptions,
 } from '@grafana/schema';
+// The core Histogram panel options. https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/histogram/
+import { type Options as CoreHistogramOptions } from '@grafana/schema/dist/esm/raw/composable/histogram/panelcfg/x/HistogramPanelCfg_types.gen';
+// The core Geomap panel options. https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/geomap/
+import { type Options as GeomapOptions } from '@grafana/schema/dist/esm/raw/composable/geomap/panelcfg/x/GeomapPanelCfg_types.gen';
 import { type editorModePath, type seriesTypePath } from 'editor/constants';
 import { type RelationsPanelOptions } from 'editor/relations/options';
 import {
@@ -62,6 +73,65 @@ export interface PieChartLegendOptions extends VizLegendOptions {
   values?: PieLegendValue[];
 }
 
+/** Core's "Y bucket scale" (a `ScaleDistributionConfig`). Unset means "Auto": ordinal rows. */
+export interface HeatmapYBucketScale {
+  type?: 'linear' | 'log';
+  log?: number;
+}
+
+/**
+ * The subset of core Grafana heatmap panel options that the heatmap family
+ * reads. The paths are core's own, so a panel switched from the core heatmap
+ * keeps its settings.
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/heatmap/
+ */
+export interface CoreHeatmapOptions {
+  calculate?: boolean;
+  calculation?: HeatmapCalculationOptions;
+  yAxis?: {
+    unit?: string;
+    decimals?: number;
+    min?: number | string;
+    max?: number | string;
+    reverse?: boolean;
+  };
+  color?: {
+    /** `scheme` uses `heatmapColorScheme`; `opacity` fades `fill` from clear to solid. */
+    mode?: 'scheme' | 'opacity';
+    fill?: string;
+    /** `exponential` maps `value ^ exponent`, so low counts stay visible. */
+    scale?: 'linear' | 'exponential';
+    exponent?: number;
+    min?: number;
+    max?: number;
+  };
+  /** Heatmap-rows input. `yBucketScale` unset is core's "Auto" (ordinal rows). */
+  rowsFrame?: { layout?: string; yBucketScale?: HeatmapYBucketScale };
+  /** Gap between cells, in pixels. */
+  cellGap?: number;
+  /** Hide cells with values `<= le` or `>= ge`. */
+  filterValues?: { le?: number; ge?: number };
+}
+
+/**
+ * The subset of core Grafana state timeline and status history panel options that the
+ * timeline family reads. The paths are core's own.
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/state-timeline/
+ * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/status-history/
+ */
+export interface CoreTimelineOptions {
+  /** Show the value text on the bars. */
+  showValue?: VisibilityMode;
+  /** Lane height as a part of the space for one lane, 0 to 1. */
+  rowHeight?: number;
+  /** Merge equal consecutive values into one bar. */
+  mergeValues?: boolean;
+  /** Position of the value text on a bar. */
+  alignValue?: TimelineValueAlignment;
+  /** Status history: cell width as a part of the time between samples, 0 to 1. */
+  colWidth?: number;
+}
+
 /**
  * `OptionsWithLegend` contributes the standard Core Grafana `legend`
  * (VizLegendOptions) config, registered via `commonOptionsBuilder.addLegendOptions`.
@@ -101,6 +171,18 @@ export interface PanelOptions
   [editorModePath]?: EditorMode;
   heatmapColorScheme?: HeatmapColorScheme;
 
+  /** The core annotation options of the cartesian panel (`OptionsWithAnnotations` in @grafana/schema). */
+  annotations?: VizAnnotations;
+
+  /** The core Geomap map view. Only the geo family reads it. */
+  view?: GeomapOptions['view'];
+
+  /** The core Geomap map controls. Only the geo family reads the zoom switches. */
+  controls?: GeomapOptions['controls'];
+
+  /** The core Geomap data layers. The geo family reads the location of the first `markers` layer. */
+  layers?: GeomapOptions['layers'];
+
   /**
    * Heatmap coordinate model: continuous interval cells (`binned`, the dataplane
    * heatmap default) vs a categorical `matrix` grid (native ECharts heatmap).
@@ -110,10 +192,68 @@ export interface PanelOptions
   /** Placement of the heatmap color scale (ECharts `visualMap`). */
   heatmapColorScale?: { placement: HeatmapColorScalePlacement };
 
+  /** Heatmap: bin raw time series into buckets (core's "Calculate from data"). */
+  calculate?: CoreHeatmapOptions['calculate'];
+  calculation?: CoreHeatmapOptions['calculation'];
+  yAxis?: CoreHeatmapOptions['yAxis'];
+  color?: CoreHeatmapOptions['color'];
+  rowsFrame?: CoreHeatmapOptions['rowsFrame'];
+  cellGap?: CoreHeatmapOptions['cellGap'];
+  filterValues?: CoreHeatmapOptions['filterValues'];
+
+  /** Timeline: core's state timeline options (`CoreTimelineOptions`). */
+  showValue?: CoreTimelineOptions['showValue'];
+  rowHeight?: CoreTimelineOptions['rowHeight'];
+  mergeValues?: CoreTimelineOptions['mergeValues'];
+  alignValue?: CoreTimelineOptions['alignValue'];
+  colWidth?: CoreTimelineOptions['colWidth'];
+
   /**
-   * Bar series stacking
+   * Legacy bar stacking switch. `true` reads as `stacking: 'normal'` when
+   * `stacking` is unset. See `resolvePanelStacking`.
    */
   stackSeries?: boolean;
+
+  /**
+   * Cartesian bar stacking (core Bar chart `stacking`): `none`, `normal` or
+   * `percent`. See `resolvePanelStacking`.
+   */
+  stacking?: StackingMode;
+
+  /**
+   * Cartesian bar orientation (core Bar chart `orientation`). `auto` draws
+   * horizontal bars when the panel is taller than it is wide. Category x-axis only.
+   */
+  orientation?: VizOrientation;
+
+  /** Cartesian bar fill opacity, 0 to 100 (core Bar chart `fillOpacity`, default 80). */
+  barFillOpacity?: number;
+
+  /** Name of the field whose display color colors each bar (core Bar chart `colorByField`). */
+  colorByField?: string;
+
+  /** Highlight the full category on hover (core Bar chart `fullHighlight`). */
+  fullHighlight?: boolean;
+
+  /**
+   * Cartesian: draw the bucket counts of the numeric fields, as the core Histogram panel. The other
+   * histogram keys have the paths of core `Options`.
+   * https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/histogram/
+   */
+  histogram?: boolean;
+  bucketCount?: CoreHistogramOptions['bucketCount'];
+  bucketSize?: CoreHistogramOptions['bucketSize'];
+  bucketOffset?: CoreHistogramOptions['bucketOffset'];
+  combine?: CoreHistogramOptions['combine'];
+
+  /** Maximum length of an x tick label, in characters (core Bar chart `xTickLabelMaxLength`). */
+  xTickLabelMaxLength?: number;
+
+  /** Minimum space between x tick labels, in px (core Bar chart `xTickLabelSpacing`). */
+  xTickLabelSpacing?: number;
+
+  /** Text sizes (core `text`). The cartesian panel reads `valueSize` for value labels. */
+  text?: VizTextDisplayOptions;
 
   /**
    * Grafana's standard reduce options (added via `addStandardDataReduceOptions`)
@@ -359,6 +499,12 @@ export interface PanelOptions
   barWidth?: number;
 
   /**
+   * Cartesian bar value axes include zero (default `true`, as core Bar chart). `false` fits the axis to the
+   * data, as core Time series (`uPlot.rangeNum`). The Time series import sets `false`. See `getBarFieldSets`.
+   */
+  barsIncludeZero?: boolean;
+
+  /**
    * Cartesian bar corner radius in px (Advanced; ECharts `itemStyle.borderRadius`).
    * `0` (default) draws square corners and omits the key; `bar` series only. See
    * `getCartesianItemStyle`.
@@ -366,8 +512,8 @@ export interface PanelOptions
   barRadius?: number;
 
   /**
-   * Cartesian line width in px (Advanced; ECharts `lineStyle.width`). Unset uses
-   * ECharts' default stroke; `line` series only. See `getCartesianLineStyle`.
+   * Cartesian line width in px (ECharts `lineStyle.width`). The default is 1px. An
+   * empty value or `0` gives the ECharts 2px stroke; `line` series only. See `getCartesianLineStyle`.
    */
   lineWidth?: number;
 

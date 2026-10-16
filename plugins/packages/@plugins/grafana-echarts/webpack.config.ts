@@ -6,7 +6,7 @@ import CopyWebpackPlugin from 'copy-webpack-plugin';
 import fs from 'fs';
 import path from 'path';
 import ReplaceInFileWebpackPlugin from 'replace-in-file-webpack-plugin';
-import webpack, { type Configuration } from 'webpack';
+import webpack, { type ChunkGraph, type Configuration, type Module } from 'webpack';
 // https://github.com/webpack-contrib/webpack-bundle-analyzer
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 import VirtualModulesPlugin from 'webpack-virtual-modules';
@@ -139,6 +139,10 @@ __webpack_public_path__ =
   ];
 };
 
+const ECHARTS_MODULE = /[\\/]node_modules[\\/](\.pnpm[\\/].*[\\/])?(echarts|zrender)[\\/]/;
+/** The `webpackChunkName` of the basemap import in `src/modules/geo/module.tsx`. */
+export const GEO_BASEMAP_CHUNK = 'geo-basemap';
+
 const config = async (env: Env): Promise<Configuration> => {
   if (env.standalone !== undefined && env.standalone !== 'relations') {
     throw new Error(`Unsupported standalone target "${String(env.standalone)}". Supported targets: relations.`);
@@ -183,7 +187,11 @@ const config = async (env: Env): Promise<Configuration> => {
       chunks: 'async',
       cacheGroups: {
         echarts: {
-          test: /[\\/]node_modules[\\/](\.pnpm[\\/].*[\\/])?(echarts|zrender)[\\/]/,
+          // An ECharts module that only the geo basemap chunk uses stays out, for example `GeoComponent`.
+          // Thus the other panels do not load it. https://webpack.js.org/plugins/split-chunks-plugin/#splitchunkscachegroupscachegrouptest
+          test: (module: Module, { chunkGraph }: { chunkGraph: ChunkGraph }) =>
+            ECHARTS_MODULE.test(module.nameForCondition() ?? '') &&
+            [...chunkGraph.getModuleChunksIterable(module)].some((chunk) => chunk.name !== GEO_BASEMAP_CHUNK),
           name: 'echarts',
           chunks: 'async',
           enforce: true,

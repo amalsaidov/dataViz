@@ -4,30 +4,31 @@ import {
   FieldType,
   formattedValueToString,
   getDefaultTimeRange,
+  getDisplayProcessor,
   ThresholdsMode,
   toDataFrame,
   type ValueFormatter,
 } from '@grafana/data';
 import { GraphThresholdsStyleMode } from '@grafana/schema';
+import { type CallbackDataParams } from 'echarts/types/dist/shared';
 import { seriesTypePath } from 'editor/constants';
-import { type CartesianSingleValueSeriesType } from 'editor/types';
+import { type CartesianShowValues, type CartesianSingleValueSeriesType } from 'editor/types';
 import { cartesianChartModule } from 'lib/echarts/charts/cartesian';
 import { type ChartContext } from 'lib/echarts/charts/types';
 import {
   ADVANCED_CARTESIAN_DEFAULTS,
   applyCartesianEditorModeDefaults,
   buildCartesianSeries,
-  type CartesianSeriesInput,
   getBarRadius,
   getBarWidth,
   getCartesianAreaStyle,
   getCartesianAxisStyle,
-  getCartesianItemStyle,
   getCartesianLineStyle,
   getCartesianSymbol,
   getCartesianValueLabel,
   getXTickRotate,
 } from 'lib/echarts/options/cartesian';
+import { type CartesianSeriesInput } from 'lib/echarts/options/types';
 import { type PanelOptions } from 'types';
 
 describe('getCartesianAxisStyle', () => {
@@ -215,23 +216,55 @@ describe('cartesianChartModule axis Min/Max', () => {
 
 describe('getCartesianValueLabel', () => {
   const theme = createTheme();
+  const label = (showValues: CartesianShowValues | undefined, seriesType: CartesianSingleValueSeriesType, extra = {}) =>
+    getCartesianValueLabel({ showValues, position: undefined, seriesType, ...extra }, theme);
 
-  it('returns undefined unless showValues is "always"', () => {
-    expect(getCartesianValueLabel(undefined, undefined, theme)).toBeUndefined();
-    expect(getCartesianValueLabel('auto', undefined, theme)).toBeUndefined();
-    expect(getCartesianValueLabel('never', undefined, theme)).toBeUndefined();
+  it('labels bars in Auto mode (the editor default), as core Bar chart, but not lines', () => {
+    expect(label('auto', 'bar')).toMatchObject({ show: true });
+    expect(label('auto', 'line')).toBeUndefined();
   });
 
-  it('shows a themed label at the default top position when always', () => {
-    expect(getCartesianValueLabel('always', undefined, theme)).toMatchObject({
-      show: true,
-      position: 'top',
-      color: theme.colors.text.primary,
-    });
+  it('labels every series type in Always mode and none in Never mode', () => {
+    expect(label('always', 'line')).toMatchObject({ show: true, position: 'top', color: theme.colors.text.primary });
+    expect(label('never', 'bar')).toBeUndefined();
+  });
+
+  it('draws no labels when the option is unset (the heatmap overlay has no "Show values")', () => {
+    expect(label(undefined, 'bar')).toBeUndefined();
+  });
+
+  it('hides the bar labels when the auto font size is too small', () => {
+    expect(label('always', 'bar', { fontSize: null })).toBeUndefined();
+    expect(label('always', 'bar', { fontSize: 14 })).toMatchObject({ fontSize: 14 });
   });
 
   it('threads the configured position through', () => {
-    expect(getCartesianValueLabel('always', 'inside', theme)).toMatchObject({ show: true, position: 'inside' });
+    expect(
+      getCartesianValueLabel({ showValues: 'always', position: 'inside', seriesType: 'bar' }, theme)
+    ).toMatchObject({
+      show: true,
+      position: 'inside',
+    });
+  });
+
+  it('formats the label with the Grafana value formatter, reading the value of a [time, value] item', () => {
+    const display = getDisplayProcessor({ field: { type: FieldType.number, config: { unit: 'ms' } }, theme });
+    const format = label('always', 'line', { formatValue: display })?.formatter as (
+      params: Partial<CallbackDataParams>
+    ) => string;
+    expect(format({ value: 1500 })).toBe('1.50 s');
+    expect(format({ value: [1783137094497, 1500] })).toBe('1.50 s');
+  });
+
+  it('reads precomputed texts by data index', () => {
+    const format = label('always', 'bar', { texts: ['a', 'b'] })?.formatter as (
+      params: Partial<CallbackDataParams>
+    ) => string;
+    expect(format({ dataIndex: 1 })).toBe('b');
+  });
+
+  it('writes no formatter without a value formatter', () => {
+    expect(label('always', 'bar')).not.toHaveProperty('formatter');
   });
 });
 
@@ -251,17 +284,6 @@ describe('getBarRadius', () => {
     expect(getBarRadius(8)).toBe(8);
     expect(getBarRadius(0)).toBeUndefined();
     expect(getBarRadius(undefined)).toBeUndefined();
-  });
-});
-
-describe('getCartesianItemStyle', () => {
-  it('keeps the color and omits borderRadius at the default', () => {
-    expect(getCartesianItemStyle('#111111', 0)).toEqual({ color: '#111111' });
-    expect(getCartesianItemStyle('#111111', undefined)).toEqual({ color: '#111111' });
-  });
-
-  it('merges a non-zero borderRadius without clobbering the color', () => {
-    expect(getCartesianItemStyle('#111111', 12)).toEqual({ color: '#111111', borderRadius: 12 });
   });
 });
 
@@ -322,7 +344,18 @@ describe('buildCartesianSeries', () => {
   const theme = createTheme();
   const input: CartesianSeriesInput = { name: 'A', data: [1, 2, 3], color: '#111111', zlevel: 3 };
 
-  it('applies bar-only geometry (width/radius), not line/symbol keys', () => {
+  it('passes the input value formatter to the value label', () => {
+    const series = buildCartesianSeries(
+      { ...input, formatValue: (value) => ({ text: `${value}`, suffix: ' ms' }) },
+      'line',
+      { showValues: 'always' } as PanelOptions,
+      theme
+    );
+    const format = (series.label as { formatter: (params: Partial<CallbackDataParams>) => string }).formatter;
+    expect(format({ value: 3 })).toBe('3 ms');
+  });
+
+  it('applies bar-only geometry (width, fill, border), not line/symbol keys', () => {
     const series = buildCartesianSeries(
       input,
       'bar',
@@ -330,7 +363,9 @@ describe('buildCartesianSeries', () => {
       theme
     );
     expect(series.type).toBe('bar');
-    expect(series.itemStyle).toEqual({ color: '#111111', borderRadius: 8 });
+    // Core Bar chart: 80% fill, a solid border at the line width. The value-end
+    // radius is set on each data item (see `buildCartesianData`).
+    expect(series.itemStyle).toEqual({ color: '#111111cc', borderColor: '#111111', borderWidth: 4 });
     expect(series).toMatchObject({ barWidth: '60%' });
     expect(series).not.toHaveProperty('areaStyle');
     expect(series).not.toHaveProperty('symbolSize');
@@ -353,11 +388,14 @@ describe('buildCartesianSeries', () => {
     expect(series).not.toHaveProperty('barWidth');
   });
 
-  it('adds a value label only when showValues is always', () => {
-    const off = buildCartesianSeries(input, 'bar', { showValues: 'auto' } as PanelOptions, theme);
-    expect(off).not.toHaveProperty('label');
-    const on = buildCartesianSeries(input, 'bar', { showValues: 'always' } as PanelOptions, theme);
-    expect(on.label).toMatchObject({ show: true });
+  it('labels bars outside their end in Auto mode and hides overlapping labels', () => {
+    const auto = buildCartesianSeries(input, 'bar', { showValues: 'auto' } as PanelOptions, theme);
+    expect(auto.label).toMatchObject({ show: true, position: 'outside' });
+    expect(auto).toMatchObject({ labelLayout: { hideOverlap: true } });
+    const always = buildCartesianSeries(input, 'bar', { showValues: 'always' } as PanelOptions, theme);
+    expect(always).not.toHaveProperty('labelLayout');
+    const never = buildCartesianSeries(input, 'bar', { showValues: 'never' } as PanelOptions, theme);
+    expect(never).not.toHaveProperty('label');
   });
 
   it('sets showEffectOn for effectScatter', () => {
@@ -452,10 +490,7 @@ describe('applyCartesianEditorModeDefaults', () => {
     ({ editorMode, ...extra }) as PanelOptions;
 
   it('forces advanced options back to their defaults in Default mode', () => {
-    const resolved = applyCartesianEditorModeDefaults(
-      withMode('default', { barWidth: 60, valueLabelPosition: 'inside' })
-    );
-    expect(resolved.barWidth).toBe(ADVANCED_CARTESIAN_DEFAULTS.barWidth);
+    const resolved = applyCartesianEditorModeDefaults(withMode('default', { valueLabelPosition: 'inside' }));
     expect(resolved.valueLabelPosition).toBe(ADVANCED_CARTESIAN_DEFAULTS.valueLabelPosition);
   });
 
@@ -472,8 +507,26 @@ describe('applyCartesianEditorModeDefaults', () => {
     expect(resolved.showValues).toBe('always');
   });
 
+  // #404: the options with core parity, or with a core mapping (#130), are Default tier and never reset.
+  // Explicit 0 values are kept too: the check is not a truthiness test.
+  const coreParity: Partial<PanelOptions> = {
+    lineWidth: 0,
+    fillOpacity: 40,
+    pointSize: 0,
+    barWidth: 60,
+    barRadius: 4,
+    barFillOpacity: 0,
+    xTickRotate: -45,
+    xTickLabelMaxLength: 8,
+    performance: { showPoints: 'never' },
+  };
+  it.each([undefined, 'default', 'advanced', 'api'] as const)('keeps each core-parity option in %s mode', (mode) => {
+    const resolved = applyCartesianEditorModeDefaults(withMode(mode, coreParity));
+    expect(resolved).toMatchObject(coreParity);
+  });
+
   it('passes stored advanced values through untouched in Advanced mode', () => {
-    const options = withMode('advanced', { barWidth: 60, fillOpacity: 40 });
+    const options = withMode('advanced', { valueLabelPosition: 'inside', animation: { enabled: true } });
     expect(applyCartesianEditorModeDefaults(options)).toBe(options);
   });
 });

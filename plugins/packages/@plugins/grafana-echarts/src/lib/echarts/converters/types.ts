@@ -1,4 +1,6 @@
-import type { Field } from '@grafana/data';
+import type { Field, ValueFormatter } from '@grafana/data';
+import { type LineSeriesOption } from 'echarts';
+import { type OptionDataValue } from 'echarts/types/src/util/types';
 import { type CategoryAxisBaseOption } from 'echarts/types/src/coord/axisCommonTypes';
 import { type CartesianOption } from 'lib/echarts/charts/types';
 
@@ -11,6 +13,14 @@ import { type CartesianOption } from 'lib/echarts/charts/types';
  * category converter (default: one line/bar/scatter series per numeric field)
  * and the multi-value converter (a single candlestick/boxplot series).
  */
+/** Bar placement a cartesian converter needs from the chart module. */
+export interface CartesianLayout {
+  /** Horizontal bars (category axis on y). */
+  horizontal: boolean;
+  /** Plot length (px) along the category or time axis, to size the bar value labels. */
+  plotLength?: number;
+}
+
 export interface CategoryCartesianData<S = CartesianOption['series']> {
   categories: CategoryAxisBaseOption['data'];
   series: S;
@@ -45,4 +55,68 @@ export interface PieSliceModel {
   sourceField?: Field;
   /** Row index within {@link sourceField} the slice's value came from. */
   sourceRowIndex?: number;
+}
+
+/** One series before it becomes ECharts data: its field, its values, and how it draws. */
+export interface CartesianValueSource {
+  field: Field<number>;
+  /** Field values, positioned against the x values or categories. */
+  values: Array<number | null>;
+  /** The values that the series draws, if they are not the field values: a stack of lines draws 0 for a null. */
+  drawnValues?: Array<number | null>;
+  /** The points where a stacked line connects over a row of the stack (see `DrawnSeries.connected`). */
+  connected?: number[];
+  /** X value of each point on a time axis; omitted on a category axis. */
+  xs?: ArrayLike<OptionDataValue>;
+  /** True for a series in a stack: a bar, or a line on a time axis. */
+  stacked: boolean;
+  /** The ECharts `stack` id of a stacked series, if it is not the one stack of its draw style (bar or line). */
+  stackId?: string;
+  isBar: boolean;
+}
+
+/** Inputs of {@link buildCartesianData}. */
+export interface CartesianDataInput {
+  /** X value of each point on a time axis; omitted on a category axis, where the index is the x. */
+  xs?: ArrayLike<OptionDataValue>;
+  drawn: Array<number | null>;
+  values: Array<number | null>;
+  horizontal: boolean;
+  /** Per-bar colors from {@link getPerBarColors}. */
+  colors?: Array<string | undefined>;
+  /** Value-end corner radius (px) of a bar. 0 or unset draws square corners. */
+  radius?: number;
+  barFillOpacity?: number;
+  /** Points that draw no symbol: they are on the segment of a connected line, not a value. */
+  connected?: number[];
+}
+
+/** A source with what {@link resolveSeriesValues} needs to build its data. */
+export interface CartesianSeriesSource extends CartesianValueSource {
+  formatValue: ValueFormatter;
+  /** The "Color by field" field of the source frame, if set. */
+  colorField?: Field;
+  /** Frame row of each point, to read the "Color by field" value. */
+  rows: Array<number | null>;
+  /** Series color: the fill of bars that no value mapping colors. */
+  color: string;
+}
+
+/** Placement inputs: orientation and the bar bands along the plot. */
+export interface CartesianBandLayout {
+  horizontal: boolean;
+  /** Bands along the category (or time) axis: categories, or time slots. */
+  bandCount: number;
+  /** Plot length (px) along that axis. Unknown sizes no labels automatically. */
+  plotLength?: number;
+  /** Bars of different series at the same x overlap, as core Time series (not side by side). */
+  overlapBars?: boolean;
+}
+
+/** The data-dependent part of one series for `buildCartesianSeries`. */
+export interface ResolvedSeriesValues {
+  data: LineSeriesOption['data'];
+  labelTexts?: string[];
+  labelFontSize?: number | null;
+  barGaps?: { barCategoryGap: string; barGap: string };
 }

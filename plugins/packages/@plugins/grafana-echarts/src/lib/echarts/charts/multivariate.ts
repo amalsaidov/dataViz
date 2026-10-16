@@ -1,3 +1,4 @@
+import { getMultivariateIssue } from './multivariateIssue';
 import { type Field } from '@grafana/data';
 import { PARALLEL_LINE_OPACITY_DEFAULT, PARALLEL_SMOOTH_DEFAULT } from 'editor/parallel';
 import { findCategoricalFrame, mapNumericFields } from 'lib/echarts/converters/frames';
@@ -112,7 +113,12 @@ function buildParallelOption(ctx: ChartContext, isGrafanaLegend: boolean): EChar
     // The `parallel` coordinate component carries the Advanced layout, the
     // layout box and the shared axis styling; the axes are their own top-level
     // `parallelAxis` array — one value axis per category, positioned by `dim`.
-    parallel: getParallelComponent(options.parallelLayout, theme, isGrafanaLegend ? undefined : options.legend),
+    parallel: getParallelComponent(
+      options.parallelLayout,
+      theme,
+      isGrafanaLegend ? undefined : options.legend,
+      parallel.axes.map((axis) => axis.name)
+    ),
     parallelAxis: parallel.axes.map((axis, dim) => ({ dim, name: axis.name, type: 'value' })),
     series: [
       {
@@ -139,6 +145,10 @@ function buildParallelOption(ctx: ChartContext, isGrafanaLegend: boolean): EChar
 
 export const multivariateChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
+
+  getDataIssue(ctx) {
+    return getMultivariateIssue(ctx.frames, ctx.theme, ctx.seriesType === 'parallel' ? 'parallel' : 'radar');
+  },
 
   // @todo restore "All" once a hover expands into one row per indicator/axis.
   // ECharts hands the formatter a single param whose `value` is the whole

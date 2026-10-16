@@ -269,7 +269,7 @@
         "type": "grafana-testdata-datasource",
         "uid": "trlxrdZVk"
       },
-      "description": "Three layers, one timestamp each. With no second point there is nothing to interpolate between, so ECharts draws **no polygon at all** — the panel is empty even though the legend lists every layer (the converter did produce them). This is what an *instant* Prometheus query produces, which is why data-plane/stream-sources.md marks instant queries as unusable for this family: the failure is silent rather than an error.",
+      "description": "Three layers, one timestamp each. With no second point there is nothing to interpolate between, so ECharts draws **no polygon at all**. The panel shows the `single-time-point` error view with the fix step (#929). This is what an *instant* Prometheus query produces, which is why data-plane/stream-sources.md marks instant queries as unusable for this family.",
       "fieldConfig": {
         "defaults": {
           "color": {

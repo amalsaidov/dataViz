@@ -17,6 +17,7 @@ const model = (over: Partial<TooltipModel> = {}): TooltipModel => ({
 const state = (over: Partial<EChartsTooltipState> = {}): EChartsTooltipState => ({
   model: model(),
   position: { x: 10, y: 10 },
+  anchor: null,
   visible: true,
   pinned: false,
   pinnedItem: null,
@@ -362,5 +363,73 @@ describe('EChartsTooltip', () => {
     rerender(<EChartsTooltip state={state({ pinned: true })} dismiss={dismiss} mode={TooltipDisplayMode.Single} />);
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(dismiss).toHaveBeenCalled();
+  });
+
+  it('shows "Add annotation" in the pinned footer when given `annotate`, and calls it', () => {
+    const annotate = jest.fn();
+    const ui = (over: Partial<EChartsTooltipState>) => (
+      <EChartsTooltip state={state(over)} dismiss={jest.fn()} annotate={annotate} mode={TooltipDisplayMode.Single} />
+    );
+    const { rerender } = render(ui({}));
+    // The footer is only for a pinned tooltip.
+    expect(screen.queryByRole('button', { name: 'Add annotation' })).not.toBeInTheDocument();
+
+    rerender(ui({ pinned: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add annotation' }));
+    expect(annotate).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no "Add annotation" on the tooltip of an annotation marker, as core', () => {
+    const annotation = { title: 'Deploy', tags: [] };
+    render(
+      <EChartsTooltip
+        state={state({ pinned: true, model: model({ rows: [], annotation }) })}
+        dismiss={jest.fn()}
+        annotate={jest.fn()}
+        mode={TooltipDisplayMode.Single}
+      />
+    );
+    expect(screen.getByText('Deploy')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add annotation' })).not.toBeInTheDocument();
+  });
+
+  it('shows the data links of an annotation also when not pinned, as core', () => {
+    const annotation = { title: 'Deploy', tags: [], sources: [{ field: fieldWithLinks(), rowIndex: 0 }] };
+    renderTooltip(state({ model: model({ rows: [], annotation }) }));
+    expect(screen.getByText('MyLink')).toBeInTheDocument();
+  });
+
+  it('places the tooltip of an annotation under its anchor, and a data tooltip at the cursor', () => {
+    const anchor = { x: 100, y: 200, width: 10, height: 5 };
+    const annotation = { title: 'Deploy', tags: [] };
+    const { rerender } = renderTooltip(state({ position: { x: 30, y: 40 }, anchor, model: model({ annotation }) }));
+    const wrapper = document.querySelector<HTMLElement>(`[${TOOLTIP_MARKER_ATTR}]`)!;
+    // jsdom gives the tooltip no size, so its left edge is the anchor center.
+    expect(wrapper.style.transform).toBe('translateX(105px) translateY(205px)');
+
+    // A data tooltip ignores a stale anchor.
+    rerender(
+      <EChartsTooltip
+        state={state({ position: { x: 30, y: 40 }, anchor })}
+        dismiss={jest.fn()}
+        mode={TooltipDisplayMode.Single}
+      />
+    );
+    expect(wrapper.style.transform).toBe('translateX(40px) translateY(50px)');
+  });
+
+  it('shows the time of an annotation in the monospace font, and each tag as a Tag', () => {
+    const annotation = { title: 'Deploy', tags: ['release', 'api'] };
+    renderTooltip(state({ model: model({ rows: [], annotation }) }));
+    // jsdom does not inherit a computed font, so the font is read from the ancestors of the time.
+    const fonts: string[] = [];
+    for (let node: Element | null = screen.getByText('MyHeader'); node != null; node = node.parentElement) {
+      fonts.push(getComputedStyle(node).fontFamily);
+    }
+    expect(fonts.find((font) => font !== '')).toContain('Roboto Mono');
+    // `Tag` colors each tag by its name (`getTagColorsFromName`).
+    const colors = ['release', 'api'].map((tag) => getComputedStyle(screen.getByText(tag).closest('span')!).background);
+    expect(colors[0]).not.toBe('');
+    expect(colors[0]).not.toBe(colors[1]);
   });
 });

@@ -1,11 +1,14 @@
 import { createDataFrame, type DataFrame, DataFrameType, FieldType, getPanelDataSummary } from '@grafana/data';
 import { supportedChartSeriesTypes } from 'lib/echarts/charts/registry';
 import { cartesianSuggestionsSupplier } from 'modules/cartesian/suggestions';
+import { geoSuggestionsSupplier } from 'modules/geo/suggestions';
 import { heatmapSuggestionsSupplier } from 'modules/heatmap/suggestions';
 import { hierarchySuggestionsSupplier } from 'modules/hierarchy/suggestions';
 import { multivariateSuggestionsSupplier } from 'modules/multivariate/suggestions';
 import { partToWholeSuggestionsSupplier } from 'modules/part-to-whole/suggestions';
 import { relationsSuggestionsSupplier } from 'modules/relations/suggestions';
+import { stateTimelineSuggestionsSupplier } from 'modules/state-timeline/suggestions';
+import { statusHistorySuggestionsSupplier } from 'modules/status-history/suggestions';
 import { streamSuggestionsSupplier } from 'modules/stream/suggestions';
 
 /**
@@ -20,12 +23,15 @@ import { streamSuggestionsSupplier } from 'modules/stream/suggestions';
  */
 const SUPPLIERS = [
   cartesianSuggestionsSupplier,
+  geoSuggestionsSupplier,
   heatmapSuggestionsSupplier,
   hierarchySuggestionsSupplier,
   multivariateSuggestionsSupplier,
   partToWholeSuggestionsSupplier,
   relationsSuggestionsSupplier,
   streamSuggestionsSupplier,
+  stateTimelineSuggestionsSupplier,
+  statusHistorySuggestionsSupplier,
 ];
 
 /**
@@ -116,6 +122,14 @@ const FIXTURES: Record<string, DataFrame[]> = {
       ],
     }),
   ],
+  'lat/lon table': [
+    createDataFrame({
+      fields: [
+        { name: 'lat', type: FieldType.number, values: [42.5, 23.4] },
+        { name: 'lon', type: FieldType.number, values: [1.6, 53.8] },
+      ],
+    }),
+  ],
   'node graph': [
     createDataFrame({
       name: 'nodes',
@@ -132,7 +146,7 @@ const FIXTURES: Record<string, DataFrame[]> = {
   ],
 };
 
-/** Every card the seven suppliers emit across every fixture. */
+/** Every card the eight suppliers emit across every fixture. */
 const allSuggestions = () =>
   Object.values(FIXTURES).flatMap((frames) => {
     const summary = getPanelDataSummary(frames);

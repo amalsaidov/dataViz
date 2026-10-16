@@ -1,0 +1,333 @@
+import {
+  buildHistogram,
+  createTheme,
+  type DataFrame,
+  DataFrameType,
+  FieldType,
+  getHistogramFields,
+  toDataFrame,
+} from '@grafana/data';
+import { GraphGradientMode, StackingMode } from '@grafana/schema';
+import {
+  type BarCanvasEvent,
+  barRects,
+  type DrawnRect,
+  drawnTexts,
+  fills,
+  lineWidths,
+  renderBars,
+  texts,
+} from 'test/barCanvas';
+import { dispatch, renderTooltipPanel, tooltipText } from 'test/tooltipPointer';
+import { type PanelOptions } from 'types';
+
+// The histogram mode of the cartesian panel against the buckets of the core Histogram panel. Core buckets
+// the raw values with `buildHistogram` of `@grafana/data`, and draws each bucket from its lower to its upper
+// bound on a linear x axis (`Histogram.tsx`, `prepConfig`). The expected bars come from `buildHistogram`, and
+// the drawn bars come from a render. No baselines: `histogram.canvas.test.tsx` has them.
+// https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
+
+const values = (name: string, data: number[], config = {}): DataFrame =>
+  toDataFrame({
+    fields: [
+      { name: 'time', type: FieldType.time, values: data.map((_, i) => 1783137600000 + i * 60_000) },
+      { name, type: FieldType.number, values: data, config },
+    ],
+  });
+
+const heights = values('Height', [152, 158, 160, 161, 165, 168, 170, 171, 175, 180, 181, 199, 201]);
+
+const renderHistogram = (frames: DataFrame[], options: Partial<PanelOptions> = {}) =>
+  renderBars(frames, { histogram: true, ...options });
+
+/** The drawn bars, from left to right, then from bottom to top. */
+const sortedBars = (rects: DrawnRect[]) => [...rects].sort((a, b) => a.x - b.x || b.y - a.y);
+
+describe('histogram mode against the core buckets', () => {
+  it.each<[string, Partial<PanelOptions>]>([
+    ['automatic buckets', {}],
+    ['an explicit bucket size', { bucketSize: 10 }],
+    ['a bucket count', { bucketCount: 5 }],
+    ['a bucket offset', { bucketSize: 10, bucketOffset: 5 }],
+  ])('draws one bar for each core bucket with a count, for %s', async (_, options) => {
+    const core = buildHistogram([heights], options, createTheme());
+    const counts = core!.counts[0].values.filter((count) => count > 0);
+    const bars = sortedBars(barRects((await renderHistogram([heights], options)).series));
+    expect(bars).toHaveLength(counts.length);
+
+    // The px of one x unit, from the first bar. Each other bar starts at its own lower bound.
+    const [first] = bars;
+    const nonEmpty = core!.xMin.values.filter((_, i) => core!.counts[0].values[i] > 0);
+    const size = core!.xMax.values[0] - core!.xMin.values[0];
+    const pxPerUnit = first.width / size;
+    bars.forEach((bar, i) => {
+      expect(bar.x - first.x).toBeCloseTo((nonEmpty[i] - nonEmpty[0]) * pxPerUnit, 0);
+      expect(bar.width).toBeCloseTo(first.width, 0);
+    });
+
+    // The height of each bar is in proportion to its count.
+    const pxPerCount = first.height / counts[0];
+    bars.forEach((bar, i) => expect(bar.height).toBeCloseTo(counts[i] * pxPerCount, 0));
+  });
+
+  // Core uses the automatic size for a negative size (`if (!bucketSize || bucketSize < 0)` in `buildHistogram`).
+  // The panel also uses the automatic buckets for a negative count and for a value that is not finite.
+  // https://github.com/grafana/grafana/blob/main/packages/grafana-data/src/transformations/transformers/histogram.ts
+  it.each<[string, Partial<PanelOptions>]>([
+    ['a negative bucket size', { bucketSize: -1 }],
+    ['a negative bucket count', { bucketCount: -1 }],
+    ['a negative size and count', { bucketSize: -1, bucketCount: -1 }],
+    ['a bucket offset that is not finite', { bucketSize: Infinity, bucketOffset: Number.NaN }],
+  ])('draws the same bars as the automatic buckets for %s', async (_, options) => {
+    const automatic = sortedBars(barRects((await renderHistogram([heights])).series));
+    const bars = sortedBars(barRects((await renderHistogram([heights], options)).series));
+    expect(bars.length).toBeGreaterThan(0);
+    expect(bars).toEqual(automatic);
+  });
+
+  // Core sets the x range from the field min and max of the first count field. The min rounds up and the max
+  // rounds down to a multiple of the bucket size (`prepConfig`, the range of the `x` scale).
+  it('draws only the core buckets in the field min and max, rounded to the bucket size', async () => {
+    const options = { bucketSize: 5 };
+    const clipped = values('Height', heights.fields[1].values, { min: 155.5, max: 182 });
+    const core = buildHistogram([clipped], options, createTheme())!;
+    // The range is 160 to 180.
+    const inRange = core.xMin.values.filter((min, i) => min >= 160 && min + 5 <= 180 && core.counts[0].values[i] > 0);
+    const { series, axis } = await renderHistogram([clipped], options);
+    const bars = sortedBars(barRects(series));
+    expect(inRange.length).toBeGreaterThan(0);
+    expect(bars).toHaveLength(inRange.length);
+    expect(texts(axis)).toContain('160');
+    expect(texts(axis)).toContain('180');
+    expect(texts(axis)).not.toContain('150');
+
+    // The buckets out of the range do not change the count axis: the bars are as tall as the bars of the same
+    // buckets in a chart of only the values in the range.
+    const inRangeValues = values(
+      'Height',
+      heights.fields[1].values.filter((value: number) => value >= 160 && value < 180)
+    );
+    const expected = sortedBars(barRects((await renderHistogram([inRangeValues], options)).series));
+    expect(bars.map((bar) => Math.round(bar.height))).toEqual(expected.map((bar) => Math.round(bar.height)));
+  });
+
+  it('keeps the gap of an empty bucket on the x axis', async () => {
+    const bars = sortedBars(barRects((await renderHistogram([values('A', [1, 2, 35])], { bucketSize: 10 })).series));
+    expect(bars).toHaveLength(2);
+    // The second bar starts 3 buckets after the first.
+    expect(bars[1].x - bars[0].x).toBeCloseTo(3 * bars[0].width, 0);
+  });
+
+  it('labels the x axis with the unit of the bucketed field', async () => {
+    const frame = values('Latency', [120, 180, 250, 420], { unit: 'ms' });
+    const { axis } = await renderHistogram([frame], { bucketSize: 100 });
+    expect(texts(axis).some((text) => text.endsWith(' ms'))).toBe(true);
+  });
+
+  it('draws the series of two fields over each other with Stacking Off', async () => {
+    const frames = [values('A', [1, 2, 11]), values('B', [3, 12, 13])];
+    const bars = barRects((await renderHistogram(frames, { bucketSize: 10 })).series);
+    // Two buckets, and both series have a bar in each. The bars of one bucket start at the same x.
+    expect(bars).toHaveLength(4);
+    expect(new Set(bars.map((bar) => Math.round(bar.x))).size).toBe(2);
+    expect(new Set(bars.map((bar) => Math.round(bar.y + bar.height))).size).toBe(1);
+  });
+
+  it('puts each bar on the bar before it with Stacking Normal', async () => {
+    const frames = [values('A', [1, 2, 11]), values('B', [3, 12, 13])];
+    const bars = sortedBars(
+      barRects((await renderHistogram(frames, { bucketSize: 10, stacking: StackingMode.Normal })).series)
+    );
+    expect(bars).toHaveLength(4);
+    // In each bucket, the top of the lower bar is the bottom of the upper bar.
+    for (const [lower, upper] of [bars.slice(0, 2), bars.slice(2, 4)]) {
+      expect(upper.y + upper.height).toBeCloseTo(lower.y, 0);
+    }
+  });
+
+  it('draws no bars for a field that the legend hides, and keeps its buckets', async () => {
+    const frames = [values('A', [1, 2, 11]), values('B', [3, 31])];
+    const hideB = {
+      defaults: {},
+      overrides: [
+        {
+          __systemRef: 'hideSeriesFrom',
+          matcher: { id: 'byNames', options: { mode: 'exclude', names: ['A'], prefix: 'All except:', readOnly: true } },
+          properties: [{ id: 'custom.hideFrom', value: { viz: true, legend: false, tooltip: false } }],
+        },
+      ],
+    };
+    const shown = barRects((await renderBars(frames, { histogram: true, bucketSize: 10 })).series);
+    const hidden = barRects((await renderBars(frames, { histogram: true, bucketSize: 10 }, {}, hideB)).series);
+    expect(shown).toHaveLength(4);
+    expect(hidden).toHaveLength(2);
+  });
+});
+
+// Core reads Stacking, Fill opacity, Line width and Gradient mode from each count field. The fields of one
+// stacking group stack on each other, and each group starts at 0 (`getStackingGroups`, `preparePlotData2`). The
+// gradient of a bar fill spans the plot from its top to its bottom (`gradientFills.ts`).
+// https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
+// https://github.com/grafana/grafana/blob/main/packages/grafana-ui/src/components/uPlot/utils.ts
+describe('histogram mode against the core field settings', () => {
+  const custom = (name: string, data: number[], settings: Record<string, unknown>) =>
+    values(name, data, { custom: settings });
+  const group = (name: string) => ({ stacking: { mode: StackingMode.Normal, group: name } });
+  const uniqueRects = (rects: DrawnRect[]) => [...new Map(rects.map((rect) => [JSON.stringify(rect), rect])).values()];
+
+  it('stacks the fields of each stacking group on their own, with the core counts', async () => {
+    const data = { A: [1, 2, 11], B: [3, 12, 13], C: [4, 14, 15] };
+    const frames = [custom('A', data.A, group('A')), custom('B', data.B, group('A')), custom('C', data.C, group('B'))];
+    const core = buildHistogram(frames, { bucketSize: 10 }, createTheme())!;
+    const [a, b, c] = core.counts.map((field) => field.values);
+    // Core stacks B on A in each bucket. C is in group B, so it starts at 0.
+    const tops = [...a, ...a.map((count, j) => count + b[j]), ...c];
+    const bases = [0, 0, ...a, 0, 0];
+
+    const { series } = await renderHistogram(frames, { bucketSize: 10 });
+    const bars = barRects(series);
+    expect(bars).toHaveLength(6);
+    // The series paint in the order of the fields, and each series paints its buckets from left to right.
+    const baseline = Math.max(...bars.map((bar) => bar.y + bar.height));
+    const pxPerCount = bars[0].height / a[0];
+    bars.forEach((bar, i) => {
+      expect(baseline - (bar.y + bar.height)).toBeCloseTo(bases[i] * pxPerCount, 0);
+      expect(baseline - bar.y).toBeCloseTo(tops[i] * pxPerCount, 0);
+    });
+  });
+
+  it('draws the fill opacity and the line width of each field', async () => {
+    const frames = [
+      custom('A', [1, 2, 11], { fillOpacity: 20, lineWidth: 3 }),
+      custom('B', [3, 12, 13], { fillOpacity: 90, lineWidth: 2 }),
+    ];
+    const { series } = await renderHistogram(frames, { bucketSize: 10, barFillOpacity: 50, lineWidth: 1 });
+    const alphas = [...fills(series)].map((fill) => fill.match(/, ([\d.]+)\)$/)?.[1]).sort();
+    expect(alphas).toEqual(['0.2', '0.9']);
+    expect([...lineWidths(series)].sort()).toEqual([2, 3]);
+  });
+
+  it.each([GraphGradientMode.Opacity, GraphGradientMode.Hue])(
+    'draws one gradient from the top to the bottom of the plot for each bar with Gradient mode %s',
+    async (gradientMode) => {
+      const frames = [custom('A', [1, 2, 2, 11, 21, 22, 23], { gradientMode })];
+      const { series } = await renderHistogram(frames, { bucketSize: 10 });
+      // zrender draws the path of a bar with a gradient twice: for the fill and for the border.
+      const bars = uniqueRects(barRects(series));
+      const gradients = series.filter((event) => event.type === 'createLinearGradient').map((event) => event.props);
+      expect(bars).toHaveLength(3);
+      expect(gradients.length).toBeGreaterThanOrEqual(bars.length);
+      // The bars have different heights, but one gradient: from above the highest bar to the base of the bars.
+      const [first] = gradients;
+      gradients.forEach((gradient) => expect(gradient).toEqual(first));
+      expect(first.x0).toBe(first.x1);
+      expect(Number(first.y0)).toBeLessThanOrEqual(Math.min(...bars.map((bar) => bar.y)));
+      expect(Number(first.y1)).toBeCloseTo(Math.max(...bars.map((bar) => bar.y + bar.height)), 0);
+    }
+  );
+
+  it('draws the same bars with no gradient for Gradient mode None as with no field setting', async () => {
+    const none = barRects((await renderHistogram([custom('A', [1, 2, 11], { gradientMode: 'none' })])).series);
+    const unset = barRects((await renderHistogram([values('A', [1, 2, 11])])).series);
+    expect(none).toEqual(unset);
+  });
+});
+
+// Core draws the buckets of a heatmap-rows frame, which have names, on an ordinal x axis (`isOrdinalX` in
+// `prepConfig`). Bucket `i` is one position wide and starts at position `i`. The axis ends at the last
+// position, the lower bound of the empty `+Inf` bucket. Each position has a tick with the name of its lower bound.
+// https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
+describe('histogram mode against the core ordinal buckets', () => {
+  const leFrame = toDataFrame({
+    meta: { type: DataFrameType.HeatmapRows },
+    fields: [
+      { name: 'time', type: FieldType.time, values: [1783137600000, 1783137660000, 1783137720000] },
+      { name: '0.005', type: FieldType.number, values: [2, 3, 1] },
+      { name: '0.01', type: FieldType.number, values: [5, 4, 6] },
+      { name: '0.1', type: FieldType.number, values: [9, 12, 10] },
+      { name: '1', type: FieldType.number, values: [3, 2, 4] },
+      { name: '+Inf', type: FieldType.number, values: [1, 0, 1] },
+    ],
+  });
+  const core = getHistogramFields(leFrame)!;
+
+  /** The labels of the x axis, from left to right: the texts on the lowest line of the axis layer. */
+  const xLabels = (axis: BarCanvasEvent[]) => {
+    const drawn = drawnTexts(axis);
+    const bottom = Math.max(...drawn.map(({ y }) => y));
+    return drawn.filter(({ y }) => y === bottom).sort((a, b) => a.x - b.x);
+  };
+
+  it('draws one bar of the same width for each core bucket, side by side, with the core counts', async () => {
+    const counts = core.counts[0].values.filter((count) => count > 0);
+    const bars = sortedBars(barRects((await renderHistogram([leFrame])).series));
+    expect(bars).toHaveLength(counts.length);
+    const [first] = bars;
+    const pxPerCount = first.height / counts[0];
+    bars.forEach((bar, i) => {
+      expect(bar.width).toBeCloseTo(first.width, 0);
+      expect(bar.x).toBeCloseTo(first.x + i * first.width, 0);
+      expect(bar.height).toBeCloseTo(counts[i] * pxPerCount, 0);
+    });
+  });
+
+  it('labels the positions of the x axis with the core bucket names, in order', async () => {
+    const { axis } = await renderHistogram([leFrame]);
+    expect(xLabels(axis).map(({ text }) => text)).toEqual(core.xMin.values);
+  });
+
+  it('puts the tick of the name of a lower bound at the left edge of its bar', async () => {
+    const { series, axis } = await renderHistogram([leFrame]);
+    const bars = sortedBars(barRects(series));
+    const labels = xLabels(axis);
+    expect(labels.length).toBeGreaterThan(bars.length);
+    bars.forEach((bar, i) => expect(labels[i].x).toBeCloseTo(bar.x, 0));
+    // The last tick is the right edge of the last bar.
+    const last = bars[bars.length - 1];
+    expect(labels[bars.length].x).toBeCloseTo(last.x + last.width, 0);
+  });
+});
+
+// Core selects the hovered bar with the uPlot cursor focus `{ prox: 1e6, bias: 1 }` (`prepConfig`): the bar with
+// the lowest top at or above the cursor. ECharts draws the bar of the last series on top of the others.
+// https://github.com/grafana/grafana/blob/main/public/app/plugins/panel/histogram/Histogram.tsx
+describe('histogram tooltip of overlapping bars, as the core cursor focus', () => {
+  // With a bucket size of 10, bucket 0 - 10 has a count of 1 for A and 4 for B. B is drawn on top of A.
+  const frames = [values('A', [1, 11, 12]), values('B', [2, 3, 4, 5, 13])];
+
+  const hoverAt = async (count: number, data = frames) => {
+    const chart = await renderTooltipPanel({
+      frames: data,
+      seriesType: 'bar',
+      family: 'cartesian',
+      options: { histogram: true, bucketSize: 10, animation: { enabled: false } } as Partial<PanelOptions>,
+    });
+    const [x, y] = chart.convertToPixel({ seriesIndex: 0 }, [5, count]) as number[];
+    await dispatch(chart, 'mousemove', x, y);
+    return tooltipText();
+  };
+
+  it('shows the lower bar when the cursor is in both bars', async () => {
+    expect(await hoverAt(0.5)).toBe('Bucket0 - 10A1');
+  });
+
+  it('shows the higher bar when the cursor is above the lower bar', async () => {
+    expect(await hoverAt(2.5)).toBe('Bucket0 - 10B4');
+  });
+
+  // Bucket 0 - 10: A is 0 - 1 and B is 1 - 2 in group A. C is 0 - 4 in group B.
+  const group = (name: string) => ({ custom: { stacking: { mode: StackingMode.Normal, group: name } } });
+  const grouped = [
+    values('A', [1, 11, 12], group('A')),
+    values('B', [2, 13], group('A')),
+    values('C', [3, 4, 5, 6, 14], group('B')),
+  ];
+
+  it.each([
+    [0.5, 'Bucket0 - 10A1'],
+    [1.5, 'Bucket0 - 10B1'],
+    [3, 'Bucket0 - 10C4'],
+  ])('shows the bar with the lowest top at %s when the bars of two stacking groups overlap', async (count, text) => {
+    expect(await hoverAt(count, grouped)).toBe(text);
+  });
+});

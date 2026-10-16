@@ -103,7 +103,7 @@ Grouped roughly: the **contract** fixtures (`node-graph-testdata`, `graph-wide`,
   They are not: Grafana turns them into `field.state.range`, the domain a **percentage**
   threshold grades against. Same data and steps on every panel; only the domain differs.
   Named as the verification fixture by
-  [../todo/relations-conditional-field-config.md](../todo/relations-conditional-field-config.md).
+  [#199](https://github.com/grafana-experimental/grafana-beyond/issues/199).
 
 Which real data sources can produce this shape, and the Prometheus/Loki/SQL recipes,
 are in [../docs/relations-data-sources.md](../docs/relations-data-sources.md).

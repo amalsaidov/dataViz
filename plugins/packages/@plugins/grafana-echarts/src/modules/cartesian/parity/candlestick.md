@@ -27,19 +27,22 @@ exposes no per-field mapping or candlestick-specific styling in the editor.
 
 ## Panel options
 
-| Core Grafana option                       | ECharts equivalent                               | Status        |
-| ----------------------------------------- | ------------------------------------------------ | ------------- |
-| Mode (Candles / Volume / Both)            | none                                             | Not supported |
-| Candle style (Candles / OHLC bars)        | none                                             | Not supported |
-| Color strategy (since open / prior close) | none                                             | Not supported |
-| Up color / down color                     | none                                             | Not supported |
-| Open/High/Low/Close/Volume field pickers  | none (mapping inferred in converter)             | Not supported |
-| Additional fields (ignore / include)      | none                                             | Not supported |
-| Tooltip: mode                             | `tooltip.mode` (only if candlestick is rendered) | Partial       |
-| Legend                                    | Grafana legend via `addLegendOptions`            | Partial       |
-| Annotations                               | none                                             | Not supported |
-| —                                         | `editorMode` radio (Default / Advanced tiers)    | ECharts-only  |
-| —                                         | Advanced: `animation.enabled` (off by default)   | Advanced      |
+| Core Grafana option                       | ECharts equivalent                                                 | Status        |
+| ----------------------------------------- | ------------------------------------------------------------------ | ------------- |
+| Mode (Candles / Volume / Both)            | none                                                               | Not supported |
+| Candle style (Candles / OHLC bars)        | none                                                               | Not supported |
+| Color strategy (since open / prior close) | none                                                               | Not supported |
+| Up color / down color                     | none                                                               | Not supported |
+| Open/High/Low/Close/Volume field pickers  | none (mapping inferred in converter)                               | Not supported |
+| Additional fields (ignore / include)      | none                                                               | Not supported |
+| Tooltip: mode                             | `tooltip.mode` (only if candlestick is rendered)                   | Partial       |
+| Legend                                    | Grafana legend via `addLegendOptions`                              | Partial       |
+| Annotations: points and regions           | `data.annotations` at the nearest candle                           | Partial       |
+| Annotations: Hide lines and areas         | `options.annotations` lines and bands                              | Supported     |
+| Annotations: Enable multi-row annotations | `options.annotations.multiLane` hides the lines and bands, as core | Partial       |
+| Annotations: Enable annotation clustering | none                                                               | Not supported |
+| —                                         | `editorMode` radio (Default / Advanced tiers)                      | ECharts-only  |
+| —                                         | Advanced: `animation.enabled` (off by default)                     | Advanced      |
 
 ## Standard (field-config) options
 
@@ -51,12 +54,26 @@ Color), matching core Candlestick which uses the timeseries graph field config.
 - The defining Candlestick features (OHLC field mapping, candle mode/style,
   up/down colors) are not exposed. Making candlestick usable would require a
   panel-level render-type selector and OHLC mapping options.
-- The Advanced **Show points** and **Downsampling** options are registered for the
+- The **Show points** and Advanced **Downsampling** options are registered for the
   whole cartesian panel, so they appear here, but they do nothing: candlestick
   renders through `converters/multiValueCartesian.ts`, which never calls
   `getSeriesPerfOptions`. ECharts does support `large`/`largeThreshold` on
   candlestick, so wiring that converter is the obvious fix; it is not done. See
   [performance.md](../../../../docs/performance.md).
+- **Annotations** use the code of the time axis ([timeseries.md](./timeseries.md)):
+  a dashed line for a point, and a band with a dashed line at each edge for a region.
+  Core Candlestick draws them on a time axis. This panel draws candles on a category
+  axis, which rounds a value to a category index. Thus each annotation time moves to
+  the nearest candle. A region with both edges nearest to one candle is one line.
+  Marks before the first candle or after the last candle do not draw, and regions are
+  clipped to the candles. Boxplot draws no annotations. The candlestick draws the
+  markers under the plot (a triangle for a point, a bar for a region), but no annotation tooltip. The annotation options (line width,
+  band opacity, multi-row) apply to the lines and bands as on the time axis
+  ([timeseries.md](./timeseries.md)). Tests:
+  [canvas baseline](../../../lib/components/annotations.canvas.test.tsx),
+  [integration](../../../lib/components/annotations.integration.test.tsx),
+  [options integration](../../../lib/components/annotation-options.integration.test.tsx). Dashboard:
+  `provisioning/dashboards/cartesian/cartesian-annotations.json`.
 
 ## ECharts API support
 
@@ -73,7 +90,7 @@ the registered runtime surface.
 | Tooltip: click-to-pin, data links                                                              | React `VizTooltip` footer, unioned across the four OHLC fields | Supported                                                                                                                                                                                                                             |
 | `axisPointer`                                                                                  | Partial                                                        | Per-item crosshair only (category axis has no shared pointer).                                                                                                                                                                        |
 | `brush`                                                                                        | Partial                                                        | `lineX` drag maps category indices back to the dashboard time range.                                                                                                                                                                  |
-| `markLine` / `markArea`                                                                        | Supported                                                      | Threshold lines / regions on the shared value axis.                                                                                                                                                                                   |
+| `markLine` / `markArea`                                                                        | Supported                                                      | Threshold lines / regions on the shared value axis. Annotation lines / bands at the nearest candle.                                                                                                                                   |
 | `legend`                                                                                       | Supported                                                      | Grafana DOM legend (`addLegendOptions`); native legend hidden. Interactive show/hide (via the core `hideSeriesFrom` byNames override) + color (via `byName`) read directly (per series, not per field).                               |
 | `animation`                                                                                    | Supported                                                      | Off by default for every family; opt in via the Advanced `animation.enabled` switch.                                                                                                                                                  |
 | `color` / `textStyle`                                                                          | Supported                                                      | Derived from the Grafana theme.                                                                                                                                                                                                       |

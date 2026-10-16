@@ -1,3 +1,4 @@
+import { getPartToWholeIssue } from './partToWholeIssue';
 import { type ReduceDataOptions } from '@grafana/data';
 import { type SortOrder, TooltipDisplayMode } from '@grafana/schema';
 import { PIE_LEGEND_VALUES_DEFAULT, PIE_SORT_DEFAULT } from 'editor/pie';
@@ -94,6 +95,21 @@ function buildFunnelChartOption(
 
 export const pieChartModule: ChartModule = {
   legend: DEFAULT_CHART_LEGEND,
+
+  getDataIssue(ctx) {
+    const slices = () =>
+      resolvePieSlices(
+        ctx.frames,
+        ctx.theme,
+        ctx.fieldConfig,
+        resolveReduceOptions(ctx),
+        ctx.replaceVariables,
+        ctx.timeZone,
+        resolveSort(ctx)
+      );
+    const variant = ctx.seriesType === 'funnel' ? 'funnel' : 'pie';
+    return getPartToWholeIssue(ctx.frames, slices, variant, resolveReduceOptions(ctx)?.values === true);
+  },
 
   getTooltipValueFormatter(ctx) {
     // Per-slice formatter (by dataIndex) so each slice honors its own field's

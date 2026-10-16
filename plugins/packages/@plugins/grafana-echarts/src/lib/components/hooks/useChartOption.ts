@@ -1,12 +1,14 @@
 import { debug, LOG_LEVELS } from 'development';
 import { type ChartContext, type EChartBuildOption } from 'lib/echarts/charts/types';
 import { type EChartsType } from 'lib/echarts/echarts';
+import { applyGeoView, type GeoViewState, readLiveGeoView } from 'lib/echarts/geo/liveView';
 import { buildPanelChartOption } from 'lib/echarts/options/panelOption';
 import {
   type InteractedRelationsView,
   readLiveRelationsView,
   type RelationsViewState,
 } from 'lib/echarts/relations/options/view';
+import { restoreTreemapRoot } from 'lib/echarts/treemapDrillDown';
 import { ENABLE_TIME_BRUSH_ACTION } from 'lib/echarts/timeBrush';
 import { getTooltipTrigger } from 'lib/echarts/tooltip/option';
 import { type TooltipSink } from 'lib/echarts/tooltip/types';
@@ -26,6 +28,8 @@ interface Options {
   reportTooltipTrigger: EChartsTooltipController['reportTrigger'];
   /** Keeps an interacted Relations view while empty states replace the chart. */
   relationsViewRef: MutableRefObject<InteractedRelationsView | undefined>;
+  /** The node id of the treemap view root after a drill down (`useTreemapDrillDown`). */
+  treemapRootRef?: MutableRefObject<string | undefined>;
 }
 
 type ViewVariant = InteractedRelationsView['variant'];
@@ -35,6 +39,11 @@ function getViewVariant(chartContext: ChartContext): ViewVariant | undefined {
   return chartContext.seriesType === 'graph' || chartContext.seriesType === 'sankey'
     ? chartContext.seriesType
     : undefined;
+}
+
+/** The geo view options: a change of them gives the start view again. */
+function getGeoViewKey(chartContext: ChartContext): string | undefined {
+  return chartContext.family === 'geo' ? JSON.stringify(chartContext.options.view ?? null) : undefined;
 }
 
 /** Apply only the transient view to the newly built first series. */
@@ -62,10 +71,22 @@ function applyRelationsView(option: EChartBuildOption, view: RelationsViewState)
 export function useChartOption(
   chart: EChartsType | null,
   chartContext: ChartContext,
-  { isGrafanaLegend, plotWidth, plotHeight, tooltipSink, reportTooltipTrigger, relationsViewRef }: Options
+  {
+    isGrafanaLegend,
+    plotWidth,
+    plotHeight,
+    tooltipSink,
+    reportTooltipTrigger,
+    relationsViewRef,
+    treemapRootRef,
+  }: Options
 ): void {
   const optionsRef = useRef({ isGrafanaLegend, plotWidth, plotHeight, tooltipSink, reportTooltipTrigger });
   const variant = getViewVariant(chartContext);
+  // The geo view after a zoom or a pan of the user, with the view options that it is for. Core Geomap keeps the
+  // OpenLayers view across data updates.
+  const geoViewRef = useRef<{ key: string; view: GeoViewState } | undefined>(undefined);
+  const geoViewKey = getGeoViewKey(chartContext);
   useEffect(() => {
     optionsRef.current = { isGrafanaLegend, plotWidth, plotHeight, tooltipSink, reportTooltipTrigger };
   }, [isGrafanaLegend, plotHeight, plotWidth, reportTooltipTrigger, tooltipSink]);
@@ -92,6 +113,25 @@ export function useChartOption(
       }
     };
   }, [chart, relationsViewRef, variant]);
+
+  useEffect(() => {
+    if (!chart || geoViewKey == null) {
+      return;
+    }
+    // https://echarts.apache.org/en/api.html#events.geoRoam
+    const markInteracted = () => {
+      const view = chart.isDisposed() ? undefined : readLiveGeoView(chart);
+      if (view) {
+        geoViewRef.current = { key: geoViewKey, view };
+      }
+    };
+    chart.on('georoam', markInteracted);
+    return () => {
+      if (!chart.isDisposed()) {
+        chart.off('georoam', markInteracted);
+      }
+    };
+  }, [chart, geoViewKey]);
 
   useEffect(() => {
     if (!chart) {
@@ -124,6 +164,14 @@ export function useChartOption(
     if (retained != null && retained.variant === variant && retained.view != null) {
       applyRelationsView(option, retained.view);
     }
+    // Keep the geo view of the user while the view options are the same. The live view also has a reset and the
+    // view after a resize, which set the start view again.
+    const geoView = geoViewRef.current;
+    if (geoView != null && geoView.key !== geoViewKey) {
+      geoViewRef.current = undefined;
+    } else if (geoView != null) {
+      applyGeoView(option, readLiveGeoView(chart) ?? geoView.view);
+    }
 
     // Tell the tooltip controller the resolved trigger so it hides item tooltips
     // on `mouseout` but keeps axis ("All") tooltips open across the grid.
@@ -143,7 +191,22 @@ export function useChartOption(
     if ('brush' in option) {
       chart.dispatchAction(ENABLE_TIME_BRUSH_ACTION);
     }
+    // `notMerge` also resets the treemap view root, so set the drilled-down root again.
+    const treemapRoot = treemapRootRef?.current;
+    if (treemapRoot != null) {
+      restoreTreemapRoot(chart, option, treemapRoot);
+    }
     // `tooltipSink`/`reportTooltipTrigger` are stable (see useEChartsTooltip), so
     // this effect still only re-runs on chart, context, size, or legend changes.
-  }, [chart, chartContext, isGrafanaLegend, relationsViewRef, tooltipSink, reportTooltipTrigger, variant]);
+  }, [
+    chart,
+    chartContext,
+    geoViewKey,
+    isGrafanaLegend,
+    relationsViewRef,
+    tooltipSink,
+    reportTooltipTrigger,
+    treemapRootRef,
+    variant,
+  ]);
 }

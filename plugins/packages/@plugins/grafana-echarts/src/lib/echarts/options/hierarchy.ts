@@ -31,6 +31,8 @@ export interface HierarchySeriesContext extends HierarchyChartContext {
   // scheme drives node colors for by-value modes; `undefined` falls back to the
   // classic palette.
   valueField?: Field;
+  // Top-level node names that the legend visibility toggle hides.
+  hiddenRoots?: Set<string>;
 }
 
 /** Resolves the color for a single node; `undefined` leaves it to ECharts. */
@@ -44,11 +46,12 @@ export type HierarchyColorResolver = (
 /**
  * Build a node color resolver honoring the value field's Color scheme:
  * - a fixed-color override (legend color picker) always wins, matched by node name;
- * - a by-value scheme (continuous / thresholds / fixed) colors *every* node from
- *   its value via the field's display processor, so the scheme is visible on the
- *   whole tree;
- * - the classic/by-series palette colors each top-level node by position, leaving
- *   deeper nodes to inherit ECharts' derived shades (the categorical default).
+ * - a by-value scheme (continuous / thresholds) colors *every* node from its value
+ *   via the field's display processor, so the scheme is visible on the whole tree;
+ * - any other scheme (single color, shades, gradient, palettes) colors each
+ *   top-level node with the Grafana color mode calculator. The node is the series:
+ *   its position is the series index and its name the series name. Deeper nodes
+ *   inherit ECharts' derived shades.
  *
  * See https://grafana.com/docs/grafana/latest/panels-visualizations/configure-standard-options/#color-scheme
  */
@@ -57,37 +60,57 @@ export function makeHierarchyColorResolver(
   fieldConfig: FieldConfigSource,
   valueField?: Field
 ): HierarchyColorResolver {
-  // Only an explicitly-configured by-value scheme colors by value. With no color
-  // config set, Grafana's default mode is by-value (thresholds), but the panel's
-  // registered default is the classic palette — so treat "unset" as classic to
-  // keep the distinct-per-node categorical default.
-  const byValue =
-    valueField != null &&
-    valueField.config.color?.mode != null &&
-    getFieldColorModeForField(valueField).isByValue === true;
+  // With no color config set, Grafana's default mode is by-value (thresholds), but
+  // the panel's registered default is the classic palette. So "unset" is classic.
+  const mode = valueField?.config.color?.mode != null ? getFieldColorModeForField(valueField) : undefined;
   const display =
-    byValue && valueField ? (valueField.display ?? getDisplayProcessor({ field: valueField, theme })) : undefined;
+    mode?.isByValue && valueField
+      ? (valueField.display ?? getDisplayProcessor({ field: valueField, theme }))
+      : undefined;
+
+  // Color of a top-level node from the field's color mode calculator.
+  const bySeries = (name: string, value: number | null, index: number): string => {
+    if (!mode || !valueField) {
+      return getPaletteColorByIndex(index, theme);
+    }
+    const nodeField: Field = {
+      ...valueField,
+      name,
+      state: { ...valueField.state, seriesIndex: index, displayName: name },
+    };
+    return mode.getCalculator(nodeField, theme)(value ?? 0, 0);
+  };
 
   return (name, value, index, depth) => {
-    const override = getSeriesColorOverride(fieldConfig, name);
+    const override = getSeriesColorOverride(fieldConfig, name, theme);
     if (override) {
       return override;
     }
     if (display) {
       return (value != null ? display(value).color : undefined) ?? getPaletteColorByIndex(index, theme);
     }
-    return depth === 0 ? getPaletteColorByIndex(index, theme) : undefined;
+    return depth === 0 ? bySeries(name, value, index) : undefined;
   };
 }
 
 /**
  * Map the chart-agnostic tree to ECharts tree data, coloring nodes via
  * `resolveColor` (see `makeHierarchyColorResolver`). A node with no resolved
- * color is left for ECharts to shade.
+ * color is left for ECharts to shade. A root in `hiddenRoots` is dropped after
+ * its color is resolved, so the other roots keep their palette colors.
  */
-function toTreeData(nodes: HierarchyNode[], resolveColor: HierarchyColorResolver, depth = 0): HierarchyTreeItem[] {
-  return nodes.map((node, index) => {
+function toTreeData(
+  nodes: HierarchyNode[],
+  resolveColor: HierarchyColorResolver,
+  depth = 0,
+  parentPath: string[] = [],
+  hiddenRoots?: Set<string>
+): HierarchyTreeItem[] {
+  const items = nodes.map((node, index) => {
+    const path = [...parentPath, node.name];
     const item: HierarchyTreeItem = {
+      // The path is unique where names repeat at different levels.
+      id: JSON.stringify(path),
       name: node.name,
       // ECharts sizes tiles/arcs by `value`; map Grafana nulls to undefined.
       value: node.value ?? undefined,
@@ -103,10 +126,11 @@ function toTreeData(nodes: HierarchyNode[], resolveColor: HierarchyColorResolver
       item.itemStyle = { color };
     }
     if (node.children && node.children.length > 0) {
-      item.children = toTreeData(node.children, resolveColor, depth + 1);
+      item.children = toTreeData(node.children, resolveColor, depth + 1, path);
     }
     return item;
   });
+  return hiddenRoots ? items.filter((item) => !hiddenRoots.has(item.name)) : items;
 }
 
 /**
@@ -118,19 +142,38 @@ function toTreeData(nodes: HierarchyNode[], resolveColor: HierarchyColorResolver
 export function getTreemapSeries(data: HierarchyData, ctx: HierarchySeriesContext): TreemapSeriesOption {
   return {
     type: 'treemap',
-    // Off: keep the panel static like the other families (no click-to-zoom
-    // breadcrumb navigation). `nodeClick` must stay off for the tooltip too —
-    // ECharts' zoom-to-node consumes the click that pins the tooltip, so with it
-    // on a node's data links are unreachable.
     roam: false,
     leafDepth: 5,
+    // Off: ECharts' own `zoomToNode` also zooms on a leaf click, which must pin
+    // the tooltip. `useTreemapDrillDown` drills down on a parent click only.
     nodeClick: false,
-    // Inert as configured: ECharts only draws the breadcrumb trail for
-    // zoom-to-node navigation, which `nodeClick: false` above rules out. Kept so
-    // the sizing is already correct if the panel ever opts back into zooming.
-    breadcrumb: { show: ctx.options.legend.isVisible, width: ctx.options.legend.width },
+    // A border and a header strip make each parent node visible and clickable
+    // (as the ECharts "Disk Usage" example). A click on the header drills down.
+    // https://echarts.apache.org/en/option.html#series-treemap.upperLabel
+    // https://echarts.apache.org/en/option.html#series-treemap.itemStyle
+    upperLabel: { show: true, height: 20, color: ctx.theme.colors.text.primary },
+    itemStyle: { borderWidth: 1, gapWidth: 1, borderColor: ctx.theme.colors.background.primary },
+    // The first level is the hidden tree root: no header and no border.
+    // https://echarts.apache.org/en/option.html#series-treemap.levels
+    levels: [{ upperLabel: { show: false }, itemStyle: { borderWidth: 0 } }],
+    // The trail of the drill down. A click on an item zooms back out, so it is
+    // always shown.
+    // https://echarts.apache.org/en/option.html#series-treemap.breadcrumb
+    breadcrumb: {
+      show: true,
+      itemStyle: {
+        color: ctx.theme.colors.background.secondary,
+        textStyle: { color: ctx.theme.colors.text.primary },
+      },
+    },
     zlevel: ctx.options.zLevel?.series,
-    data: toTreeData(data.roots, makeHierarchyColorResolver(ctx.theme, ctx.fieldConfig, ctx.valueField)),
+    data: toTreeData(
+      data.roots,
+      makeHierarchyColorResolver(ctx.theme, ctx.fieldConfig, ctx.valueField),
+      0,
+      [],
+      ctx.hiddenRoots
+    ),
     tooltip: seriesTooltip(buildHierarchyTooltipModel(ctx), ctx.tooltipSink),
   };
 }
@@ -147,7 +190,13 @@ export function getSunburstSeries(data: HierarchyData, ctx: HierarchySeriesConte
     radius: [0, '95%'],
     nodeClick: false,
     zlevel: ctx.options.zLevel?.series,
-    data: toTreeData(data.roots, makeHierarchyColorResolver(ctx.theme, ctx.fieldConfig, ctx.valueField)),
+    data: toTreeData(
+      data.roots,
+      makeHierarchyColorResolver(ctx.theme, ctx.fieldConfig, ctx.valueField),
+      0,
+      [],
+      ctx.hiddenRoots
+    ),
     tooltip: seriesTooltip(buildHierarchyTooltipModel(ctx), ctx.tooltipSink),
   };
 }

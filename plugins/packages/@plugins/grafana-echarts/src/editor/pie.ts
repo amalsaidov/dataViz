@@ -298,12 +298,6 @@ export const PIE_CLOCKWISE_DEFAULT = true;
 export const PIE_AVOID_LABEL_OVERLAP_DEFAULT = true;
 
 /**
- * Panel option path for the pie animation toggle (Advanced). Reuses the existing
- * `@internal animation.enabled` shape (see `PanelOptions`), consumed in
- * `buildPanelChartOption`.
- */
-export const pieAnimationEnabledPath = 'animation.enabled';
-/**
  * Default animation: off, from the shared `ANIMATION_ENABLED_DEFAULT` — animation
  * is opt-in for every family, not just the cartesian one. See that constant for
  * why, and `docs/performance.md`.

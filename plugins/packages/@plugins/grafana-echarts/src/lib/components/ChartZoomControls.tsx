@@ -19,7 +19,8 @@ const ZOOM_STEP = 1.3;
 
 /**
  * Zoom in / out / reset buttons pinned to the viz area's corner, for the families whose
- * series sits on a `View` coordinate system (relations' graph and sankey — see
+ * series sits on a `View` coordinate system (relations' graph and sankey, and the geo
+ * component of the geo family — see
  * `ChartModule.getZoomAction`).
  *
  * **Buttons rather than the scroll wheel**, which is the whole reason this exists.
@@ -32,6 +33,7 @@ const ZOOM_STEP = 1.3;
  * the wheel.
  *
  * https://echarts.apache.org/en/api.html#action.graphRoam
+ * https://echarts.apache.org/en/api.html#action.geo.geoRoam
  */
 export const ChartZoomControls: React.FC<Props> = ({ action, chartRef, width, height }) => {
   const styles = useStyles2(getStyles);
@@ -47,6 +49,7 @@ export const ChartZoomControls: React.FC<Props> = ({ action, chartRef, width, he
       chart.dispatchAction({
         type: action.type,
         seriesIndex: action.seriesIndex,
+        geoIndex: action.geoIndex,
         zoom: scale,
         originX: width / 2,
         originY: height / 2,
@@ -66,17 +69,19 @@ export const ChartZoomControls: React.FC<Props> = ({ action, chartRef, width, he
     // are where the view's state is actually kept — the action handler syncs them back
     // onto the series model (`syncBackRoamOptionToRoamHostModel`) — so writing the
     // identity there is the reset. `center: null` is ECharts' own "no override".
-    chart.setOption({ series: [{ zoom: 1, center: null }] });
-  }, [action, chartRef]);
+    // A family with a start view other than the identity (geo) gives its own reset option.
+    chart.setOption(action.getResetOption?.({ width, height }) ?? { series: [{ zoom: 1, center: null }] });
+  }, [action, chartRef, width, height]);
 
   if (!action) {
     return null;
   }
+  const step = action.zoomStep ?? ZOOM_STEP;
 
   return (
     <div className={styles.wrapper}>
-      <IconButton name="search-plus" size="sm" tooltip="Zoom in" onClick={() => zoom(ZOOM_STEP)} />
-      <IconButton name="search-minus" size="sm" tooltip="Zoom out" onClick={() => zoom(1 / ZOOM_STEP)} />
+      <IconButton name="search-plus" size="sm" tooltip="Zoom in" onClick={() => zoom(step)} />
+      <IconButton name="search-minus" size="sm" tooltip="Zoom out" onClick={() => zoom(1 / step)} />
       <IconButton name="compress-arrows" size="sm" tooltip="Reset zoom" onClick={reset} />
     </div>
   );

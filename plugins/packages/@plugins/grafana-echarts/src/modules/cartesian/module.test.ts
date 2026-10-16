@@ -13,4 +13,12 @@ describe('Cartesian plugin module', () => {
 
     expect(initPluginTranslations).toHaveBeenCalledWith('grafana-echarts-app');
   });
+
+  it('asks for the dashboard annotations, as core Time series', async () => {
+    (globalThis as typeof globalThis & { __PLUGIN_ID__?: string }).__PLUGIN_ID__ = 'grafana-echarts-app';
+    const { plugin } = await import('./module');
+
+    // A Scenes dashboard removes `data.annotations` for a panel plugin with no annotation support.
+    expect(plugin.dataSupport.annotations).toBe(true);
+  });
 });
