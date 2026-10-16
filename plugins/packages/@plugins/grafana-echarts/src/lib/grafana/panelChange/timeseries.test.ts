@@ -351,7 +351,7 @@ describe('timeseriesAdapter.translate', () => {
     cartesian.getPanelOptionsSupplier()(builder, { data: [] } as StandardEditorContext<PanelOptions>);
     const shown = builder
       .getItems()
-      .filter((item) => item.showIf?.(options as PanelOptions, [], annotations) ?? true)
+      .filter((item) => item.showIf?.(options as unknown as PanelOptions, [], annotations) ?? true)
       .map((item) => item.path);
     const written = leafPaths(target.options).map((path) =>
       shown.some((item) => path === item || path.startsWith(`${item}.`)) ? 'shown' : path
