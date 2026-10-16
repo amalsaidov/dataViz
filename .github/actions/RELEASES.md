@@ -4,9 +4,10 @@
 prerequisites at the end of this file before its first real run. Only `grafana-relations-panel` is
 configured so far.
 
-A release is a **GitHub release** with the signed plugin zip attached. Releasing does **not** publish to the
-grafana.com catalog; publishing to the **dev** catalog is a separate, manual step (see
-[Publishing to dev](#publishing-to-dev)). The first plugin to release this way is `grafana-relations-panel`.
+A release is a **GitHub release** with the signed plugin zip attached. A `grafana-relations-panel` release is
+also **published to the dev and ops catalogs and deployed** to every dev and ops stack, by the `publish` job of
+the same run (see [Publishing to dev or ops](#publishing-to-dev-or-ops)). Merging the release PR is the only
+approval. Prod is never published automatically. The first plugin to release this way is `grafana-relations-panel`.
 
 ![How a release and a dev publish run](release-flow.png)
 
@@ -24,7 +25,9 @@ command to re-render it is at the top of that file.
 4. The same workflow builds the plugin from the tag, signs it, packages
    `grafana-relations-panel-0.2.0.zip` with checksums, validates it, attests its provenance, and attaches the
    files to the draft.
-5. A maintainer checks the draft and publishes it.
+5. After the build passes, the `publish` job calls `cd.yml` with the release tag: it publishes the version to the
+   dev and ops catalogs and triggers Argo, whose deployment_tools PRs auto-merge (see below).
+6. A maintainer checks the draft and publishes it. This no longer gates the deploy.
 
 **One plugin or all of them:** every plugin gets its own release PR. Merge one to release that plugin;
 merge several, or all of the open ones, to release them together. A plugin with no releasable changes can
@@ -72,12 +75,34 @@ as `cd.yml`'s GitHub release job does; it keeps release-please's notes and the d
 plugin id), its current version in `.release-please-manifest.json`, and a `CHANGELOG.md` next to its
 `package.json`.
 
-## Publishing to dev
+## Publishing to dev or ops
 
-`plugin-publish.yml` publishes `grafana-relations-panel` to the **dev** plugin catalog when run by hand
-(**Actions → Publish plugin → Run workflow**). It calls `grafana/plugin-ci-workflows`' `cd.yml`, as
+Every release does this for dev and ops automatically (`release-please.yml`, `publish` job). It passes the tag
+as `cd.yml`'s `branch` with a `release-reference-regex` matching it, so `cd.yml` publishes the exact tagged
+commit with no `+<commit>` suffix, even if `main` has moved on. If that job fails, re-run it from the Actions
+run; don't re-publish `main` by hand while the catalog already has that version.
+
+`plugin-publish.yml` publishes `grafana-relations-panel` to the **dev** or **ops** plugin catalog when run by
+hand (**Actions → Publish plugin → Run workflow**, pick the catalog). Each catalog takes the same version
+once, so publishing 0.1.1 to ops after dev is not a conflict. A new plugin needs a stub on grafana.com (prod)
+first; `cd.yml` then creates the dev or ops stub itself. It calls `grafana/plugin-ci-workflows`' `cd.yml`, as
 `grafana-canvas-panel` does: `cd.yml` builds, tests, signs and validates the plugin, uploads the zip to GCS
-and publishes it. It deploys nothing to Grafana Cloud instances, and creates no tag or GitHub release.
+and publishes it. It creates no tag or GitHub release.
+
+- **Publishing `main` deploys to Grafana Cloud.** The plugin is provisioned: every dev and ops stack has it
+  installed by stack-state-service. After the catalog publish, `cd.yml` triggers the plugins CD Argo
+  Workflow (`trigger-argo`, `grafana-cloud-deployment-type: provisioned`), which opens a deployment_tools PR
+  bumping `_catalog_version` in `provisioned-plugins/grafana-relations-panel/<wave>.libsonnet` (`dev` or
+  `staging`, the ops wave). For dev and ops that PR merges by itself once its CI passes, and the stacks
+  restart onto the new version. Notifications go to `#grafana-catalog-ci`, `cd.yml`'s default.
+- **A branch publish only reaches the catalog.** Argo is off for any ref but `main`, so a
+  `<version>+<commit>` build never rolls out to every stack. Try it on one stack with a gcom override,
+  `gcom /instances/<slug>/provisioned-plugins/grafana-relations-panel -d version=<version>`, and remove it
+  with `-d version=''`. Each override restarts the stack.
+
+- **`cd.yml` is pinned to a tag, not a hash**, the one such `uses:` in this repo. `cd.yml` fails a caller
+  that pins it to a hash, and the Google workload identity in [Credentials](#credentials) trusts it only at
+  `main` or a semver tag. To bump it, change the `ci-cd-workflows/vX.Y.Z` tag and the commit noted above it.
 
 - **From `main`** the catalog version is the one in `plugin.json`. Any other ref publishes
   `<version>+<commit>`, so a branch can be tried in dev before it merges. The catalog takes each version
@@ -130,7 +155,7 @@ grant, because the same role also requires `workflow_ref` (the workflow file on 
 | GitHub App token, `grafana-plugins-platform-bot`, permission set `release-please` (contents, pull-requests, issues write) | `release-please.yml`, release-please job: release PRs, tags, draft releases | `grafana/shared-workflows` `create-github-app-token` → GATB, a per-repo Vault role | deployment_tools `terraform/repositories/dataViz/github-app-configs/config.yaml` | `sub` (the file's `oidc_subject`, set to the immutable form), `workflow_ref` (`.github/workflows/release-please.yml` on `main`), `event_name` (`push`, `workflow_dispatch`) |
 | Plugin signing token, `plugins/sign-plugin-access-policy-token` | `release-please.yml` build job (Sign and package); `plugin-publish.yml`, inside `cd.yml`'s CI | `get-vault-secrets` `common_secrets` → the shared `vault-github-actions` Vault role | deployment_tools `terraform/modules/vault_github_actions_auth/vault_secrets.tf`, for every `grafana` repo | `sub` matches `repo:grafana/*` or `repo:grafana@7195757/*` (both forms) |
 | Catalog publish token, `plugins/gcom-publish-token:dev` | `plugin-publish.yml`, inside `cd.yml`'s publish job | same as the signing token | same as the signing token | same as the signing token |
-| Google credentials, service account `github-plugin-ci-workflows` (GCS upload, IAP token for the dev catalog API) | `plugin-publish.yml`, inside `cd.yml` | Google workload identity, provider `github-provider` | deployment_tools `terraform/modules/gcp_workload_identity_pool` and the service account's bindings | `repository_owner` is `grafana`, and attributes such as `repository_id` and `job_workflow_ref`; not `sub` |
+| Google credentials, service account `github-plugin-ci-workflows` (GCS upload, IAP token for the dev and ops catalog APIs) | `plugin-publish.yml`, inside `cd.yml` | Google workload identity, provider `github-provider` | deployment_tools `terraform/modules/gcp_workload_identity_pool` and the service account's bindings | `repository_owner` is `grafana`, and attributes such as `repository_id` and `job_workflow_ref`; not `sub` |
 | `GITHUB_TOKEN`, `contents: write` | `release-please.yml` attach job (upload to the draft release) | GitHub | the job's `permissions:` | none |
 
 Only the GitHub App token checks `sub` against a value set for this repo, so it is the only credential the

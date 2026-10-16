@@ -48,6 +48,15 @@ function runScripts(file: string): { line: number; text: string }[] {
 	return scripts;
 }
 
+// The one uses: pinned to a tag: the call to cd.yml in plugin-publish.yml and
+// release-please.yml. cd.yml fails a caller that pins it to a hash, and the
+// GCP identity it publishes with trusts it only at main or a semver tag. Only plugin-ci-workflows'
+// release bot can create or move its tags (ruleset only-platform-bot-can-tag).
+const taggedCd =
+	/^ {4}uses: grafana\/plugin-ci-workflows\/\.github\/workflows\/cd\.yml@ci-cd-workflows\/v\d+\.\d+\.\d+ # zizmor: ignore\[unpinned-uses\]$/;
+
+const cdCallers = ['plugin-publish.yml', 'release-please.yml'];
+
 // One group per file: the checks for every workflow and composite action,
 // plus the permission checks that only apply to workflows.
 describe('workflows and composite actions', () => {
@@ -65,7 +74,8 @@ describe('workflows and composite actions', () => {
 					const isUses = /^(- )?uses:/.test(line);
 					const isLocal = /uses: (\$|\.)\//.test(line);
 					const isPinned = /uses: [\w.-]+\/[\w./-]+@[0-9a-f]{40} # \S+/.test(line);
-					if (isUses && !isLocal && !isPinned) {
+					const isTaggedCd = cdCallers.some((name) => file.endsWith(name)) && taggedCd.test(raw);
+					if (isUses && !isLocal && !isPinned && !isTaggedCd) {
 						bad.push(`line ${i + 1}: ${line}`);
 					}
 				}
@@ -109,6 +119,21 @@ function triggers(file: string): string[] {
 		}
 	}
 	return events;
+}
+
+/** Whether `on: push:` is exactly `branches: [main]`: no other branch, and no tags or paths filter. */
+function pushesOnlyMain(file: string): boolean {
+	const fileLines = lines(file);
+	const body: string[] = [];
+	for (const line of fileLines.slice(fileLines.indexOf('  push:') + 1)) {
+		if (/^ {0,2}\S/.test(line)) {
+			break; // next event, or next top-level key
+		}
+		if (line.trim() !== '' && !line.trim().startsWith('#')) {
+			body.push(line.trim());
+		}
+	}
+	return body.join(',') === 'branches:,- main';
 }
 
 /** Each job under `jobs:` as { name, lines }, keyed by two-space indentation. */
@@ -164,19 +189,22 @@ function steps(jobLines: string[]): string[][] {
 // scripts, and no reusable-workflow calls. They may only read artifacts that
 // a read-only job produced, and check out pinned third-party code.
 describe('write tokens never run PR code', () => {
-	const trustedReusable = /^ {4}uses: grafana\/plugin-ci-workflows\/\.github\/workflows\/cd\.yml@[0-9a-f]{40} # /;
+	const trustedReusable = taggedCd;
 	const runsPrCode = /\b(pnpm|npm|npx|yarn|node)\b|\.github\/(scripts|actions)\//;
 
 	for (const file of workflows) {
 		for (const job of jobs(file).filter(canWrite)) {
 			test(`${file}: ${job.name}`, () => {
-				// One exception: plugin-ci-workflows' cd.yml, pinned, in a workflow
-				// that only runs by hand (plugin-publish.yml). cd.yml declares
+				// One exception: plugin-ci-workflows' cd.yml, tag-pinned, in a workflow
+				// that runs only by hand or on a push to main (plugin-publish.yml,
+				// release-please.yml), never on a PR or another branch. cd.yml declares
 				// contents: write at its top level, so a caller has to grant it.
 				const callsReusable = job.lines.some((line) => /^ {4}uses:/.test(line));
 				const callsPinnedCd = job.lines.some((line) => trustedReusable.test(line));
-				const manualOnly = triggers(file).join(',') === 'workflow_dispatch';
-				assert.ok(!callsReusable || (callsPinnedCd && manualOnly), 'calls a reusable workflow');
+				const trustedTriggers = triggers(file).every(
+					(event) => event === 'workflow_dispatch' || (event === 'push' && pushesOnlyMain(file)),
+				);
+				assert.ok(!callsReusable || (callsPinnedCd && trustedTriggers), 'calls a reusable workflow');
 				for (const step of steps(job.lines)) {
 					const text = step.join('\n');
 					// A local action (`$/` or `./`) is code from the PR's own checkout.
