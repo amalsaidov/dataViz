@@ -172,8 +172,8 @@ importers:
         specifier: 9.1.0
         version: 9.1.0(typescript@5.9.3)(webpack@5.109.2)
       glob:
-        specifier: 13.0.6
-        version: 13.0.6
+        specifier: 14.0.2
+        version: 14.0.2
       i18next-cli:
         specifier: 1.67.7
         version: 1.67.7(@swc/helpers@0.5.23)(@types/node@24.10.3)(react-dom@18.3.1(react@18.3.1))(typescript@5.9.3)
