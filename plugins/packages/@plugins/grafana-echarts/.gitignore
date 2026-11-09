@@ -34,6 +34,8 @@ coverage
 dist/
 dist-app/
 dist-renderer/
+dist-renderer-harness/
+.renderer-shots/
 artifacts/
 work/
 ci/
@@ -71,6 +73,7 @@ scripts/*
 !scripts/sync-contract.mjs
 !scripts/contract-scan.mjs
 !scripts/contract-scan.test.mjs
+!scripts/renderer-harness/
 !scripts/bench/
 scripts/bench/*
 !scripts/bench/relations-refresh.mjs

@@ -2,8 +2,9 @@
 // notices of the viz spec.
 import { type ChartNotice } from 'lib/echarts/charts/types';
 import { type Notice } from './contract/renderer-api';
+import { geoNotices } from './geoNotices';
 import { fillPattern, noticeMessage } from './messages';
-import { MAX_SERIES } from './registry';
+import { MAX_SERIES, panelType } from './registry';
 import { orderedResults } from './results';
 import { isUnitId } from './units';
 import { type VizSpec } from './vizSpec';
@@ -43,6 +44,11 @@ export function rendererNotices(spec: VizSpec, omittedSeries: number): Notice[] 
       code: 'series-truncated',
       message: fillPattern(SERIES_TRUNCATED_PATTERN, { omitted: omittedSeries, maxSeries: MAX_SERIES }),
     });
+  }
+
+  // The geo notices (`state.11`).
+  if (panelType(spec.panel.type)?.family === 'geo') {
+    notices.push(...geoNotices(spec.panel.options));
   }
 
   return notices;
