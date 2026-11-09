@@ -6,12 +6,17 @@ import {
   getPanelOptionsWithDefaults,
   type GrafanaTheme2,
 } from '@grafana/data';
+import { seriesTypePath } from 'editor/constants';
+import { resolveSeriesType } from 'lib/echarts/charts/autoSeriesType';
+import { isMultiValueSeriesType } from 'lib/echarts/charts/narrowing';
 import { type PanelComponentProps } from 'lib/components/types';
 import { type PanelOptions } from 'types';
 import { withoutCallOuts } from './callOuts';
 import { isObject } from './parseSpec';
 import { type PanelEntry } from './panels';
+import { MAX_SERIES } from './registry';
 import { toSpecData } from './toPanelData';
+import { TRUNCATED_FAMILIES, truncateSeries } from './truncateSeries';
 import { type VizSpec } from './vizSpec';
 
 const themes = new Map<VizSpec['theme'], GrafanaTheme2>();
@@ -50,7 +55,14 @@ export type SpecPanelProps = Omit<PanelComponentProps, 'width' | 'height'>;
  * https://github.com/grafana/grafana/blob/main/packages/grafana-data/src/panel/getPanelOptionsWithDefaults.ts
  * https://github.com/grafana/grafana/blob/main/packages/grafana-data/src/field/fieldOverrides.ts
  */
-export function toPanelProps(spec: VizSpec, entry: PanelEntry): SpecPanelProps {
+export const toPanelProps = (spec: VizSpec, entry: PanelEntry): SpecPanelProps => preparePanel(spec, entry).props;
+
+/**
+ * `toPanelProps`, and the number of series that the `series-truncated` cut leaves out (`state.10`). The cut runs
+ * before the field overrides, only for the families of `TRUNCATED_FAMILIES`. A candlestick or boxplot is not cut: it
+ * draws one series from several number fields of the first frame, as `PanelContent` resolves the series type.
+ */
+export function preparePanel(spec: VizSpec, entry: PanelEntry): { props: SpecPanelProps; omittedSeries: number } {
   const theme = themeOf(spec.theme);
   const { options, fieldConfig } = getPanelOptionsWithDefaults({
     plugin: entry.plugin,
@@ -62,15 +74,20 @@ export function toPanelProps(spec: VizSpec, entry: PanelEntry): SpecPanelProps {
     throw new Error(`The options of ${spec.panel.type} are not an object`);
   }
   const data = toSpecData(spec, entry);
+  const multiValue = isMultiValueSeriesType(resolveSeriesType(options[seriesTypePath], data.series, entry.family));
+  const cut =
+    TRUNCATED_FAMILIES.has(entry.family) && !multiValue
+      ? truncateSeries(data.series, MAX_SERIES)
+      : { series: data.series, omitted: 0 };
   const series = applyFieldOverrides({
-    data: data.series,
+    data: cut.series,
     fieldConfig,
     fieldConfigRegistry: entry.plugin.fieldConfigRegistry,
     replaceVariables: identity,
     theme,
     timeZone: spec.timeZone,
   });
-  return {
+  const props: SpecPanelProps = {
     id: 1,
     title: '',
     family: entry.family,
@@ -87,4 +104,5 @@ export function toPanelProps(spec: VizSpec, entry: PanelEntry): SpecPanelProps {
     onFieldConfigChange: noop,
     onChangeTimeRange: noop,
   };
+  return { props, omittedSeries: cut.omitted };
 }

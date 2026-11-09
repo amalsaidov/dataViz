@@ -66,23 +66,26 @@ describe('render', () => {
   });
 
   // contract-rule: renderer.3
-  it('shows the error state for a spec that is not correct, and writes the error with the prefix', () => {
+  it('shows the error state for a spec that is not correct, and writes the error with the prefix', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
     const el = sizedElement();
     render(el, fixtureSpec('error-invalid-spec'));
-    expect([el.getAttribute('data-viz-state'), el.getAttribute('data-viz-error')]).toEqual(['error', 'invalid-spec']);
+    await waitFor(() => expect(el.getAttribute('data-viz-state')).toBe('error'));
+    expect(el.getAttribute('data-viz-error')).toBe('invalid-spec');
     expect(error).toHaveBeenCalledWith('grafana-viz:', 'The viz spec is not correct: data is missing.');
     error.mockRestore();
   });
 
   // contract-rule: state.5
-  it('shows render-error for a frame that matches the schema but cannot be read', () => {
+  it('shows render-error for a frame that matches the schema but cannot be read', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => {});
     const spec = fixtureSpec('smoke-timeseries') as { data: { results: { A: { frames: unknown[] } } } };
     spec.data.results.A.frames.push({ schema: { name: 'no fields' } });
     const el = sizedElement();
     render(el, spec);
-    expect([el.getAttribute('data-viz-state'), el.getAttribute('data-viz-error')]).toEqual(['error', 'render-error']);
+    await waitFor(() =>
+      expect([el.getAttribute('data-viz-state'), el.getAttribute('data-viz-error')]).toEqual(['error', 'render-error'])
+    );
     expect(error).toHaveBeenCalledWith(
       'grafana-viz:',
       expect.objectContaining({ message: 'JSON needs a fields definition' })
