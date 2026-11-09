@@ -123,7 +123,7 @@ const manifest = readJson(join(DIST_DIR, MANIFEST_FILE));
 const packageJson = readJson(join(DIST_DIR, 'package.json'));
 const expected = expectedValues();
 
-// delivery.6: the manifest hash is the hash of the bundle.
+// contract-rule: delivery.6. The manifest hash is the hash of the bundle.
 const hash = sha256(bundlePath);
 check('delivery.6', manifest.sha256 === hash, `manifest sha256 ${manifest.sha256}, bundle sha256 ${hash}`);
 
@@ -141,7 +141,7 @@ check('delivery.2', packageJson.version === manifest.version, `package.json vers
 const problems = templateProblems();
 check('renderer.9', problems.length === 0, `renderer.package.json ${problems.join('; ') || 'agrees with its sources'}`);
 
-// renderer.9: the bundle imports only the peers, and the generated package.json lists each one.
+// contract-rule: renderer.9. The bundle imports only the peers, and the generated package.json lists each one.
 // The bundle imports react, so no imports means that the scan did not find them.
 const imports = bundleImports(code);
 const notPeers = imports.filter(
@@ -163,7 +163,7 @@ check(
 const dynamicImports = code.match(/(?<![\w$.])import\s*\(/g) ?? [];
 check('renderer.9', dynamicImports.length === 0, `${dynamicImports.length} dynamic imports`);
 
-// delivery.5: report the gzip size. Fail only when the contract gives a limit.
+// contract-rule: delivery.5. Report the gzip size. Fail only when the contract gives a limit.
 const gzipBytes = gzipSync(readFileSync(bundlePath)).length;
 const limit = readJson(join(PACKAGE_DIR, 'src/renderer/contract/registry/constants.json')).maxBundleGzipBytes.value;
 const sizeText = `gzip size ${gzipBytes} bytes (${(gzipBytes / 1024).toFixed(1)} KiB)`;

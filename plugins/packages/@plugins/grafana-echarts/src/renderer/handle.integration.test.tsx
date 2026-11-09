@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { getInstanceByDom } from 'lib/echarts/echarts';
 import { withLayout } from 'test/layout';
-import { fixtureSpec } from 'test/rendererFixtures';
+import { fixtureSets, fixtureSpec } from 'test/rendererFixtures';
 import { type RenderHandle, type RenderOptions, type RenderState } from './contract/renderer-api';
 import { render } from './index';
 import { TOOLBAR_HEIGHT_PX } from './layout';
@@ -213,6 +213,23 @@ describe('the handle', () => {
     expect(onRefresh).not.toHaveBeenCalled();
     expect(states).toHaveLength(1);
     handle.destroy();
+  });
+
+  // contract-rule: renderer.13
+  it.each(
+    fixtureSets().flatMap(
+      (set) =>
+        [
+          [set, 'without onRefresh', {}],
+          [set, 'with onRefresh', { onRefresh: jest.fn() }],
+        ] as Array<[string, string, RenderOptions]>
+    )
+  )('shows no panel editor for %s %s: no input of options or field config', async (set, _mode, options) => {
+    const { el } = draw(fixtureSpec(set), options);
+    await waitFor(() => expect(el.getAttribute('data-viz-state')).not.toBe('rendering'));
+    for (const role of ['textbox', 'checkbox', 'switch', 'combobox', 'spinbutton', 'slider', 'radio'] as const) {
+      expect([role, within(el).queryAllByRole(role)]).toEqual([role, []]);
+    }
   });
 });
 

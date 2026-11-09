@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { isAllowedUrl, scanContractFiles } from './contract-scan.mjs';
 
+// contract-rule: fixtures.11
 describe('isAllowedUrl', () => {
   test('allows the public hosts and the loopback host', () => {
     for (const url of [
